@@ -1,0 +1,223 @@
+export type Locale = 'en' | 'ar';
+
+export const translations = {
+  en: {
+    // Nav
+    nav_login: 'Login',
+    nav_register: 'Get Started',
+    nav_lang: 'العربية',
+
+    // Hero
+    hero_badge: 'AI-Powered Storytelling',
+    hero_headline_1: 'Turn Your Child Into',
+    hero_headline_2: 'the Hero of an',
+    hero_headline_3: 'AI-Powered Story',
+    hero_sub: 'Upload a photo. Watch the magic happen. Your child becomes the star of a cinematic, personalized adventure — complete with visuals, voice narration, and video.',
+    hero_cta_primary: 'Create Your Story',
+    hero_cta_secondary: 'See How It Works',
+
+    // Features
+    features_badge: 'Everything You Need',
+    features_title: 'Cinematic storytelling, personalized for your child',
+    features_sub: 'From a single photo, our AI crafts a complete, immersive story universe.',
+    feat1_title: 'AI Story Generation',
+    feat1_desc: 'Our AI writes unique, age-appropriate adventure stories with your child as the main character.',
+    feat2_title: 'Cinematic Video Creation',
+    feat2_desc: 'Watch the story come alive in breathtaking animated scenes tailored to your child\'s identity.',
+    feat3_title: 'Child Identity Consistency',
+    feat3_desc: 'Your child\'s likeness is preserved across every scene — recognizable, consistent, magical.',
+    feat4_title: 'Voice Narration',
+    feat4_desc: 'Professional AI voices bring the story to life with emotion, energy, and character.',
+    feat5_title: 'Downloadable Stories',
+    feat5_desc: 'Download the full video, share it with family, or print the illustrated storybook.',
+
+    // How it works
+    how_badge: 'Simple Process',
+    how_title: 'From photo to cinematic adventure in minutes',
+    step1_title: 'Upload a Photo',
+    step1_desc: 'Share a clear photo of your child. Our AI learns their unique identity.',
+    step2_title: 'AI Builds the Story',
+    step2_desc: 'Choose a theme — space, jungle, fantasy — and our AI writes the perfect narrative.',
+    step3_title: 'Visuals & Voice Come to Life',
+    step3_desc: 'Watch as cinematic scenes are generated with your child as the hero, fully narrated.',
+    step4_title: 'Download & Share',
+    step4_desc: 'Receive your personalized video story. Share it, treasure it, relive it forever.',
+
+    // Pricing
+    pricing_badge: 'Pricing',
+    pricing_title: 'Simple, transparent pricing',
+    pricing_sub: 'Start free. Upgrade when you\'re ready for more magic.',
+    plan_basic: 'Basic',
+    plan_pro: 'Pro',
+    plan_premium: 'Premium',
+    plan_basic_price: '$0',
+    plan_pro_price: '$12',
+    plan_premium_price: '$29',
+    plan_per_month: '/ month',
+    plan_basic_desc: 'Perfect for trying it out',
+    plan_pro_desc: 'For families who love stories',
+    plan_premium_desc: 'Unlimited cinematic magic',
+    plan_cta: 'Get Started',
+    plan_popular: 'Most Popular',
+    feat_stories: 'stories / month',
+    feat_hd: 'HD video export',
+    feat_voice: 'Voice narration',
+    feat_download: 'Downloadable storybook',
+    feat_unlimited: 'Unlimited stories',
+    feat_4k: '4K video export',
+    feat_priority: 'Priority rendering',
+
+    // Footer
+    footer_tagline: 'Every child deserves to be the hero of their own story.',
+    footer_product: 'Product',
+    footer_company: 'Company',
+    footer_legal: 'Legal',
+    footer_features: 'Features',
+    footer_pricing: 'Pricing',
+    footer_about: 'About',
+    footer_blog: 'Blog',
+    footer_privacy: 'Privacy Policy',
+    footer_terms: 'Terms of Service',
+    footer_rights: '© 2025 StoryHero. All rights reserved.',
+
+    // Auth - Login
+    login_title: 'Welcome back',
+    login_sub: 'Sign in to continue your storytelling journey',
+    login_email: 'Email address',
+    login_password: 'Password',
+    login_forgot: 'Forgot password?',
+    login_submit: 'Sign In',
+    login_no_account: "Don't have an account?",
+    login_register_link: 'Create one for free',
+    login_loading: 'Signing in...',
+
+    // Auth - Register
+    register_title: 'Start your journey',
+    register_sub: 'Create an account and give your child the story they deserve',
+    register_name: 'Full name',
+    register_email: 'Email address',
+    register_password: 'Password',
+    register_confirm: 'Confirm password',
+    register_submit: 'Create Account',
+    register_have_account: 'Already have an account?',
+    register_login_link: 'Sign in',
+    register_loading: 'Creating account...',
+
+    // Dashboard
+    dashboard_title: 'Dashboard',
+    dashboard_welcome: 'Welcome back',
+    dashboard_coming: 'Your story studio is coming soon.',
+    dashboard_logout: 'Sign Out',
+  },
+
+  ar: {
+    // Nav
+    nav_login: 'تسجيل الدخول',
+    nav_register: 'ابدأ الآن',
+    nav_lang: 'English',
+
+    // Hero
+    hero_badge: 'قصص مدعومة بالذكاء الاصطناعي',
+    hero_headline_1: 'حوّل طفلك إلى',
+    hero_headline_2: 'بطل قصة',
+    hero_headline_3: 'سينمائية بالذكاء الاصطناعي',
+    hero_sub: 'ارفع صورة. شاهد السحر يحدث. يصبح طفلك نجم مغامرة سينمائية شخصية — مع مشاهد بصرية وتعليق صوتي وفيديو.',
+    hero_cta_primary: 'ابدأ قصتك',
+    hero_cta_secondary: 'كيف يعمل؟',
+
+    // Features
+    features_badge: 'كل ما تحتاجه',
+    features_title: 'سرد سينمائي، مخصص لطفلك',
+    features_sub: 'من صورة واحدة، يصنع ذكاؤنا الاصطناعي كوناً قصصياً كاملاً وغامراً.',
+    feat1_title: 'توليد القصص بالذكاء الاصطناعي',
+    feat1_desc: 'يكتب ذكاؤنا الاصطناعي قصص مغامرات فريدة ومناسبة لعمر طفلك بطلاً فيها.',
+    feat2_title: 'إنشاء الفيديو السينمائي',
+    feat2_desc: 'شاهد القصة تنبض بالحياة في مشاهد متحركة رائعة مصممة لهوية طفلك.',
+    feat3_title: 'اتساق هوية الطفل',
+    feat3_desc: 'يُحافظ على شبه طفلك في كل مشهد — واضح، ومتسق، وساحر.',
+    feat4_title: 'التعليق الصوتي',
+    feat4_desc: 'أصوات ذكاء اصطناعي احترافية تبث الحياة في القصة بعاطفة وحيوية.',
+    feat5_title: 'قصص قابلة للتنزيل',
+    feat5_desc: 'نزّل الفيديو كاملاً، شاركه مع العائلة، أو اطبع كتاب القصة المصوّر.',
+
+    // How it works
+    how_badge: 'عملية بسيطة',
+    how_title: 'من الصورة إلى المغامرة السينمائية في دقائق',
+    step1_title: 'ارفع صورة',
+    step1_desc: 'شارك صورة واضحة لطفلك. يتعلم ذكاؤنا الاصطناعي هويته الفريدة.',
+    step2_title: 'الذكاء الاصطناعي يبني القصة',
+    step2_desc: 'اختر موضوعاً — الفضاء، الغابة، الخيال — ويكتب ذكاؤنا الاصطناعي السرد المثالي.',
+    step3_title: 'المشاهد والصوت ينبعان بالحياة',
+    step3_desc: 'شاهد المشاهد السينمائية تتولد مع طفلك بطلاً فيها، مصحوبة بتعليق كامل.',
+    step4_title: 'نزّل وشارك',
+    step4_desc: 'استلم قصتك المصوّرة الشخصية. شاركها وعش لحظاتها للأبد.',
+
+    // Pricing
+    pricing_badge: 'الأسعار',
+    pricing_title: 'أسعار بسيطة وشفافة',
+    pricing_sub: 'ابدأ مجاناً. طوّر اشتراكك عندما تريد المزيد من السحر.',
+    plan_basic: 'أساسي',
+    plan_pro: 'احترافي',
+    plan_premium: 'مميز',
+    plan_basic_price: '$0',
+    plan_pro_price: '$12',
+    plan_premium_price: '$29',
+    plan_per_month: '/ شهر',
+    plan_basic_desc: 'مثالي للتجربة',
+    plan_pro_desc: 'للعائلات التي تحب القصص',
+    plan_premium_desc: 'سحر سينمائي بلا حدود',
+    plan_cta: 'ابدأ الآن',
+    plan_popular: 'الأكثر شعبية',
+    feat_stories: 'قصة / شهر',
+    feat_hd: 'تصدير فيديو HD',
+    feat_voice: 'تعليق صوتي',
+    feat_download: 'كتاب قصة قابل للتنزيل',
+    feat_unlimited: 'قصص غير محدودة',
+    feat_4k: 'تصدير فيديو 4K',
+    feat_priority: 'معالجة أولوية',
+
+    // Footer
+    footer_tagline: 'كل طفل يستحق أن يكون بطل قصته الخاصة.',
+    footer_product: 'المنتج',
+    footer_company: 'الشركة',
+    footer_legal: 'قانوني',
+    footer_features: 'المميزات',
+    footer_pricing: 'الأسعار',
+    footer_about: 'من نحن',
+    footer_blog: 'المدونة',
+    footer_privacy: 'سياسة الخصوصية',
+    footer_terms: 'شروط الخدمة',
+    footer_rights: '© 2025 StoryHero. جميع الحقوق محفوظة.',
+
+    // Auth - Login
+    login_title: 'مرحباً بعودتك',
+    login_sub: 'سجّل دخولك لمتابعة رحلتك القصصية',
+    login_email: 'البريد الإلكتروني',
+    login_password: 'كلمة المرور',
+    login_forgot: 'نسيت كلمة المرور؟',
+    login_submit: 'تسجيل الدخول',
+    login_no_account: 'ليس لديك حساب؟',
+    login_register_link: 'أنشئ حساباً مجاناً',
+    login_loading: 'جارٍ تسجيل الدخول...',
+
+    // Auth - Register
+    register_title: 'ابدأ رحلتك',
+    register_sub: 'أنشئ حساباً وامنح طفلك القصة التي يستحقها',
+    register_name: 'الاسم الكامل',
+    register_email: 'البريد الإلكتروني',
+    register_password: 'كلمة المرور',
+    register_confirm: 'تأكيد كلمة المرور',
+    register_submit: 'إنشاء الحساب',
+    register_have_account: 'لديك حساب بالفعل؟',
+    register_login_link: 'سجّل دخولك',
+    register_loading: 'جارٍ إنشاء الحساب...',
+
+    // Dashboard
+    dashboard_title: 'لوحة التحكم',
+    dashboard_welcome: 'مرحباً بك مجدداً',
+    dashboard_coming: 'استوديو القصص الخاص بك قادم قريباً.',
+    dashboard_logout: 'تسجيل الخروج',
+  },
+} as const;
+
+export type TranslationKey = keyof typeof translations.en;

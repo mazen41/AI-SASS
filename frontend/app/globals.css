@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/* ── Google Fonts ──────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg:           #020207;
+  --bg-card:      rgba(255,255,255,0.028);
+  --bg-card-h:    rgba(255,255,255,0.055);
+  --border:       rgba(255,255,255,0.07);
+  --border-h:     rgba(255,255,255,0.18);
+
+  --c:  #00e5ff;   /* cyan */
+  --b:  #5b7fff;   /* blue */
+  --p:  #bf5aff;   /* purple */
+  --pk: #ff4dc4;   /* pink */
+
+  --grad: linear-gradient(135deg, var(--c) 0%, var(--b) 45%, var(--p) 100%);
+
+  --ff-head: 'Space Grotesk', sans-serif;
+  --ff-body: 'Inter', sans-serif;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t:    0.35s var(--ease);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: rgba(255,255,255,0.88);
+  font-family: var(--ff-body);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── TYPOGRAPHY ───────────────────────────────────────────────────── */
+.h-display {
+  font-family: var(--ff-head);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+}
+
+.grad-text {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── GLASS ────────────────────────────────────────────────────────── */
+.glass {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  transition: background var(--t), border-color var(--t);
+}
+.glass:hover {
+  background: var(--bg-card-h);
+  border-color: var(--border-h);
+}
+
+/* ── BUTTONS ──────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.8rem 2rem;
+  font-family: var(--ff-head);
+  font-weight: 600;
+  font-size: 0.93rem;
+  letter-spacing: 0.01em;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all var(--t);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-prim {
+  background: var(--grad);
+  color: #fff;
+  box-shadow: 0 0 0 rgba(91,127,255,0);
+}
+.btn-prim:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 40px rgba(91,127,255,0.45), 0 0 80px rgba(0,229,255,0.15);
+}
+.btn-prim:active { transform: scale(0.97); }
+
+.btn-ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover {
+  border-color: var(--border-h);
+  background: var(--bg-card-h);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* ── INPUT ────────────────────────────────────────────────────────── */
+.inp {
+  width: 100%;
+  padding: 0.9rem 1.15rem;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--ff-body);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color var(--t), background var(--t), box-shadow var(--t);
+}
+.inp::placeholder { color: rgba(255,255,255,0.2); }
+.inp:focus {
+  border-color: rgba(91,127,255,0.65);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 3px rgba(91,127,255,0.15), 0 0 30px rgba(91,127,255,0.08);
+}
+
+/* ── BADGE ────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 1.1rem;
+  background: rgba(91,127,255,0.09);
+  border: 1px solid rgba(91,127,255,0.22);
+  border-radius: 100px;
+  color: var(--c);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--ff-head);
+}
+
+/* ── CARD TILT ────────────────────────────────────────────────────── */
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 0.15s var(--ease);
+}
+
+/* ── SCROLLBAR ────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ── KEYFRAMES ────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes floatY {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-14px); }
+}
+@keyframes glowPulse {
+  0%,100% { opacity: 0.35; }
+  50%     { opacity: 0.75; }
+}
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+@keyframes gradShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes borderGlow {
+  0%,100% { box-shadow: 0 0 15px rgba(91,127,255,0.3); }
+  50%     { box-shadow: 0 0 40px rgba(91,127,255,0.6), 0 0 80px rgba(0,229,255,0.2); }
+}
+@keyframes scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.anim-fadeUp    { animation: fadeUp 0.9s var(--ease) forwards; opacity: 0; }
+.anim-fadeIn    { animation: fadeIn 0.7s ease forwards; opacity: 0; }
+.anim-float     { animation: floatY 7s ease-in-out infinite; }
+.anim-glow      { animation: glowPulse 3.5s ease-in-out infinite; }
+.anim-spin      { animation: spinSlow 25s linear infinite; }
+.anim-border    { animation: borderGlow 3s ease-in-out infinite; }
+
+.d0  { animation-delay: 0s; }
+.d1  { animation-delay: 0.12s; }
+.d2  { animation-delay: 0.24s; }
+.d3  { animation-delay: 0.38s; }
+.d4  { animation-delay: 0.52s; }
+.d5  { animation-delay: 0.68s; }
+.d6  { animation-delay: 0.85s; }
+
+/* ── RTL ──────────────────────────────────────────────────────────── */
+[dir="rtl"] { font-family: var(--ff-body); }
+[dir="rtl"] .h-display { letter-spacing: 0; }
