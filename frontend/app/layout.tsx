@@ -1,11 +1,8 @@
 import type { Metadata } from 'next';
-import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { LangProvider } from '@/context/LangContext';
 import { AuthProvider } from '@/context/AuthContext';
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space' });
+import { ThemeProvider } from '@/context/ThemeContext';
 
 export const metadata: Metadata = {
   title: 'AI StoryVerse',
@@ -14,11 +11,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body>
-        <AuthProvider>
-          <LangProvider>{children}</LangProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <LangProvider>{children}</LangProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

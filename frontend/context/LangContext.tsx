@@ -20,6 +20,12 @@ export function LangProvider({ children }: { children: ReactNode }) {
     if (saved === 'ar' || saved === 'en') setLocale(saved);
   }, []);
 
+  useEffect(() => {
+    // Apply dir and lang to <html> for proper RTL support
+    document.documentElement.setAttribute('lang', locale);
+    document.documentElement.setAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
+  }, [locale]);
+
   const toggleLocale = () => {
     const next: Locale = locale === 'en' ? 'ar' : 'en';
     setLocale(next);
@@ -27,14 +33,11 @@ export function LangProvider({ children }: { children: ReactNode }) {
   };
 
   const t = (key: TranslationKey): string => translations[locale][key];
-
   const isRTL = locale === 'ar';
 
   return (
     <LangContext.Provider value={{ locale, t, toggleLocale, isRTL }}>
-      <div dir={isRTL ? 'rtl' : 'ltr'} lang={locale}>
-        {children}
-      </div>
+      {children}
     </LangContext.Provider>
   );
 }
