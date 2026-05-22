@@ -1,23 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, Variants } from 'framer-motion';
 import { useRef } from 'react';
 import AnimatedScene from './AnimatedScene';
 import Navbar from './Navbar';
 import CustomCursor from './CustomCursor';
 import { useLang } from '@/context/LangContext';
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 32 },
-  visible: (i = 0) => ({
+  visible: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] },
+    transition: {
+      duration: 0.7,
+      delay: i * 0.1,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+    },
   }),
 };
 
-const stagger = {
+const stagger: Variants = {
+  hidden: {},
   visible: { transition: { staggerChildren: 0.09 } },
 };
 
