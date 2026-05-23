@@ -51,7 +51,7 @@ export default function RegisterPage() {
   return (
     <div data-theme={theme} style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <CustomCursor />
-      <main className="auth-wrap">
+      <main className="auth-layout">
 
         {/* ── Left: Illustration Panel ── */}
         <div className="auth-illustration">

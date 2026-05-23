@@ -2282,3 +2282,27 @@ body:has(button:hover) #cursor-ring {
 @media (max-width: 480px) {
   .footer-inner { grid-template-columns: 1fr; }
 }
+
+
+/* ============================================================
+   AUTH-LAYOUT — alias for auth-wrap, used by login/register
+   Fixes: proper centering on mobile when illustration is hidden
+   ============================================================ */
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .auth-layout { grid-template-columns: 1fr; }
+  .auth-layout .auth-illustration { display: none; }
+  /* Make form side fill and center on mobile */
+  .auth-layout .auth-form-side,
+  .auth-wrap .auth-form-side {
+    min-height: 100vh;
+    padding: 2rem 1.25rem;
+  }
+}
