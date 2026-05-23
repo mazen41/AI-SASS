@@ -8,7 +8,6 @@ import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
-import Link from 'next/link';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -43,171 +42,164 @@ export default function DashboardPage() {
       <CustomCursor />
       <Navbar />
 
-      <div className="home-wrap">
-        {/* Header */}
-        <motion.div
-          className="home-header"
-          initial="hidden"
-          animate="visible"
-          variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-        >
-          <motion.div variants={fadeUp}>
-            <span className="badge" style={{ marginBottom: '1rem' }}>
-              <span className="badge-dot" />
-              {locale === 'ar' ? 'استوديو القصص' : 'Story Studio'}
-            </span>
-          </motion.div>
-          <motion.h1 variants={fadeUp}>
-            {greeting} <span className="gradient-text">✦</span>
-          </motion.h1>
-          <motion.p variants={fadeUp} custom={1} style={{ color: 'var(--text-2)' }}>
-            {locale === 'ar'
-              ? 'استوديو القصص الاصطناعي الخاص بك في انتظارك.'
-              : 'Your AI story studio is waiting for you.'}
-          </motion.p>
-        </motion.div>
+      {/* Animated background blobs */}
+      <div className="dash-bg-blobs" aria-hidden>
+        <div className="dash-bg-blob dash-bg-blob-1" />
+        <div className="dash-bg-blob dash-bg-blob-2" />
+      </div>
 
-        <div className="home-grid">
-          {/* CTA Card */}
-          <motion.div
-            className="glass home-cta-card"
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ y: -4 }}
-          >
-            {/* Decorative orb */}
-            <div style={{
-              position: 'absolute', right: '-40px', top: '-40px',
-              width: 200, height: 200,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(180,85,255,0.2), transparent 70%)',
-              pointerEvents: 'none',
-            }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{
-                fontSize: '2.5rem',
-                marginBottom: '1rem',
-                filter: 'drop-shadow(0 0 16px rgba(94,125,255,0.6))',
-              }}>
-                ✦
-              </div>
-              <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: '1.7rem', fontWeight: 800, marginBottom: '0.6rem' }}>
-                {locale === 'ar' ? 'ابدأ قصتك الأولى' : 'Create your first story'}
-              </h2>
-              <p style={{ color: 'var(--text-2)', marginBottom: '1.5rem', maxWidth: 480 }}>
-                {locale === 'ar'
-                  ? 'ارفع صورة طفلك وشاهد العالم السينمائي يُولد في ثوانٍ.'
-                  : 'Upload a photo of your child and watch a cinematic world be born in seconds.'}
-              </p>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <button className="btn btn-primary">
-                  <span>{locale === 'ar' ? '+ إنشاء قصة' : '+ Create Story'}</span>
-                </button>
-                <button className="btn btn-ghost">
-                  {locale === 'ar' ? 'عرض الأمثلة' : 'View Examples'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
+      <div className="dash-wrap">
+        <div className="dash-inner">
 
-          {/* Widget: My Stories */}
+          {/* ── Header ── */}
           <motion.div
-            className="glass home-widget"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ y: -3, borderColor: 'var(--border-hover)' }}
+            className="dash-header"
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
           >
-            <div>
-              <div className="widget-icon">📖</div>
-              <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-                {locale === 'ar' ? 'قصصي' : 'My Stories'}
-              </h3>
-            </div>
-            <div className="widget-empty">
-              <div className="widget-empty-icon">📚</div>
-              <span>{locale === 'ar' ? 'لا توجد قصص بعد' : 'No stories yet'}</span>
-            </div>
-          </motion.div>
-
-          {/* Widget: Videos */}
-          <motion.div
-            className="glass home-widget"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ y: -3, borderColor: 'var(--border-hover)' }}
-          >
-            <div>
-              <div className="widget-icon">🎬</div>
-              <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-                {locale === 'ar' ? 'فيديوهاتي' : 'My Videos'}
-              </h3>
-            </div>
-            <div className="widget-empty">
-              <div className="widget-empty-icon">🎞️</div>
-              <span>{locale === 'ar' ? 'لا توجد فيديوهات بعد' : 'No videos yet'}</span>
-            </div>
-          </motion.div>
-
-          {/* Widget: Gallery */}
-          <motion.div
-            className="glass home-widget"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ y: -3, borderColor: 'var(--border-hover)' }}
-          >
-            <div>
-              <div className="widget-icon">🖼️</div>
-              <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-                {locale === 'ar' ? 'معرضي' : 'My Gallery'}
-              </h3>
-            </div>
-            <div className="widget-empty">
-              <div className="widget-empty-icon">🎨</div>
-              <span>{locale === 'ar' ? 'لا توجد صور بعد' : 'No images yet'}</span>
-            </div>
-          </motion.div>
-
-          {/* Widget: Account */}
-          <motion.div
-            className="glass home-widget"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ y: -3, borderColor: 'var(--border-hover)' }}
-          >
-            <div>
-              <div className="widget-icon">👤</div>
-              <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-                {locale === 'ar' ? 'الحساب' : 'Account'}
-              </h3>
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-2)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
-                {user?.name}
-              </div>
-              <div style={{ color: 'var(--text-3)', fontSize: '0.8rem', marginBottom: '1rem' }}>
-                {user?.email}
-              </div>
-              <span style={{
-                display: 'inline-block',
-                padding: '0.25rem 0.65rem',
-                borderRadius: '999px',
-                background: 'var(--grad-subtle)',
-                border: '1px solid var(--border)',
-                fontSize: '0.75rem',
-                fontFamily: 'Syne, sans-serif',
-                fontWeight: 700,
-                color: 'var(--neon-2)',
-                letterSpacing: '0.06em',
-              }}>
-                {locale === 'ar' ? 'مجاني' : 'FREE PLAN'}
+            <motion.div variants={fadeUp}>
+              <span className="kido-badge">
+                <span className="kido-badge-star">✦</span>
+                {locale === 'ar' ? 'استوديو القصص' : 'Story Studio'}
               </span>
-            </div>
+            </motion.div>
+            <motion.h1 className="dash-greeting" variants={fadeUp}>
+              {greeting} <span className="gradient-text">✦</span>
+            </motion.h1>
+            <motion.p className="dash-sub" variants={fadeUp} custom={1}>
+              {locale === 'ar'
+                ? 'استوديو القصص الاصطناعي الخاص بك في انتظارك.'
+                : 'Your AI story studio is waiting for you.'}
+            </motion.p>
           </motion.div>
+
+          {/* ── Grid ── */}
+          <div className="dash-grid">
+
+            {/* CTA Hero Card */}
+            <motion.div
+              className="dash-hero-card"
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              whileHover={{ y: -4 }}
+            >
+              <div className="dash-hero-deco" />
+              <div className="dash-hero-deco-2" />
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <span className="dash-hero-emoji">✦</span>
+                <h2 className="dash-hero-title">
+                  {locale === 'ar' ? 'ابدأ قصتك الأولى' : 'Create your first story'}
+                </h2>
+                <p className="dash-hero-sub">
+                  {locale === 'ar'
+                    ? 'ارفع صورة طفلك وشاهد العالم السينمائي يُولد في ثوانٍ.'
+                    : 'Upload a photo of your child and watch a cinematic world be born in seconds.'}
+                </p>
+                <div className="dash-hero-actions">
+                  <motion.button
+                    className="btn btn-primary"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {locale === 'ar' ? '+ إنشاء قصة' : '+ Create Story'}
+                  </motion.button>
+                  <motion.button
+                    className="btn btn-ghost"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {locale === 'ar' ? 'عرض الأمثلة' : 'View Examples'}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Widget: My Stories */}
+            <motion.div
+              className="dash-widget"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div>
+                <div className="widget-icon-wrap" style={{ background: 'linear-gradient(135deg, rgba(84,120,255,0.15), rgba(84,120,255,0.05))' }}>
+                  📖
+                </div>
+                <p className="widget-title">{locale === 'ar' ? 'قصصي' : 'My Stories'}</p>
+              </div>
+              <div className="widget-empty-state">
+                <div className="widget-empty-emoji">📚</div>
+                <span>{locale === 'ar' ? 'لا توجد قصص بعد' : 'No stories yet'}</span>
+              </div>
+            </motion.div>
+
+            {/* Widget: Videos */}
+            <motion.div
+              className="dash-widget"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div>
+                <div className="widget-icon-wrap" style={{ background: 'linear-gradient(135deg, rgba(255,62,155,0.15), rgba(255,62,155,0.05))' }}>
+                  🎬
+                </div>
+                <p className="widget-title">{locale === 'ar' ? 'فيديوهاتي' : 'My Videos'}</p>
+              </div>
+              <div className="widget-empty-state">
+                <div className="widget-empty-emoji">🎞️</div>
+                <span>{locale === 'ar' ? 'لا توجد فيديوهات بعد' : 'No videos yet'}</span>
+              </div>
+            </motion.div>
+
+            {/* Widget: Gallery */}
+            <motion.div
+              className="dash-widget"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div>
+                <div className="widget-icon-wrap" style={{ background: 'linear-gradient(135deg, rgba(255,222,66,0.18), rgba(255,222,66,0.06))' }}>
+                  🖼️
+                </div>
+                <p className="widget-title">{locale === 'ar' ? 'معرضي' : 'My Gallery'}</p>
+              </div>
+              <div className="widget-empty-state">
+                <div className="widget-empty-emoji">🎨</div>
+                <span>{locale === 'ar' ? 'لا توجد صور بعد' : 'No images yet'}</span>
+              </div>
+            </motion.div>
+
+            {/* Widget: Account */}
+            <motion.div
+              className="dash-widget"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div>
+                <div className="widget-icon-wrap" style={{ background: 'linear-gradient(135deg, rgba(102,208,188,0.18), rgba(102,208,188,0.06))' }}>
+                  👤
+                </div>
+                <p className="widget-title">{locale === 'ar' ? 'الحساب' : 'Account'}</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--text-2)', fontSize: '0.88rem', margin: '0 0 0.25rem', fontWeight: 600 }}>
+                  {user?.name}
+                </p>
+                <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', margin: '0 0 1rem' }}>
+                  {user?.email}
+                </p>
+                <span className="plan-badge">
+                  {locale === 'ar' ? 'مجاني' : 'FREE PLAN'}
+                </span>
+              </div>
+            </motion.div>
+
+          </div>
         </div>
       </div>
     </div>

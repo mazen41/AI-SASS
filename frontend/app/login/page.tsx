@@ -47,7 +47,7 @@ export default function LoginPage() {
   return (
     <div data-theme={theme} style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <CustomCursor />
-      <main className="auth-layout">
+      <main className="auth-wrap">
 
         {/* ── Left: Illustration Panel ── */}
         <div className="auth-illustration">
