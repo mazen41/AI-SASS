@@ -35,7 +35,7 @@ export default function Navbar() {
   };
 
   const navLinks = isLoggedIn
-    ? [{ href: '/dashboard', label: `👋 ${user?.name?.split(' ')[0] ?? t('nav_dashboard')}` }]
+    ? [{ href: '/dashboard', label: `👋 ${user?.name?.split(' ')[0] ?? 'Dashboard'}` }]
     : [
         { href: '#how',      label: locale === 'ar' ? 'كيف يعمل' : 'How it works' },
         { href: '#pricing',  label: locale === 'ar' ? 'الأسعار'  : 'Pricing' },
