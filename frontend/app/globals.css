@@ -2177,8 +2177,86 @@ body:has(button:hover) #cursor-ring {
 .animate-wave        { animation: wave 1.5s ease-in-out infinite; display: inline-block; }
 
 /* ============================================================
-   RTL SUPPORT
+   NAVBAR RESPONSIVE — Hamburger + Desktop links
    ============================================================ */
+
+/* Desktop-only nav links */
+.nav-links-desktop {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-link-item {
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--r-full);
+  color: var(--text-2);
+  text-decoration: none;
+  font-family: 'Fredoka', 'Baloo 2', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: color 0.2s ease, background 0.2s ease !important;
+}
+.nav-link-item:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* Desktop-only auth row */
+.nav-auth-desktop {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Hamburger button — hidden on desktop */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.hamburger-line {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: transform 0.3s var(--ease-spring), opacity 0.2s ease !important;
+  transform-origin: center;
+}
+
+/* X animation */
+.open-top  { transform: translateY(7px) rotate(45deg); }
+.open-mid  { opacity: 0; transform: scaleX(0); }
+.open-bot  { transform: translateY(-7px) rotate(-45deg); }
+
+/* Mobile breakpoint */
+@media (max-width: 768px) {
+  .nav-links-desktop { display: none; }
+  .nav-auth-desktop  { display: none; }
+  .nav-hamburger     { display: flex; }
+  /* hide lang+theme from top bar on mobile — they live inside the drawer */
+  .kido-nav .lang-toggle,
+  .kido-nav .theme-toggle { display: none; }
+}
+
+/* Keep lang+theme visible in drawer (they're not inside .kido-nav on mobile) */
+@media (min-width: 769px) {
+  .kido-nav .lang-toggle  { display: flex; }
+  .kido-nav .theme-toggle { display: flex; }
+}
+
 [dir="rtl"] .story-card-item:hover  { transform: translateX(-7px); }
 [dir="rtl"] .footer-col a:hover     { transform: translateX(-4px); }
 [dir="rtl"] .theme-toggle-thumb     { left: auto; right: 2px; }
