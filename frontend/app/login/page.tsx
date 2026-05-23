@@ -10,6 +10,14 @@ import { useLang } from '@/context/LangContext';
 import { apiLogin } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: (i: number = 0) => ({
+    opacity: 1, y: 0,
+    transition: { duration: 0.65, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+  }),
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -19,6 +27,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPass, setShowPass] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -39,149 +48,182 @@ export default function LoginPage() {
     <div data-theme={theme}>
       <CustomCursor />
       <main className="auth-wrap">
-        {/* Left illustration panel */}
+        {/* ── Left: Illustration Panel ── */}
         <div className="auth-illustration">
+          {/* Blobs */}
+          <div className="auth-illus-blob auth-illus-blob-1" />
+          <div className="auth-illus-blob auth-illus-blob-2" />
+          <div className="auth-illus-blob auth-illus-blob-3" />
+
+          {/* Floating decorations */}
+          <div style={{ position: 'absolute', top: '12%', left: '10%', fontSize: '2rem', animation: 'float 7s ease-in-out infinite', animationDelay: '-1s', pointerEvents: 'none' }}>⭐</div>
+          <div style={{ position: 'absolute', top: '18%', right: '12%', fontSize: '1.5rem', animation: 'float 9s ease-in-out infinite', animationDelay: '-3s', pointerEvents: 'none' }}>✨</div>
+          <div style={{ position: 'absolute', bottom: '15%', right: '10%', fontSize: '2.5rem', animation: 'float 6s ease-in-out infinite', animationDelay: '-2s', pointerEvents: 'none' }}>🌙</div>
+          <div style={{ position: 'absolute', bottom: '22%', left: '8%', fontSize: '1.8rem', animation: 'float 8s ease-in-out infinite', animationDelay: '-4s', pointerEvents: 'none' }}>💫</div>
+
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            className="auth-illus-content"
+            initial={{ opacity: 0, scale: 0.88 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            style={{ textAlign: 'center', padding: '2rem', position: 'relative', zIndex: 2 }}
           >
-            {/* Animated orbs */}
-            <div style={{
-              position: 'absolute',
-              width: 300, height: 300,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(94,125,255,0.3), transparent 70%)',
-              top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%)',
-              animation: 'float 5s ease-in-out infinite',
-              pointerEvents: 'none',
-            }} />
-            <div style={{
-              position: 'absolute',
-              width: 180, height: 180,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(180,85,255,0.25), transparent 70%)',
-              top: '30%', left: '30%',
-              animation: 'float 7s ease-in-out infinite reverse',
-              pointerEvents: 'none',
-            }} />
+            <span className="auth-illus-big-icon">🧸</span>
 
-            <div style={{
-              fontSize: '4rem',
-              marginBottom: '1.5rem',
-              filter: 'drop-shadow(0 0 30px rgba(94,125,255,0.6))',
-            }}>
-              ✦
-            </div>
-
-            <h2 style={{
-              fontFamily: 'Syne, sans-serif',
-              fontSize: '1.8rem',
-              fontWeight: 800,
-              color: 'var(--text)',
-              marginBottom: '0.75rem',
-            }}>
-              {locale === 'ar' ? 'مرحباً بعودتك' : 'Welcome back'}
+            <h2 className="auth-illus-title">
+              {locale === 'ar' ? 'مرحباً بعودتك!' : 'Welcome back!'}
             </h2>
 
-            <p style={{ color: 'var(--text-2)', maxWidth: 320, lineHeight: 1.7, fontSize: '0.95rem' }}>
+            <p className="auth-illus-sub">
               {locale === 'ar'
-                ? 'طفلك ينتظرك لتبدأ مغامرته الجديدة.'
-                : 'Your child is waiting for their next adventure.'}
+                ? 'طفلك ينتظرك لتبدأ مغامرته السينمائية الجديدة.'
+                : 'Your child is waiting for their next magical adventure.'}
             </p>
 
-            <div style={{
-              display: 'flex', gap: '0.6rem', justifyContent: 'center', marginTop: '2rem',
-            }}>
-              {['🌌', '🌿', '🏰'].map((emoji, i) => (
+            {/* Story preview cards */}
+            <div className="auth-char-cards">
+              {[
+                { emoji: '🚀', delay: 0.5, label: locale === 'ar' ? 'فضاء' : 'Space' },
+                { emoji: '🐉', delay: 0.65, label: locale === 'ar' ? 'تنين' : 'Dragon' },
+                { emoji: '🧜', delay: 0.8, label: locale === 'ar' ? 'حورية' : 'Mermaid' },
+                { emoji: '🦁', delay: 0.95, label: locale === 'ar' ? 'أسد' : 'Lion' },
+              ].map((item, i) => (
                 <motion.div
-                  key={emoji}
-                  initial={{ opacity: 0, y: 20 }}
+                  key={i}
+                  className="auth-char-card"
+                  initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + i * 0.15 }}
-                  style={{
-                    width: 56, height: 56,
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 14,
-                    display: 'grid', placeItems: 'center',
-                    fontSize: '1.5rem',
-                    backdropFilter: 'blur(12px)',
-                  }}
+                  transition={{ delay: item.delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  {emoji}
+                  {item.emoji}
                 </motion.div>
+              ))}
+            </div>
+
+            {/* Stats row */}
+            <div className="auth-stats">
+              {[
+                { num: '10K+', label: locale === 'ar' ? 'أسرة' : 'Families' },
+                { num: '50K+', label: locale === 'ar' ? 'قصة' : 'Stories' },
+                { num: '4.9★', label: locale === 'ar' ? 'تقييم' : 'Rating' },
+              ].map((stat) => (
+                <div key={stat.label} style={{ textAlign: 'center' }}>
+                  <div className="auth-stat-num">{stat.num}</div>
+                  <div className="auth-stat-label">{stat.label}</div>
+                </div>
               ))}
             </div>
           </motion.div>
         </div>
 
-        {/* Right form side */}
+        {/* ── Right: Form Panel ── */}
         <div className="auth-form-side">
           <motion.div
-            className="auth-card glass"
-            initial={{ opacity: 0, x: 30 }}
+            className="auth-card"
+            initial={{ opacity: 0, x: 36 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Link href="/" className="nav-logo" style={{ fontSize: '1.1rem', marginBottom: '0.5rem', display: 'block' }}>
-              StoryHero
+            {/* Logo */}
+            <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1.75rem' }}>
+              <span style={{
+                fontFamily: 'Fredoka, sans-serif',
+                fontSize: '1.4rem',
+                fontWeight: 700,
+                background: 'var(--grad-magic)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}>
+                ✦ StoryHero
+              </span>
             </Link>
 
-            <div>
-              <h1>{t('login_title')}</h1>
-              <p style={{ color: 'var(--text-2)', marginTop: '0.25rem', fontSize: '0.95rem' }}>
-                {t('login_sub')}
-              </p>
-            </div>
+            {/* Title */}
+            <motion.div variants={fadeUp} initial="hidden" animate="visible">
+              <h1 className="auth-form-title">{t('login_title')}</h1>
+              <p className="auth-form-sub">{t('login_sub')}</p>
+            </motion.div>
 
-            <form onSubmit={onSubmit} style={{ display: 'grid', gap: '0.85rem', marginTop: '0.5rem' }}>
-              <div className="inp-group">
+            {/* Form */}
+            <motion.form
+              onSubmit={onSubmit}
+              style={{ display: 'grid', gap: 0 }}
+              initial="hidden"
+              animate="visible"
+              variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } } }}
+            >
+              <motion.div className="inp-group" variants={fadeUp}>
                 <label className="inp-label">{t('login_email')}</label>
                 <input
                   className="inp"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={locale === 'ar' ? 'بريدك الإلكتروني' : 'you@example.com'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-              </div>
+              </motion.div>
 
-              <div className="inp-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <motion.div className="inp-group" variants={fadeUp}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                   <label className="inp-label" style={{ margin: 0 }}>{t('login_password')}</label>
-                  <a href="#" style={{ fontSize: '0.8rem', color: 'var(--neon-2)', textDecoration: 'none' }}>
+                  <a href="#" style={{ fontSize: '0.8rem', color: 'var(--k-blue)', textDecoration: 'none', fontWeight: 600, fontFamily: 'Fredoka, sans-serif' }}>
                     {t('login_forgot')}
                   </a>
                 </div>
-                <input
-                  className="inp"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="inp"
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    style={{ paddingRight: '3rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    style={{
+                      position: 'absolute', right: '0.9rem', top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', opacity: 0.5,
+                      padding: 0,
+                    }}
+                    aria-label="Toggle password"
+                  >
+                    {showPass ? '🙈' : '👁️'}
+                  </button>
+                </div>
+              </motion.div>
 
-              {error && <div className="auth-error">{error}</div>}
+              {error && (
+                <motion.div className="auth-error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  {error}
+                </motion.div>
+              )}
 
-              <motion.button
-                className="btn btn-primary"
-                type="submit"
-                disabled={loading}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                style={{ width: '100%', justifyContent: 'center', marginTop: '0.25rem' }}
-              >
-                {loading ? t('login_loading') : t('login_submit')}
-              </motion.button>
-            </form>
+              <motion.div variants={fadeUp} style={{ marginTop: '0.5rem' }}>
+                <motion.button
+                  className="btn btn-primary"
+                  type="submit"
+                  disabled={loading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  {loading ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ animation: 'spin-star 1s linear infinite', display: 'inline-block' }}>⏳</span>
+                      {t('login_loading')}
+                    </span>
+                  ) : (
+                    <>{t('login_submit')} ✦</>
+                  )}
+                </motion.button>
+              </motion.div>
+            </motion.form>
 
-            <p className="auth-link">
+            <p className="auth-link" style={{ marginTop: '1.5rem' }}>
               {t('login_no_account')}{' '}
               <Link href="/register">{t('login_register_link')}</Link>
             </p>
