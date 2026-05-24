@@ -35,7 +35,10 @@ export default function Navbar() {
   };
 
   const navLinks = isLoggedIn
-    ? [{ href: '/dashboard', label: `👋 ${user?.name?.split(' ')[0] ?? 'Dashboard'}` }]
+    ? [
+        { href: '/dashboard', label: `👋 ${user?.name?.split(' ')[0] ?? 'Dashboard'}` },
+        ...(user?.role === 'super_admin' ? [{ href: '/admin', label: locale === 'ar' ? '🛡️ لوحة الإدارة' : '🛡️ Admin' }] : []),
+      ]
     : [
         { href: '#how',      label: locale === 'ar' ? 'كيف يعمل' : 'How it works' },
         { href: '#pricing',  label: locale === 'ar' ? 'الأسعار'  : 'Pricing' },

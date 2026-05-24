@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, Variants } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
+import { apiGetStories, Story } from '@/lib/api';
+import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
 
@@ -25,12 +27,26 @@ const fadeUp: Variants = {
 export default function DashboardPage() {
   const { isLoggedIn, user } = useAuth();
   const { theme } = useTheme();
-  const { t, locale } = useLang();
+  const { locale } = useLang();
   const router = useRouter();
+  const [stories, setStories] = useState<Story[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn) router.push('/login');
   }, [isLoggedIn, router]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const loadStories = async () => {
+      try {
+        const data = await apiGetStories();
+        setStories(data.data || []);
+      } catch {
+        setStories([]);
+      }
+    };
+    loadStories();
+  }, [isLoggedIn]);
 
   if (!isLoggedIn) return null;
 
@@ -98,20 +114,12 @@ export default function DashboardPage() {
                     : 'Upload a photo of your child and watch a cinematic world be born in seconds.'}
                 </p>
                 <div className="dash-hero-actions">
-                  <motion.button
-                    className="btn btn-primary"
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
+                  <Link href="/create-story" className="btn btn-primary" style={{ textDecoration: 'none' }}>
                     {locale === 'ar' ? '+ إنشاء قصة' : '+ Create Story'}
-                  </motion.button>
-                  <motion.button
-                    className="btn btn-ghost"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
+                  </Link>
+                  <Link href="/#how" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
                     {locale === 'ar' ? 'عرض الأمثلة' : 'View Examples'}
-                  </motion.button>
+                  </Link>
                 </div>
               </div>
             </motion.div>
@@ -129,10 +137,50 @@ export default function DashboardPage() {
                 </div>
                 <p className="widget-title">{locale === 'ar' ? 'قصصي' : 'My Stories'}</p>
               </div>
-              <div className="widget-empty-state">
-                <div className="widget-empty-emoji">📚</div>
-                <span>{locale === 'ar' ? 'لا توجد قصص بعد' : 'No stories yet'}</span>
-              </div>
+              {stories.length === 0 ? (
+                <div className="widget-empty-state">
+                  <div className="widget-empty-emoji">📚</div>
+                  <span>{locale === 'ar' ? 'لا توجد قصص بعد' : 'No stories yet'}</span>
+                  <Link href="/create-story" style={{ color: 'var(--k-blue)', fontSize: '0.85rem', marginTop: '0.5rem', textDecoration: 'none' }}>
+                    {locale === 'ar' ? 'إنشاء أول قصة →' : 'Create your first →'}
+                  </Link>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  {stories.slice(0, 4).map((story) => (
+                    <Link
+                      key={story.id}
+                      href={`/stories/${story.id}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        padding: '0.6rem',
+                        borderRadius: 'var(--r-md)',
+                        background: 'var(--surface)',
+                        border: '1.5px solid var(--border)',
+                        textDecoration: 'none',
+                        color: 'var(--text)',
+                      }}
+                    >
+                      <span style={{ fontSize: '1.2rem' }}>
+                        {story.photo_url ? '📸' : '✨'}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{story.title}</p>
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', margin: 0 }}>
+                          {story.status === 'completed' ? '✓ Ready' : story.status === 'processing' ? '⏳ Processing...' : '📝 Draft'}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                  {stories.length > 4 && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', marginTop: '0.25rem' }}>
+                      +{stories.length - 4} more
+                    </p>
+                  )}
+                </div>
+              )}
             </motion.div>
 
             {/* Widget: Videos */}
