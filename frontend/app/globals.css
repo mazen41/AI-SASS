@@ -2285,10 +2285,14 @@ body:has(button:hover) #cursor-ring {
 
 
 /* ============================================================
-   AUTH-LAYOUT â€” alias for auth-wrap, used by login/register
-   Fixes: proper centering on mobile when illustration is hidden
+   AUTH-LAYOUT — login/register responsive layout
+   Desktop: illustration LEFT | form RIGHT (50/50 grid)
+   Mobile:  illustration on TOP (compact) + form BELOW (centered)
    ============================================================ */
-.auth-layout {
+
+/* Desktop layout — both classes */
+.auth-layout,
+.auth-wrap {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2296,13 +2300,55 @@ body:has(button:hover) #cursor-ring {
   overflow: hidden;
 }
 
+/* -- Mobile: stack vertically, illustration on top -- */
 @media (max-width: 768px) {
-  .auth-layout { grid-template-columns: 1fr; }
-  .auth-layout .auth-illustration { display: none; }
-  /* Make form side fill and center on mobile */
+  .auth-layout,
+  .auth-wrap {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    min-height: 100vh;
+  }
+
+  /* Show illustration panel on top, compact height */
+  .auth-layout .auth-illustration,
+  .auth-wrap .auth-illustration {
+    display: flex !important;
+    min-height: 0;
+    padding: 2rem 1.5rem 1.5rem;
+  }
+
+  /* Shrink blobs for mobile */
+  .auth-illus-blob-1 { width: 180px; height: 180px; }
+  .auth-illus-blob-2 { width: 110px; height: 110px; }
+  .auth-illus-blob-3 { width: 90px;  height: 90px;  }
+
+  /* Smaller icon, title, sub */
+  .auth-illus-big-icon { font-size: 3rem;  margin-bottom: 0.6rem; }
+  .auth-illus-title    { font-size: 1.35rem; margin-bottom: 0.3rem; }
+  .auth-illus-sub      { font-size: 0.83rem; }
+
+  /* Compact character cards */
+  .auth-char-cards { gap: 0.4rem; margin-top: 0.9rem; }
+  .auth-char-card  { width: 42px; height: 42px; font-size: 1.15rem; }
+
+  /* Compact stats row */
+  .auth-stats      { gap: 0.9rem; margin-top: 1rem; }
+  .auth-stat-num   { font-size: 1rem; }
+  .auth-stat-label { font-size: 0.68rem; }
+
+  /* Form side: sits below illustration, centers its card */
   .auth-layout .auth-form-side,
   .auth-wrap .auth-form-side {
-    min-height: 100vh;
-    padding: 2rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1.25rem 3rem;
+    min-height: 0;
+  }
+
+  /* Card goes full-width up to a sensible max */
+  .auth-card {
+    width: 100%;
+    max-width: 460px;
   }
 }
