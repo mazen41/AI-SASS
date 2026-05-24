@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use App\Http\Controllers\Webhook\PaypalWebhookController;
+use App\Http\Controllers\StoryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,6 +31,14 @@ Route::post('/webhooks/paypal', [PaypalWebhookController::class, 'handle']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user',    [AuthController::class, 'user']);
+
+    // Stories
+    Route::get('/stories', [StoryController::class, 'index']);
+    Route::post('/stories', [StoryController::class, 'store']);
+    Route::get('/stories/{story}', [StoryController::class, 'show']);
+    Route::put('/stories/{story}', [StoryController::class, 'update']);
+    Route::delete('/stories/{story}', [StoryController::class, 'destroy']);
+    Route::post('/stories/{story}/generate', [StoryController::class, 'generate']);
 
     // Super Admin routes
     Route::middleware('super_admin')->prefix('admin')->group(function () {

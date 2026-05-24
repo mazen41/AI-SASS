@@ -55,6 +55,11 @@ class User extends Authenticatable
         return $this->hasMany(ActivityLog::class);
     }
 
+    public function stories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Story::class);
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role === 'super_admin';

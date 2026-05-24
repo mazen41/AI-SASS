@@ -319,3 +319,56 @@ export async function apiGetActivityLogs(params?: Record<string, string>): Promi
   const query = params ? '?' + new URLSearchParams(params).toString() : '';
   return apiFetch<PaginatedResponse<ActivityLog>>(`/admin/activity-logs${query}`);
 }
+
+// ── Stories ────────────────────────────────────────────────────────────────────
+
+export interface Story {
+  id: number;
+  user_id: number;
+  title: string;
+  content: string | null;
+  theme: string;
+  child_name: string | null;
+  child_age: number | null;
+  photo_url: string | null;
+  video_url: string | null;
+  status: 'draft' | 'processing' | 'completed' | 'failed';
+  scenes: Array<{ chapter: number; description: string; duration: number }> | null;
+  duration_seconds: number | null;
+  language: string;
+  created_at: string;
+  updated_at: string;
+  user?: AuthUser;
+}
+
+export async function apiGetStories(params?: Record<string, string>): Promise<PaginatedResponse<Story>> {
+  const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  return apiFetch<PaginatedResponse<Story>>(`/stories${query}`);
+}
+
+export async function apiGetStory(id: number): Promise<{ story: Story }> {
+  return apiFetch<{ story: Story }>(`/stories/${id}`);
+}
+
+export async function apiCreateStory(data: FormData): Promise<{ message: string; story: Story }> {
+  return apiFetch<{ message: string; story: Story }>('/stories', {
+    method: 'POST',
+    body: data,
+    headers: {}, // Let browser set Content-Type with boundary for FormData
+  });
+}
+
+export async function apiUpdateStory(id: number, data: Partial<Story>): Promise<{ message: string; story: Story }> {
+  return apiFetch<{ message: string; story: Story }>(`/stories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteStory(id: number): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/stories/${id}`, { method: 'DELETE' });
+}
+
+export async function apiGenerateStory(id: number): Promise<{ message: string; story: Story }> {
+  return apiFetch<{ message: string; story: Story }>(`/stories/${id}/generate`, { method: 'POST' });
+}
