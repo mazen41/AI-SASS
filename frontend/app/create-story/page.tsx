@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, FormEvent } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { apiCreateStory, apiGenerateStory, Story } from '@/lib/api';
@@ -108,11 +109,7 @@ export default function CreateStoryPage() {
 
             {photoPreview && (
               <div style={{ marginBottom: '2rem' }}>
-                <img
-                  src={photoPreview}
-                  alt="Uploaded"
-                  style={{ width: 200, height: 200, objectFit: 'cover', borderRadius: 'var(--r-lg)', border: '2px solid var(--border)' }}
-                />
+                <Image src={photoPreview} alt="Uploaded" width={200} height={200} style={{ objectFit: "cover", borderRadius: "var(--r-lg)", border: "2px solid var(--border)" }} />
               </div>
             )}
 
@@ -195,11 +192,7 @@ export default function CreateStoryPage() {
               }}
             >
               {photoPreview ? (
-                <img
-                  src={photoPreview}
-                  alt="Preview"
-                  style={{ width: '100%', maxHeight: 300, objectFit: 'cover', borderRadius: 'var(--r-md)' }}
-                />
+                <Image src={photoPreview} alt="Preview" width={720} height={300} style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: "var(--r-md)" }} />
               ) : (
                 <>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📸</div>
@@ -244,7 +237,7 @@ export default function CreateStoryPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
-                  Child's Name
+                  Child&apos;s Name
                 </label>
                 <input
                   type="text"

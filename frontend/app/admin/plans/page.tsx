@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiGetPlans, apiCreatePlan, apiUpdatePlan, apiDeletePlan, Plan } from '@/lib/api';
 
 export default function PlansPage() {
@@ -21,7 +21,7 @@ export default function PlansPage() {
     paypal_plan_id: '',
   });
 
-  const loadPlans = async () => {
+  const loadPlans = useCallback(async () => {
     try {
       const { plans } = await apiGetPlans();
       setPlans(plans);
@@ -30,11 +30,11 @@ export default function PlansPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadPlans();
-  }, []);
+  }, [loadPlans]);
 
   const openCreateModal = () => {
     setEditingPlan(null);

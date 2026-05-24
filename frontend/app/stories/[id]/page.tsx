@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { apiGetStory, apiDeleteStory, Story } from '@/lib/api';
@@ -132,11 +133,7 @@ export default function StoryViewPage() {
               style={{ marginTop: '2rem' }}
             >
               <div style={{ borderRadius: 'var(--r-lg)', overflow: 'hidden', border: '1.5px solid var(--border)' }}>
-                <img
-                  src={story.photo_url}
-                  alt="Story photo"
-                  style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block' }}
-                />
+                <Image src={story.photo_url} alt="Story photo" width={800} height={400} style={{ width: "100%", maxHeight: 400, objectFit: "cover", display: "block" }} />
               </div>
             </motion.div>
           )}
