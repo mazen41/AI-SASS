@@ -496,8 +496,8 @@ export default function PaymentSettingsPage() {
         }
 
         .integration-card {
-          background: rgba(26, 26, 46, 0.6);
-          border: 1px solid rgba(139, 92, 246, 0.1);
+          background: #fff;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
           padding: 1.5rem;
         }
@@ -520,15 +520,15 @@ export default function PaymentSettingsPage() {
         }
 
         .integration-icon.stripe {
-          background: linear-gradient(135deg, #8b5cf6, #6366f1);
+          background: #6366f1;
         }
 
         .integration-icon.paypal {
-          background: linear-gradient(135deg, #3b82f6, #0ea5e9);
+          background: #3b82f6;
         }
 
         .integration-info h3 {
-          color: #fff;
+          color: #1e293b;
           font-size: 1.25rem;
           font-weight: 600;
           margin: 0 0 0.25rem;
@@ -547,41 +547,43 @@ export default function PaymentSettingsPage() {
           padding: 0.2rem 0.5rem;
           border-radius: 4px;
           font-size: 0.7rem;
-          font-weight: 500;
+          font-weight: 600;
+          text-transform: uppercase;
         }
 
         .status-badge.enabled {
-          background: rgba(34, 197, 94, 0.15);
-          color: #22c55e;
+          background: #dcfce7;
+          color: #16a34a;
         }
 
         .status-badge.disabled {
-          background: rgba(100, 116, 139, 0.15);
+          background: #f1f5f9;
           color: #64748b;
         }
 
         .status-badge.sandbox {
-          background: rgba(251, 191, 36, 0.15);
-          color: #fbbf24;
+          background: #fef3c7;
+          color: #d97706;
         }
 
         .integration-form {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.25rem;
         }
 
         .toggle-group {
           display: flex;
           gap: 1.5rem;
-          flex-wrap: wrap;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid #e2e8f0;
         }
 
         .toggle-label {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          color: #94a3b8;
+          color: #475569;
           font-size: 0.9rem;
           cursor: pointer;
         }
@@ -591,110 +593,128 @@ export default function PaymentSettingsPage() {
         }
 
         .toggle-switch {
+          position: relative;
           width: 36px;
           height: 20px;
-          background: #475569;
-          border-radius: 10px;
-          position: relative;
-          transition: background 0.2s;
+          background: #e2e8f0;
+          border-radius: 20px;
+          transition: 0.3s;
         }
 
         .toggle-switch::after {
           content: '';
           position: absolute;
+          top: 2px;
+          left: 2px;
           width: 16px;
           height: 16px;
           background: white;
           border-radius: 50%;
-          top: 2px;
-          left: 2px;
-          transition: transform 0.2s;
+          transition: 0.3s;
+        }
+
+        [dir="rtl"] .toggle-switch::after {
+          left: auto;
+          right: 2px;
         }
 
         .toggle-label input:checked + .toggle-switch {
-          background: #8b5cf6;
+          background: #6366f1;
         }
 
         .toggle-label input:checked + .toggle-switch::after {
           transform: translateX(16px);
         }
 
+        [dir="rtl"] .toggle-label input:checked + .toggle-switch::after {
+          transform: translateX(-16px);
+        }
+
         .form-group {
           display: flex;
           flex-direction: column;
-          gap: 0.4rem;
-        }
-
-        .form-group label {
-          color: #94a3b8;
-          font-size: 0.85rem;
-          display: flex;
-          align-items: center;
           gap: 0.5rem;
         }
 
+        .form-group label {
+          display: flex;
+          justify-content: space-between;
+          color: #374151;
+          font-size: 0.85rem;
+          font-weight: 500;
+        }
+
         .key-set {
-          display: inline-flex;
+          display: flex;
           align-items: center;
           gap: 0.25rem;
-          color: #22c55e;
+          color: #10b981;
           font-size: 0.75rem;
         }
 
         .form-group input {
-          width: 100%;
-          padding: 0.65rem 0.85rem;
-          background: rgba(30, 41, 59, 0.5);
-          border: 1px solid rgba(100, 116, 139, 0.3);
+          padding: 0.6rem 0.75rem;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
-          color: #fff;
+          color: #1e293b;
           font-size: 0.9rem;
-          transition: border-color 0.2s;
+          transition: all 0.2s;
         }
 
         .form-group input:focus {
           outline: none;
-          border-color: #8b5cf6;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
         .form-group input::placeholder {
-          color: #64748b;
+          color: #94a3b8;
         }
 
         .input-with-toggle {
           position: relative;
+          display: flex;
+          align-items: center;
         }
 
         .input-with-toggle input {
+          width: 100%;
           padding-right: 2.5rem;
+        }
+
+        [dir="rtl"] .input-with-toggle input {
+          padding-right: 0.75rem;
+          padding-left: 2.5rem;
         }
 
         .toggle-visibility {
           position: absolute;
           right: 0.75rem;
-          top: 50%;
-          transform: translateY(-50%);
           background: none;
           border: none;
-          color: #64748b;
+          color: #94a3b8;
           cursor: pointer;
-          padding: 0.25rem;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        [dir="rtl"] .toggle-visibility {
+          right: auto;
+          left: 0.75rem;
         }
 
         .toggle-visibility:hover {
-          color: #94a3b8;
+          color: #64748b;
         }
 
         .webhook-url-box {
-          background: rgba(139, 92, 246, 0.08);
-          border: 1px solid rgba(139, 92, 246, 0.2);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 0.75rem;
-        }
-
-        .webhook-url-box.paypal {
-          background: rgba(59, 130, 246, 0.08);
-          border-color: rgba(59, 130, 246, 0.2);
+          padding: 1rem;
         }
 
         .webhook-url-header {
@@ -702,88 +722,82 @@ export default function PaymentSettingsPage() {
           justify-content: space-between;
           align-items: center;
           margin-bottom: 0.5rem;
-        }
-
-        .webhook-url-header span {
-          color: #94a3b8;
-          font-size: 0.8rem;
+          color: #475569;
+          font-size: 0.85rem;
+          font-weight: 500;
         }
 
         .copy-btn {
           display: flex;
           align-items: center;
-          gap: 0.25rem;
+          gap: 0.35rem;
           background: none;
           border: none;
-          color: #8b5cf6;
+          color: #6366f1;
           font-size: 0.75rem;
           cursor: pointer;
-          padding: 0.25rem 0.5rem;
-          border-radius: 4px;
         }
 
         .copy-btn:hover {
-          background: rgba(139, 92, 246, 0.1);
+          text-decoration: underline;
         }
 
         .webhook-url-box code {
-          color: #a78bfa;
-          font-size: 0.8rem;
+          display: block;
+          color: #1e293b;
+          font-family: monospace;
+          font-size: 0.85rem;
           word-break: break-all;
-        }
-
-        .webhook-url-box.paypal code {
-          color: #60a5fa;
         }
 
         .form-actions {
           display: flex;
-          gap: 0.75rem;
+          gap: 1rem;
           margin-top: 0.5rem;
         }
 
-        .btn-primary {
-          flex: 1;
-          padding: 0.65rem 1rem;
-          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-          border: none;
+        .btn-primary, .btn-secondary {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.6rem 1rem;
           border-radius: 8px;
-          color: white;
           font-weight: 500;
+          font-size: 0.9rem;
           cursor: pointer;
           transition: all 0.2s;
+          border: none;
         }
 
-        .btn-primary:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-        }
-
-        .btn-primary:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        .btn-primary {
+          flex: 2;
+          background: #6366f1;
+          color: white;
         }
 
         .btn-primary.paypal {
-          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          background: #3b82f6;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          filter: brightness(0.9);
         }
 
         .btn-secondary {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.65rem 1rem;
-          background: rgba(100, 116, 139, 0.2);
-          border: 1px solid rgba(100, 116, 139, 0.3);
-          border-radius: 8px;
-          color: #94a3b8;
-          cursor: pointer;
-          transition: all 0.2s;
+          flex: 1;
+          background: #f1f5f9;
+          color: #475569;
         }
 
         .btn-secondary:hover:not(:disabled) {
-          background: rgba(100, 116, 139, 0.3);
-          color: #fff;
+          background: #e2e8f0;
+          color: #1e293b;
+        }
+
+        button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .btn-secondary:disabled {
@@ -792,14 +806,14 @@ export default function PaymentSettingsPage() {
         }
 
         .docs-section {
-          background: rgba(26, 26, 46, 0.6);
-          border: 1px solid rgba(139, 92, 246, 0.1);
+          background: #fff;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
           padding: 1.5rem;
         }
 
         .docs-section h3 {
-          color: #fff;
+          color: #1e293b;
           font-size: 1rem;
           font-weight: 600;
           margin: 0 0 1rem;
@@ -822,24 +836,24 @@ export default function PaymentSettingsPage() {
           align-items: center;
           gap: 1rem;
           padding: 1rem;
-          background: rgba(100, 116, 139, 0.1);
-          border: 1px solid rgba(100, 116, 139, 0.2);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 10px;
           text-decoration: none;
           transition: all 0.2s;
         }
 
         .doc-link:hover {
-          background: rgba(100, 116, 139, 0.2);
-          border-color: rgba(100, 116, 139, 0.3);
+          background: #f1f5f9;
+          transform: translateY(-2px);
         }
 
         .doc-link.stripe {
-          color: #a78bfa;
+          color: #6366f1;
         }
 
         .doc-link.paypal {
-          color: #60a5fa;
+          color: #3b82f6;
         }
 
         .doc-link > div {
@@ -847,7 +861,7 @@ export default function PaymentSettingsPage() {
         }
 
         .doc-title {
-          color: #fff;
+          color: #1e293b;
           font-weight: 500;
           margin: 0 0 0.15rem;
         }

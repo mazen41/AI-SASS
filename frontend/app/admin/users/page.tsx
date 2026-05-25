@@ -293,8 +293,8 @@ export default function UsersPage() {
         }
 
         .filters-card {
-          background: rgba(26, 26, 46, 0.6);
-          border: 1px solid rgba(139, 92, 246, 0.1);
+          background: #fff;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
           padding: 1rem;
         }
@@ -316,22 +316,33 @@ export default function UsersPage() {
           left: 0.75rem;
           top: 50%;
           transform: translateY(-50%);
-          color: #64748b;
+          color: #94a3b8;
+        }
+
+        [dir="rtl"] .search-input-wrap :global(.search-icon) {
+          left: auto;
+          right: 0.75rem;
         }
 
         .search-input-wrap input {
           width: 100%;
           padding: 0.6rem 0.75rem 0.6rem 2.5rem;
-          background: rgba(30, 41, 59, 0.5);
-          border: 1px solid rgba(100, 116, 139, 0.3);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
-          color: #fff;
+          color: #1e293b;
           font-size: 0.9rem;
+          transition: all 0.2s;
+        }
+
+        [dir="rtl"] .search-input-wrap input {
+          padding: 0.6rem 2.5rem 0.6rem 0.75rem;
         }
 
         .search-input-wrap input:focus {
           outline: none;
-          border-color: #8b5cf6;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
         .filter-select-wrap {
@@ -343,11 +354,13 @@ export default function UsersPage() {
 
         .filter-select-wrap select {
           padding: 0.6rem 0.75rem;
-          background: rgba(30, 41, 59, 0.5);
-          border: 1px solid rgba(100, 116, 139, 0.3);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
-          color: #fff;
+          color: #1e293b;
           font-size: 0.9rem;
+          cursor: pointer;
+          outline: none;
         }
 
         .search-btn {
@@ -355,17 +368,22 @@ export default function UsersPage() {
           align-items: center;
           gap: 0.5rem;
           padding: 0.6rem 1.25rem;
-          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+          background: #6366f1;
           border: none;
           border-radius: 8px;
           color: white;
           font-weight: 500;
           cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .search-btn:hover {
+          background: #4f46e5;
         }
 
         .users-table-card {
-          background: rgba(26, 26, 46, 0.6);
-          border: 1px solid rgba(139, 92, 246, 0.1);
+          background: #fff;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
           overflow: hidden;
         }
@@ -380,7 +398,7 @@ export default function UsersPage() {
         }
 
         thead {
-          background: rgba(100, 116, 139, 0.1);
+          background: #f8fafc;
         }
 
         th {
@@ -388,21 +406,28 @@ export default function UsersPage() {
           text-align: left;
           font-size: 0.75rem;
           font-weight: 600;
-          color: #94a3b8;
+          color: #64748b;
           text-transform: uppercase;
-          letter-spacing: 0.05em;
+        }
+
+        [dir="rtl"] th {
+          text-align: right;
         }
 
         th.actions-col {
           text-align: right;
         }
 
+        [dir="rtl"] th.actions-col {
+          text-align: left;
+        }
+
         tbody tr {
-          border-top: 1px solid rgba(100, 116, 139, 0.1);
+          border-top: 1px solid #e2e8f0;
         }
 
         tbody tr:hover {
-          background: rgba(100, 116, 139, 0.05);
+          background: #f8fafc;
         }
 
         td {
@@ -411,15 +436,20 @@ export default function UsersPage() {
 
         .loading-cell, .empty-cell {
           text-align: center;
-          padding: 2rem;
+          padding: 3rem 1rem;
           color: #64748b;
+        }
+
+        .empty-cell svg {
+          margin-bottom: 0.5rem;
+          opacity: 0.5;
         }
 
         .spinner {
           width: 32px;
           height: 32px;
-          border: 3px solid rgba(139, 92, 246, 0.2);
-          border-top-color: #8b5cf6;
+          border: 3px solid #e2e8f0;
+          border-top-color: #6366f1;
           border-radius: 50%;
           animation: spin 1s linear infinite;
           margin: 0 auto;
@@ -439,7 +469,7 @@ export default function UsersPage() {
           width: 40px;
           height: 40px;
           border-radius: 10px;
-          background: linear-gradient(135deg, #8b5cf6, #ec4899);
+          background: #6366f1;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -448,7 +478,7 @@ export default function UsersPage() {
         }
 
         .user-name {
-          color: #fff;
+          color: #1e293b;
           font-weight: 500;
           margin: 0;
         }
@@ -471,18 +501,18 @@ export default function UsersPage() {
         }
 
         .role-badge.super_admin {
-          background: rgba(139, 92, 246, 0.15);
-          color: #a78bfa;
+          background: #f3e8ff;
+          color: #9333ea;
         }
 
         .role-badge.admin {
-          background: rgba(59, 130, 246, 0.15);
-          color: #60a5fa;
+          background: #dbeafe;
+          color: #2563eb;
         }
 
         .role-badge.user {
-          background: rgba(100, 116, 139, 0.15);
-          color: #94a3b8;
+          background: #f1f5f9;
+          color: #475569;
         }
 
         .status-badge {
@@ -495,18 +525,18 @@ export default function UsersPage() {
         }
 
         .status-badge.active {
-          background: rgba(34, 197, 94, 0.15);
-          color: #22c55e;
+          background: #dcfce7;
+          color: #16a34a;
         }
 
         .status-badge.suspended {
-          background: rgba(251, 191, 36, 0.15);
-          color: #fbbf24;
+          background: #fef3c7;
+          color: #d97706;
         }
 
         .status-badge.banned {
-          background: rgba(239, 68, 68, 0.15);
-          color: #f87171;
+          background: #fee2e2;
+          color: #dc2626;
         }
 
         .date-cell {
@@ -518,6 +548,10 @@ export default function UsersPage() {
           text-align: right;
         }
 
+        [dir="rtl"] td.actions-col {
+          text-align: left;
+        }
+
         .action-btns {
           display: flex;
           align-items: center;
@@ -525,52 +559,57 @@ export default function UsersPage() {
           gap: 0.5rem;
         }
 
+        [dir="rtl"] .action-btns {
+          justify-content: flex-start;
+        }
+
         .action-btn {
           display: flex;
           align-items: center;
           gap: 0.35rem;
-          padding: 0.35rem 0.6rem;
+          padding: 0.4rem 0.75rem;
           border: none;
           border-radius: 6px;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
           cursor: pointer;
           transition: all 0.2s;
+          font-weight: 500;
         }
 
         .action-btn.suspend {
-          background: rgba(251, 191, 36, 0.15);
-          color: #fbbf24;
+          background: #fef3c7;
+          color: #d97706;
         }
 
         .action-btn.suspend:hover {
-          background: rgba(251, 191, 36, 0.25);
+          background: #fde68a;
         }
 
         .action-btn.activate {
-          background: rgba(34, 197, 94, 0.15);
-          color: #22c55e;
+          background: #dcfce7;
+          color: #16a34a;
         }
 
         .action-btn.activate:hover {
-          background: rgba(34, 197, 94, 0.25);
+          background: #bbf7d0;
         }
 
         .action-btn.delete {
-          background: rgba(239, 68, 68, 0.15);
-          color: #f87171;
-          padding: 0.35rem;
+          background: #fee2e2;
+          color: #dc2626;
+          padding: 0.4rem;
         }
 
         .action-btn.delete:hover {
-          background: rgba(239, 68, 68, 0.25);
+          background: #fecaca;
         }
 
         .pagination {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0.75rem 1rem;
-          border-top: 1px solid rgba(100, 116, 139, 0.1);
+          padding: 1rem;
+          border-top: 1px solid #e2e8f0;
         }
 
         .pagination-info {
@@ -589,18 +628,18 @@ export default function UsersPage() {
           align-items: center;
           gap: 0.35rem;
           padding: 0.4rem 0.75rem;
-          background: rgba(100, 116, 139, 0.2);
-          border: none;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           border-radius: 6px;
-          color: #94a3b8;
+          color: #64748b;
           font-size: 0.85rem;
           cursor: pointer;
           transition: all 0.2s;
         }
 
         .pagination-btn:hover:not(:disabled) {
-          background: rgba(100, 116, 139, 0.3);
-          color: #fff;
+          background: #e2e8f0;
+          color: #1e293b;
         }
 
         .pagination-btn:disabled {

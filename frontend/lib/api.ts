@@ -372,3 +372,22 @@ export async function apiDeleteStory(id: number): Promise<{ message: string }> {
 export async function apiGenerateStory(id: number): Promise<{ message: string; story: Story }> {
   return apiFetch<{ message: string; story: Story }>(`/stories/${id}/generate`, { method: 'POST' });
 }
+
+// System Health
+export interface SystemHealth {
+  status: 'healthy' | 'warning' | 'critical';
+  uptime: string;
+  php_version: string;
+  laravel_version: string;
+  database: { status: 'connected' | 'disconnected'; type: string; size: string };
+  cache: { status: 'active' | 'inactive'; driver: string };
+  queue: { status: 'running' | 'stopped'; pending_jobs: number };
+  storage: { used: string; total: string; percentage: number };
+  memory: { used: string; limit: string; percentage: number };
+  services: Array<{ name: string; status: 'online' | 'offline'; latency: number }>;
+  recent_errors: Array<{ message: string; level: string; timestamp: string }>;
+}
+
+export async function apiGetSystemHealth(): Promise<SystemHealth> {
+  return apiFetch<SystemHealth>('/admin/system-health');
+}

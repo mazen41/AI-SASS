@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLang } from '@/context/LangContext';
+import { apiGetSystemHealth, SystemHealth } from '@/lib/api';
 import {
   Server,
   Database,
@@ -16,46 +17,6 @@ import {
   Globe,
   Zap,
 } from 'lucide-react';
-
-interface SystemHealth {
-  status: 'healthy' | 'warning' | 'critical';
-  uptime: string;
-  php_version: string;
-  laravel_version: string;
-  database: {
-    status: 'connected' | 'disconnected';
-    type: string;
-    size: string;
-  };
-  cache: {
-    status: 'active' | 'inactive';
-    driver: string;
-  };
-  queue: {
-    status: 'running' | 'stopped';
-    pending_jobs: number;
-  };
-  storage: {
-    used: string;
-    total: string;
-    percentage: number;
-  };
-  memory: {
-    used: string;
-    limit: string;
-    percentage: number;
-  };
-  services: {
-    name: string;
-    status: 'online' | 'offline';
-    latency?: number;
-  }[];
-  recent_errors: {
-    message: string;
-    level: string;
-    timestamp: string;
-  }[];
-}
 
 export default function SystemHealthPage() {
   const { locale } = useLang();
@@ -92,47 +53,15 @@ export default function SystemHealthPage() {
     recentErrors: isRTL ? 'الأخطاء الأخيرة' : 'Recent Errors',
     noErrors: isRTL ? 'لا توجد أخطاء' : 'No errors',
     ms: isRTL ? 'مللي ثانية' : 'ms',
+    type: isRTL ? 'النوع' : 'Type',
+    size: isRTL ? 'الحجم' : 'Size',
+    driver: isRTL ? 'المشغل' : 'Driver',
   };
 
   const loadHealth = async () => {
     try {
-      // Simulated health data - in production this would come from API
-      const mockHealth: SystemHealth = {
-        status: 'healthy',
-        uptime: '15 days, 4 hours',
-        php_version: '8.2.12',
-        laravel_version: '11.0',
-        database: {
-          status: 'connected',
-          type: 'MySQL 8.0',
-          size: '45.2 MB',
-        },
-        cache: {
-          status: 'active',
-          driver: 'file',
-        },
-        queue: {
-          status: 'running',
-          pending_jobs: 0,
-        },
-        storage: {
-          used: '1.2 GB',
-          total: '10 GB',
-          percentage: 12,
-        },
-        memory: {
-          used: '128 MB',
-          limit: '512 MB',
-          percentage: 25,
-        },
-        services: [
-          { name: 'Stripe API', status: 'online', latency: 145 },
-          { name: 'PayPal API', status: 'online', latency: 230 },
-          { name: 'Email Service', status: 'online', latency: 89 },
-        ],
-        recent_errors: [],
-      };
-      setHealth(mockHealth);
+      const data = await apiGetSystemHealth();
+      setHealth(data);
     } catch (err) {
       console.error('Failed to load health:', err);
     } finally {
@@ -217,7 +146,7 @@ export default function SystemHealthPage() {
   };
 
   return (
-    <div className="system-health">
+    <div className="system-health" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="header">
         <div className="status-badge" style={{ background: getStatusColor(health.status) }}>
@@ -266,8 +195,8 @@ export default function SystemHealthPage() {
           </div>
           <div className="component-details">
             <p><strong>{t.status}:</strong> {t[health.database.status as keyof typeof t]}</p>
-            <p><strong>Type:</strong> {health.database.type}</p>
-            <p><strong>Size:</strong> {health.database.size}</p>
+            <p><strong>{t.type}:</strong> {health.database.type}</p>
+            <p><strong>{t.size}:</strong> {health.database.size}</p>
           </div>
         </div>
 
@@ -280,7 +209,7 @@ export default function SystemHealthPage() {
           </div>
           <div className="component-details">
             <p><strong>{t.status}:</strong> {t[health.cache.status as keyof typeof t]}</p>
-            <p><strong>Driver:</strong> {health.cache.driver}</p>
+            <p><strong>{t.driver}:</strong> {health.cache.driver}</p>
           </div>
         </div>
 

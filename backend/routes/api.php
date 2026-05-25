@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\PaymentSettingsController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use App\Http\Controllers\Webhook\PaypalWebhookController;
 use App\Http\Controllers\StoryController;
@@ -80,5 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // Activity Logs
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
         Route::get('/activity-logs/actions', [ActivityLogController::class, 'actions']);
+
+        // System Health
+        Route::get('/system-health', [SystemHealthController::class, 'index']);
     });
 });
