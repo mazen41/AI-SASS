@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiGetUsers, apiSuspendUser, apiActivateUser, apiDeleteUser, AuthUser, PaginatedResponse } from '@/lib/api';
+import { apiGetUsers, apiSuspendUser, apiActivateUser, apiDeleteUser, apiUpdateUser, AuthUser, PaginatedResponse } from '@/lib/api';
 import { useLang } from '@/context/LangContext';
 import {
   Search,
@@ -15,7 +15,9 @@ import {
   User,
   Crown,
   AlertCircle,
-  Loader2
+  Loader2,
+  X,
+  Pencil
 } from 'lucide-react';
 
 export default function UsersPage() {
@@ -49,6 +51,13 @@ export default function UsersPage() {
     suspendError: isRTL ? 'فشل تعليق المستخدم' : 'Failed to suspend user',
     activateError: isRTL ? 'فشل تفعيل المستخدم' : 'Failed to activate user',
     deleteError: isRTL ? 'فشل حذف المستخدم' : 'Failed to delete user',
+    edit: isRTL ? 'تعديل' : 'Edit',
+    save: isRTL ? 'حفظ' : 'Save',
+    cancel: isRTL ? 'إلغاء' : 'Cancel',
+    nameLabel: isRTL ? 'الاسم' : 'Name',
+    emailLabel: isRTL ? 'البريد الإلكتروني' : 'Email',
+    roleLabel: isRTL ? 'الدور' : 'Role',
+    updateError: isRTL ? 'فشل تحديث المستخدم' : 'Failed to update user',
     noUsers: isRTL ? 'لا يوجد مستخدمين' : 'No users found',
     previous: isRTL ? 'السابق' : 'Previous',
     next: isRTL ? 'التالي' : 'Next',
@@ -65,9 +74,41 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
   const refresh = () => setRefreshKey(k => k + 1);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const openEdit = (user: AuthUser) => {
+    setEditingUser(user);
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditRole(user.role);
+  };
+
+  const closeEdit = () => {
+    setEditingUser(null);
+    setEditName('');
+    setEditEmail('');
+    setEditRole('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return;
+    setEditLoading(true);
+    try {
+      await apiUpdateUser(editingUser.id, { name: editName, email: editEmail, role: editRole as AuthUser['role'] });
+      closeEdit();
+      refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : t.updateError);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   useEffect(() => {
     const loadUsers = async () => {
       setLoading(true);
@@ -250,7 +291,12 @@ export default function UsersPage() {
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900 dark:text-white leading-none mb-1">{user.name}</p>
+                          <button
+                            onClick={() => openEdit(user)}
+                            className="font-semibold text-gray-900 dark:text-white leading-none mb-1 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left rtl:text-right"
+                          >
+                            {user.name}
+                          </button>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                         </div>
                       </div>
@@ -325,6 +371,65 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t.edit}</h3>
+              <button onClick={closeEdit} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.nameLabel}</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.emailLabel}</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.roleLabel}</label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                >
+                  <option value="user">{t.roles.user}</option>
+                  <option value="admin">{t.roles.admin}</option>
+                  <option value="super_admin">{t.roles.super_admin}</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+              <button onClick={closeEdit} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                {t.cancel}
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={editLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {editLoading ? <Loader2 size={16} className="animate-spin" /> : <Pencil size={16} />}
+                {t.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
