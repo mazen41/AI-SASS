@@ -19,6 +19,7 @@ import {
   Home,
   Server,
   Globe,
+  Mail,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/subscriptions', label: isRTL ? 'الاشتراكات' : 'Subscriptions', icon: RefreshCw },
     { href: '/admin/transactions', label: isRTL ? 'المعاملات' : 'Transactions', icon: CreditCard },
     { href: '/admin/payments', label: isRTL ? 'التكاملات' : 'Integrations', icon: Settings },
+    { href: '/admin/email', label: isRTL ? 'البريد' : 'Email', icon: Mail },
     { href: '/admin/activity', label: isRTL ? 'سجل النشاط' : 'Activity', icon: Activity },
     { href: '/admin/system', label: isRTL ? 'صحة النظام' : 'System Health', icon: Server },
   ];

@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\SystemHealthController;
+use App\Http\Controllers\Admin\MailController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use App\Http\Controllers\Webhook\PaypalWebhookController;
 use App\Http\Controllers\StoryController;
@@ -84,5 +85,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // System Health
         Route::get('/system-health', [SystemHealthController::class, 'index']);
+
+        // Mail Settings & Templates
+        Route::get('/mail-settings', [MailController::class, 'getSettings']);
+        Route::post('/mail-settings', [MailController::class, 'saveSettings']);
+        Route::post('/mail-settings/test', [MailController::class, 'testConnection']);
+        Route::get('/mail-templates', [MailController::class, 'getTemplates']);
+        Route::get('/mail-templates/{key}', [MailController::class, 'getTemplate']);
+        Route::post('/mail-templates', [MailController::class, 'saveTemplate']);
+        Route::put('/mail-templates/{id}', [MailController::class, 'saveTemplate']);
+        Route::delete('/mail-templates/{id}', [MailController::class, 'deleteTemplate']);
+        Route::post('/mail-templates/preview', [MailController::class, 'previewTemplate']);
+        Route::post('/mail-templates/test', [MailController::class, 'testTemplate']);
+        Route::post('/mail-templates/seed', [MailController::class, 'seedDefaultTemplates']);
+        Route::get('/mail-logs', [MailController::class, 'getLogs']);
     });
 });

@@ -391,3 +391,89 @@ export interface SystemHealth {
 export async function apiGetSystemHealth(): Promise<SystemHealth> {
   return apiFetch<SystemHealth>('/admin/system-health');
 }
+
+// ── Mail ─────────────────────────────────────────────────────────────────────
+
+export interface MailSetting {
+  id?: number;
+  driver: string;
+  host: string;
+  port: number;
+  encryption: string;
+  username: string;
+  password: string;
+  from_address: string;
+  from_name: string;
+  is_enabled: boolean;
+}
+
+export interface MailTemplate {
+  id: number;
+  key: string;
+  name: string;
+  subject: string;
+  html_content: string;
+  text_content: string | null;
+  description: string | null;
+  is_active: boolean;
+  variables: string[] | null;
+}
+
+export interface MailLog {
+  id: number;
+  template_key: string | null;
+  to_email: string;
+  subject: string;
+  status: string;
+  error_message: string | null;
+  sent_at: string | null;
+  created_at: string;
+}
+
+export async function apiGetMailSettings(): Promise<{ settings: MailSetting | null }> {
+  return apiFetch<{ settings: MailSetting | null }>('/admin/mail-settings');
+}
+
+export async function apiSaveMailSettings(data: Partial<MailSetting>): Promise<{ message: string; settings: MailSetting }> {
+  return apiFetch<{ message: string; settings: MailSetting }>('/admin/mail-settings', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiTestMailConnection(test_email: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>('/admin/mail-settings/test', { method: 'POST', body: JSON.stringify({ test_email }) });
+}
+
+export async function apiGetMailTemplates(): Promise<{ templates: MailTemplate[] }> {
+  return apiFetch<{ templates: MailTemplate[] }>('/admin/mail-templates');
+}
+
+export async function apiGetMailTemplate(key: string): Promise<{ template: MailTemplate }> {
+  return apiFetch<{ template: MailTemplate }>(`/admin/mail-templates/${key}`);
+}
+
+export async function apiSaveMailTemplate(data: Partial<MailTemplate> & { id?: number }): Promise<{ message: string; template: MailTemplate }> {
+  const id = data.id;
+  delete data.id;
+  const url = id ? `/admin/mail-templates/${id}` : '/admin/mail-templates';
+  return apiFetch<{ message: string; template: MailTemplate }>(url, { method: id ? 'PUT' : 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteMailTemplate(id: number): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/admin/mail-templates/${id}`, { method: 'DELETE' });
+}
+
+export async function apiPreviewMailTemplate(html_content: string, subject: string, variables?: Record<string, string>): Promise<{ subject: string; html: string }> {
+  return apiFetch<{ subject: string; html: string }>('/admin/mail-templates/preview', { method: 'POST', body: JSON.stringify({ html_content, subject, variables }) });
+}
+
+export async function apiTestMailTemplate(template_key: string, to_email: string, variables?: Record<string, string>): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>('/admin/mail-templates/test', { method: 'POST', body: JSON.stringify({ template_key, to_email, variables }) });
+}
+
+export async function apiSeedMailTemplates(): Promise<{ message: string; templates: MailTemplate[] }> {
+  return apiFetch<{ message: string; templates: MailTemplate[] }>('/admin/mail-templates/seed', { method: 'POST' });
+}
+
+export async function apiGetMailLogs(params?: Record<string, string>): Promise<PaginatedResponse<MailLog>> {
+  const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  return apiFetch<PaginatedResponse<MailLog>>(`/admin/mail-logs${query}`);
+}
