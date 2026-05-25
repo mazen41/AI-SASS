@@ -179,125 +179,165 @@ export default function PaymentSettingsPage() {
     );
   }
 
+  const inputClass = "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none";
+  const labelClass = "flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
+
   return (
-    <div className="integrations-page" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Security Notice */}
-      <div className="security-notice">
-        <Shield size={20} />
-        <div><strong>{isRTL ? 'ملاحظة أمان:' : 'Security Notice:'}</strong> {t.securityNotice}</div>
+      <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400">
+        <Shield size={20} className="shrink-0 mt-0.5" />
+        <p className="text-sm">
+          <strong className="font-semibold">{isRTL ? 'ملاحظة أمان:' : 'Security Notice:'}</strong> {t.securityNotice}
+        </p>
       </div>
 
-      <div className="integrations-grid">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Stripe Settings */}
-        <div className="integration-card">
-          <div className="integration-header">
-            <div className="integration-icon stripe">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-indigo-600/20">
               <CreditCard size={24} />
             </div>
-            <div className="integration-info">
-              <h3>{t.stripe}</h3>
-              <div className="integration-status">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{t.stripe}</h3>
+              <div className="flex flex-wrap gap-2 mt-1">
                 {settings?.stripe?.is_enabled ? (
-                  <span className="status-badge enabled"><Check size={12} /> {t.enabled}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                    <Check size={12} /> {t.enabled}
+                  </span>
                 ) : (
-                  <span className="status-badge disabled"><X size={12} /> {t.disabled}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                    <X size={12} /> {t.disabled}
+                  </span>
                 )}
                 {settings?.stripe?.is_sandbox && (
-                  <span className="status-badge sandbox"><AlertTriangle size={12} /> {t.sandbox}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
+                    <AlertTriangle size={12} /> {t.sandbox}
+                  </span>
                 )}
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleSaveStripe} className="integration-form">
-            <div className="toggle-group">
-              <label className="toggle-label">
-                <input
-                  type="checkbox"
-                  checked={stripeForm.is_enabled}
-                  onChange={(e) => setStripeForm({ ...stripeForm, is_enabled: e.target.checked })}
-                />
-                <span className="toggle-switch" />
-                {t.enableStripe}
+          <form onSubmit={handleSaveStripe} className="flex flex-col gap-5">
+            <div className="flex gap-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={stripeForm.is_enabled}
+                    onChange={(e) => setStripeForm({ ...stripeForm, is_enabled: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{t.enableStripe}</span>
               </label>
-              <label className="toggle-label">
-                <input
-                  type="checkbox"
-                  checked={stripeForm.is_sandbox}
-                  onChange={(e) => setStripeForm({ ...stripeForm, is_sandbox: e.target.checked })}
-                />
-                <span className="toggle-switch" />
-                {t.sandboxMode}
+              
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={stripeForm.is_sandbox}
+                    onChange={(e) => setStripeForm({ ...stripeForm, is_sandbox: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{t.sandboxMode}</span>
               </label>
             </div>
 
-            <div className="form-group">
-              <label>{t.publishableKey}</label>
+            <div>
+              <label className={labelClass}>{t.publishableKey}</label>
               <input
                 type="text"
                 value={stripeForm.public_key}
                 onChange={(e) => setStripeForm({ ...stripeForm, public_key: e.target.value })}
                 placeholder={t.placeholder.publicKey}
+                className={inputClass}
               />
             </div>
 
-            <div className="form-group">
-              <label>
+            <div>
+              <label className={labelClass}>
                 {t.secretKey}
-                {settings?.stripe?.has_secret_key && <span className="key-set"><Lock size={12} /> {t.configured}</span>}
+                {settings?.stripe?.has_secret_key && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    <Lock size={12} /> {t.configured}
+                  </span>
+                )}
               </label>
-              <div className="input-with-toggle">
+              <div className="relative">
                 <input
                   type={showStripeSecret ? 'text' : 'password'}
                   value={stripeForm.secret_key}
                   onChange={(e) => setStripeForm({ ...stripeForm, secret_key: e.target.value })}
                   placeholder={t.placeholder.secretKey}
+                  className={`${inputClass} pr-10 rtl:pr-4 rtl:pl-10`}
                 />
-                <button type="button" onClick={() => setShowStripeSecret(!showStripeSecret)} className="toggle-visibility">
+                <button 
+                  type="button" 
+                  onClick={() => setShowStripeSecret(!showStripeSecret)} 
+                  className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
                   {showStripeSecret ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            <div className="form-group">
-              <label>
+            <div>
+              <label className={labelClass}>
                 {t.webhookSecret}
-                {settings?.stripe?.has_webhook_secret && <span className="key-set"><Lock size={12} /> {t.configured}</span>}
+                {settings?.stripe?.has_webhook_secret && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    <Lock size={12} /> {t.configured}
+                  </span>
+                )}
               </label>
               <input
                 type="password"
                 value={stripeForm.webhook_secret}
                 onChange={(e) => setStripeForm({ ...stripeForm, webhook_secret: e.target.value })}
                 placeholder={t.placeholder.webhookSecret}
+                className={inputClass}
               />
             </div>
 
-            <div className="webhook-url-box">
-              <div className="webhook-url-header">
-                <span>{t.webhookUrl}</span>
+            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.webhookUrl}</span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(settings?.stripe?.webhook_url || '', 'stripe-webhook')}
-                  className="copy-btn"
+                  className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
                 >
                   {copied === 'stripe-webhook' ? <CheckCircle size={14} /> : <Copy size={14} />}
                   {copied === 'stripe-webhook' ? t.copied : t.copy}
                 </button>
               </div>
-              <code>{settings?.stripe?.webhook_url}</code>
+              <code className="block text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-200 break-all bg-white dark:bg-gray-900 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800">
+                {settings?.stripe?.webhook_url}
+              </code>
             </div>
 
-            <div className="form-actions">
-              <button type="submit" disabled={saving === 'stripe'} className="btn-primary">
+            <div className="flex gap-3 pt-2">
+              <button 
+                type="submit" 
+                disabled={saving === 'stripe'} 
+                className="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+              >
+                {saving === 'stripe' ? <Loader2 size={18} className="animate-spin" /> : null}
                 {saving === 'stripe' ? t.saving : t.saveSettings}
               </button>
               <button
                 type="button"
                 onClick={() => handleTestConnection('stripe')}
                 disabled={testing === 'stripe' || !settings?.stripe?.is_enabled}
-                className="btn-secondary"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
-                <Zap size={16} />
+                {testing === 'stripe' ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
                 {testing === 'stripe' ? t.testing : t.testConnection}
               </button>
             </div>
@@ -305,115 +345,150 @@ export default function PaymentSettingsPage() {
         </div>
 
         {/* PayPal Settings */}
-        <div className="integration-card">
-          <div className="integration-header">
-            <div className="integration-icon paypal">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-blue-500/20">
               <Wallet size={24} />
             </div>
-            <div className="integration-info">
-              <h3>{t.paypal}</h3>
-              <div className="integration-status">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{t.paypal}</h3>
+              <div className="flex flex-wrap gap-2 mt-1">
                 {settings?.paypal?.is_enabled ? (
-                  <span className="status-badge enabled"><Check size={12} /> {t.enabled}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                    <Check size={12} /> {t.enabled}
+                  </span>
                 ) : (
-                  <span className="status-badge disabled"><X size={12} /> {t.disabled}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                    <X size={12} /> {t.disabled}
+                  </span>
                 )}
                 {settings?.paypal?.is_sandbox && (
-                  <span className="status-badge sandbox"><AlertTriangle size={12} /> {t.sandbox}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
+                    <AlertTriangle size={12} /> {t.sandbox}
+                  </span>
                 )}
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleSavePaypal} className="integration-form">
-            <div className="toggle-group">
-              <label className="toggle-label">
-                <input
-                  type="checkbox"
-                  checked={paypalForm.is_enabled}
-                  onChange={(e) => setPaypalForm({ ...paypalForm, is_enabled: e.target.checked })}
-                />
-                <span className="toggle-switch" />
-                {t.enablePaypal}
+          <form onSubmit={handleSavePaypal} className="flex flex-col gap-5">
+            <div className="flex gap-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={paypalForm.is_enabled}
+                    onChange={(e) => setPaypalForm({ ...paypalForm, is_enabled: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-blue-500"></div>
+                </div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{t.enablePaypal}</span>
               </label>
-              <label className="toggle-label">
-                <input
-                  type="checkbox"
-                  checked={paypalForm.is_sandbox}
-                  onChange={(e) => setPaypalForm({ ...paypalForm, is_sandbox: e.target.checked })}
-                />
-                <span className="toggle-switch" />
-                {t.sandboxMode}
+              
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={paypalForm.is_sandbox}
+                    onChange={(e) => setPaypalForm({ ...paypalForm, is_sandbox: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-blue-500"></div>
+                </div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">{t.sandboxMode}</span>
               </label>
             </div>
 
-            <div className="form-group">
-              <label>{t.publishableKey}</label>
+            <div>
+              <label className={labelClass}>{t.publishableKey}</label>
               <input
                 type="text"
                 value={paypalForm.public_key}
                 onChange={(e) => setPaypalForm({ ...paypalForm, public_key: e.target.value })}
                 placeholder="Client ID"
+                className={inputClass}
               />
             </div>
 
-            <div className="form-group">
-              <label>
+            <div>
+              <label className={labelClass}>
                 {t.secretKey}
-                {settings?.paypal?.has_secret_key && <span className="key-set"><Lock size={12} /> {t.configured}</span>}
+                {settings?.paypal?.has_secret_key && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    <Lock size={12} /> {t.configured}
+                  </span>
+                )}
               </label>
-              <div className="input-with-toggle">
+              <div className="relative">
                 <input
                   type={showPaypalSecret ? 'text' : 'password'}
                   value={paypalForm.secret_key}
                   onChange={(e) => setPaypalForm({ ...paypalForm, secret_key: e.target.value })}
                   placeholder="Client Secret"
+                  className={`${inputClass} pr-10 rtl:pr-4 rtl:pl-10`}
                 />
-                <button type="button" onClick={() => setShowPaypalSecret(!showPaypalSecret)} className="toggle-visibility">
+                <button 
+                  type="button" 
+                  onClick={() => setShowPaypalSecret(!showPaypalSecret)} 
+                  className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
                   {showPaypalSecret ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            <div className="form-group">
-              <label>
+            <div>
+              <label className={labelClass}>
                 {t.webhookSecret}
-                {settings?.paypal?.has_webhook_secret && <span className="key-set"><Lock size={12} /> {t.configured}</span>}
+                {settings?.paypal?.has_webhook_secret && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    <Lock size={12} /> {t.configured}
+                  </span>
+                )}
               </label>
               <input
                 type="text"
                 value={paypalForm.webhook_secret}
                 onChange={(e) => setPaypalForm({ ...paypalForm, webhook_secret: e.target.value })}
                 placeholder="Webhook ID"
+                className={inputClass}
               />
             </div>
 
-            <div className="webhook-url-box paypal">
-              <div className="webhook-url-header">
-                <span>{t.webhookUrl}</span>
+            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.webhookUrl}</span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(settings?.paypal?.webhook_url || '', 'paypal-webhook')}
-                  className="copy-btn"
+                  className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                 >
                   {copied === 'paypal-webhook' ? <CheckCircle size={14} /> : <Copy size={14} />}
                   {copied === 'paypal-webhook' ? t.copied : t.copy}
                 </button>
               </div>
-              <code>{settings?.paypal?.webhook_url}</code>
+              <code className="block text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-200 break-all bg-white dark:bg-gray-900 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800">
+                {settings?.paypal?.webhook_url}
+              </code>
             </div>
 
-            <div className="form-actions">
-              <button type="submit" disabled={saving === 'paypal'} className="btn-primary paypal">
+            <div className="flex gap-3 pt-2">
+              <button 
+                type="submit" 
+                disabled={saving === 'paypal'} 
+                className="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+              >
+                {saving === 'paypal' ? <Loader2 size={18} className="animate-spin" /> : null}
                 {saving === 'paypal' ? t.saving : t.saveSettings}
               </button>
               <button
                 type="button"
                 onClick={() => handleTestConnection('paypal')}
                 disabled={testing === 'paypal' || !settings?.paypal?.is_enabled}
-                className="btn-secondary"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
-                <Zap size={16} />
+                {testing === 'paypal' ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
                 {testing === 'paypal' ? t.testing : t.testConnection}
               </button>
             </div>
@@ -422,456 +497,48 @@ export default function PaymentSettingsPage() {
       </div>
 
       {/* Documentation Links */}
-      <div className="docs-section">
-        <h3>{isRTL ? 'Documentation' : 'Setup Documentation'}</h3>
-        <div className="docs-grid">
-          <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="doc-link stripe">
-            <CreditCard size={24} />
-            <div>
-              <p className="doc-title">Stripe Dashboard</p>
-              <p className="doc-desc">{isRTL ? 'احصل على مفاتيح API واعداد webhooks' : 'Get your API keys and configure webhooks'}</p>
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-8">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+          {isRTL ? 'مستندات الإعداد' : 'Setup Documentation'}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <a 
+            href="https://dashboard.stripe.com/apikeys" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/10 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <CreditCard size={20} />
             </div>
-            <ExternalLink size={16} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Stripe Dashboard</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                {isRTL ? 'احصل على مفاتيح API واعداد webhooks' : 'Get your API keys and configure webhooks'}
+              </p>
+            </div>
+            <ExternalLink size={16} className="text-gray-400 group-hover:text-indigo-500" />
           </a>
-          <a href="https://developer.paypal.com/dashboard/applications" target="_blank" rel="noopener noreferrer" className="doc-link paypal">
-            <Wallet size={24} />
-            <div>
-              <p className="doc-title">PayPal Developer</p>
-              <p className="doc-desc">{isRTL ? 'إدارة تطبيقات REST API والwebhooks' : 'Manage your REST API apps and webhooks'}</p>
+          
+          <a 
+            href="https://developer.paypal.com/dashboard/applications" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:border-blue-200 dark:hover:border-blue-800 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Wallet size={20} />
             </div>
-            <ExternalLink size={16} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">PayPal Developer</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                {isRTL ? 'إدارة تطبيقات REST API والwebhooks' : 'Manage your REST API apps and webhooks'}
+              </p>
+            </div>
+            <ExternalLink size={16} className="text-gray-400 group-hover:text-blue-500" />
           </a>
         </div>
       </div>
-
-      <style jsx>{`
-        .integrations-page {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .admin-page-loading {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 300px;
-        }
-
-        .admin-spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid rgba(139, 92, 246, 0.2);
-          border-top-color: #8b5cf6;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .security-notice {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.75rem;
-          padding: 1rem 1.25rem;
-          background: rgba(251, 191, 36, 0.1);
-          border: 1px solid rgba(251, 191, 36, 0.2);
-          border-radius: 10px;
-          color: #fbbf24;
-          font-size: 0.9rem;
-        }
-
-        .integrations-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 1.5rem;
-        }
-
-        @media (min-width: 1024px) {
-          .integrations-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        .integration-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 1.5rem;
-        }
-
-        .integration-header {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .integration-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
-
-        .integration-icon.stripe {
-          background: #6366f1;
-        }
-
-        .integration-icon.paypal {
-          background: #3b82f6;
-        }
-
-        .integration-info h3 {
-          color: #1e293b;
-          font-size: 1.25rem;
-          font-weight: 600;
-          margin: 0 0 0.25rem;
-        }
-
-        .integration-status {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        .status-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.2rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-
-        .status-badge.enabled {
-          background: #dcfce7;
-          color: #16a34a;
-        }
-
-        .status-badge.disabled {
-          background: #f1f5f9;
-          color: #64748b;
-        }
-
-        .status-badge.sandbox {
-          background: #fef3c7;
-          color: #d97706;
-        }
-
-        .integration-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.25rem;
-        }
-
-        .toggle-group {
-          display: flex;
-          gap: 1.5rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid #e2e8f0;
-        }
-
-        .toggle-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #475569;
-          font-size: 0.9rem;
-          cursor: pointer;
-        }
-
-        .toggle-label input {
-          display: none;
-        }
-
-        .toggle-switch {
-          position: relative;
-          width: 36px;
-          height: 20px;
-          background: #e2e8f0;
-          border-radius: 20px;
-          transition: 0.3s;
-        }
-
-        .toggle-switch::after {
-          content: '';
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          width: 16px;
-          height: 16px;
-          background: white;
-          border-radius: 50%;
-          transition: 0.3s;
-        }
-
-        [dir="rtl"] .toggle-switch::after {
-          left: auto;
-          right: 2px;
-        }
-
-        .toggle-label input:checked + .toggle-switch {
-          background: #6366f1;
-        }
-
-        .toggle-label input:checked + .toggle-switch::after {
-          transform: translateX(16px);
-        }
-
-        [dir="rtl"] .toggle-label input:checked + .toggle-switch::after {
-          transform: translateX(-16px);
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .form-group label {
-          display: flex;
-          justify-content: space-between;
-          color: #374151;
-          font-size: 0.85rem;
-          font-weight: 500;
-        }
-
-        .key-set {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          color: #10b981;
-          font-size: 0.75rem;
-        }
-
-        .form-group input {
-          padding: 0.6rem 0.75rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          color: #1e293b;
-          font-size: 0.9rem;
-          transition: all 0.2s;
-        }
-
-        .form-group input:focus {
-          outline: none;
-          border-color: #6366f1;
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .form-group input::placeholder {
-          color: #94a3b8;
-        }
-
-        .input-with-toggle {
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-
-        .input-with-toggle input {
-          width: 100%;
-          padding-right: 2.5rem;
-        }
-
-        [dir="rtl"] .input-with-toggle input {
-          padding-right: 0.75rem;
-          padding-left: 2.5rem;
-        }
-
-        .toggle-visibility {
-          position: absolute;
-          right: 0.75rem;
-          background: none;
-          border: none;
-          color: #94a3b8;
-          cursor: pointer;
-          padding: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        [dir="rtl"] .toggle-visibility {
-          right: auto;
-          left: 0.75rem;
-        }
-
-        .toggle-visibility:hover {
-          color: #64748b;
-        }
-
-        .webhook-url-box {
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 1rem;
-        }
-
-        .webhook-url-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.5rem;
-          color: #475569;
-          font-size: 0.85rem;
-          font-weight: 500;
-        }
-
-        .copy-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          background: none;
-          border: none;
-          color: #6366f1;
-          font-size: 0.75rem;
-          cursor: pointer;
-        }
-
-        .copy-btn:hover {
-          text-decoration: underline;
-        }
-
-        .webhook-url-box code {
-          display: block;
-          color: #1e293b;
-          font-family: monospace;
-          font-size: 0.85rem;
-          word-break: break-all;
-        }
-
-        .form-actions {
-          display: flex;
-          gap: 1rem;
-          margin-top: 0.5rem;
-        }
-
-        .btn-primary, .btn-secondary {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          padding: 0.6rem 1rem;
-          border-radius: 8px;
-          font-weight: 500;
-          font-size: 0.9rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          border: none;
-        }
-
-        .btn-primary {
-          flex: 2;
-          background: #6366f1;
-          color: white;
-        }
-
-        .btn-primary.paypal {
-          background: #3b82f6;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          filter: brightness(0.9);
-        }
-
-        .btn-secondary {
-          flex: 1;
-          background: #f1f5f9;
-          color: #475569;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #e2e8f0;
-          color: #1e293b;
-        }
-
-        button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .btn-secondary:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .docs-section {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 1.5rem;
-        }
-
-        .docs-section h3 {
-          color: #1e293b;
-          font-size: 1rem;
-          font-weight: 600;
-          margin: 0 0 1rem;
-        }
-
-        .docs-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 1rem;
-        }
-
-        @media (min-width: 640px) {
-          .docs-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        .doc-link {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          text-decoration: none;
-          transition: all 0.2s;
-        }
-
-        .doc-link:hover {
-          background: #f1f5f9;
-          transform: translateY(-2px);
-        }
-
-        .doc-link.stripe {
-          color: #6366f1;
-        }
-
-        .doc-link.paypal {
-          color: #3b82f6;
-        }
-
-        .doc-link > div {
-          flex: 1;
-        }
-
-        .doc-title {
-          color: #1e293b;
-          font-weight: 500;
-          margin: 0 0 0.15rem;
-        }
-
-        .doc-desc {
-          color: #64748b;
-          font-size: 0.8rem;
-          margin: 0;
-        }
-      `}</style>
     </div>
   );
 }

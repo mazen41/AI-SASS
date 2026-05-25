@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiLogin } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/LangContext';
+import { Loader2 } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -41,152 +42,68 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="admin-login-page" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="admin-login-card">
-        <div className="admin-login-header">
-          <h1>{isRTL ? 'لوحة الإدارة' : 'Admin Panel'}</h1>
-          <p>{isRTL ? 'تسجيل الدخول للمتابعة' : 'Sign in to continue'}</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4 font-sans" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="w-full max-w-[400px] bg-white dark:bg-gray-800 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none p-8 border border-gray-100 dark:border-gray-700">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            {isRTL ? 'لوحة الإدارة' : 'Admin Panel'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {isRTL ? 'تسجيل الدخول للمتابعة' : 'Sign in to continue'}
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="admin-login-form">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {error && (
-            <div className="admin-login-error">
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm font-medium">
               {error}
             </div>
           )}
 
-          <div className="form-group">
-            <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {isRTL ? 'البريد الإلكتروني' : 'Email'}
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder={isRTL ? 'admin@example.com' : 'admin@example.com'}
+              placeholder="admin@example.com"
+              className="px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               required
             />
           </div>
 
-          <div className="form-group">
-            <label>{isRTL ? 'كلمة المرور' : 'Password'}</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {isRTL ? 'كلمة المرور' : 'Password'}
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              className="px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               required
             />
           </div>
 
-          <button type="submit" disabled={loading} className="admin-login-btn">
-            {loading 
-              ? (isRTL ? 'جاري التحميل...' : 'Loading...') 
-              : (isRTL ? 'تسجيل الدخول' : 'Sign In')
-            }
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className="mt-2 w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm shadow-indigo-200 dark:shadow-none"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                {isRTL ? 'جاري التحميل...' : 'Loading...'}
+              </>
+            ) : (
+              isRTL ? 'تسجيل الدخول' : 'Sign In'
+            )}
           </button>
         </form>
       </div>
-
-      <style jsx>{`
-        .admin-login-page {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #f8fafc;
-          padding: 1rem;
-          cursor: default;
-        }
-
-        .admin-login-card {
-          width: 100%;
-          max-width: 400px;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-          padding: 2rem;
-        }
-
-        .admin-login-header {
-          text-align: center;
-          margin-bottom: 1.5rem;
-        }
-
-        .admin-login-header h1 {
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin: 0 0 0.5rem;
-        }
-
-        .admin-login-header p {
-          color: #64748b;
-          font-size: 0.9rem;
-          margin: 0;
-        }
-
-        .admin-login-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .admin-login-error {
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          color: #dc2626;
-          padding: 0.75rem 1rem;
-          border-radius: 8px;
-          font-size: 0.85rem;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.4rem;
-        }
-
-        .form-group label {
-          font-size: 0.85rem;
-          font-weight: 500;
-          color: #374151;
-        }
-
-        .form-group input {
-          padding: 0.7rem 1rem;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          font-size: 0.95rem;
-          transition: border-color 0.2s;
-        }
-
-        .form-group input:focus {
-          outline: none;
-          border-color: #6366f1;
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .admin-login-btn {
-          margin-top: 0.5rem;
-          padding: 0.75rem 1rem;
-          background: #6366f1;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-size: 0.95rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-
-        .admin-login-btn:hover:not(:disabled) {
-          background: #4f46e5;
-        }
-
-        .admin-login-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-      `}</style>
     </div>
   );
 }

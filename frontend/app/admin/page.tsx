@@ -18,6 +18,7 @@ import {
   FileText,
   ArrowUpRight,
   ArrowDownRight,
+  Loader2,
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -44,15 +45,15 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="spinner" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 size={40} className="animate-spin text-indigo-600" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="error-box">
+      <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-400">
         <span>{error}</span>
       </div>
     );
@@ -61,12 +62,12 @@ export default function AdminDashboard() {
   if (!stats) return null;
 
   const statCards = [
-    { label: isRTL ? 'إجمالي المستخدمين' : 'Total Users', value: stats.users.total, icon: Users, color: '#6366f1', href: '/admin/users' },
-    { label: isRTL ? 'المستخدمين النشطين' : 'Active Users', value: stats.users.active, icon: UserCheck, color: '#22c55e', href: '/admin/users?status=active' },
-    { label: isRTL ? 'الجدد هذا الشهر' : 'New This Month', value: stats.users.new_this_month, icon: TrendingUp, color: '#8b5cf6', change: stats.users.growth_percentage, href: '/admin/users?filter=new' },
-    { label: isRTL ? 'الاشتراكات النشطة' : 'Active Subscriptions', value: stats.subscriptions.active, icon: RefreshCw, color: '#f59e0b', href: '/admin/subscriptions' },
-    { label: isRTL ? 'إجمالي الإيرادات' : 'Total Revenue', value: `$${parseFloat(stats.revenue.total || '0').toLocaleString()}`, icon: DollarSign, color: '#10b981', href: '/admin/transactions' },
-    { label: isRTL ? 'إيرادات الشهر' : 'Revenue This Month', value: `$${parseFloat(stats.revenue.this_month || '0').toLocaleString()}`, icon: BarChart3, color: '#ec4899', change: stats.revenue.growth_percentage, href: '/admin/transactions?period=month' },
+    { label: isRTL ? 'إجمالي المستخدمين' : 'Total Users', value: stats.users.total, icon: Users, color: 'bg-indigo-600', href: '/admin/users' },
+    { label: isRTL ? 'المستخدمين النشطين' : 'Active Users', value: stats.users.active, icon: UserCheck, color: 'bg-emerald-500', href: '/admin/users?status=active' },
+    { label: isRTL ? 'الجدد هذا الشهر' : 'New This Month', value: stats.users.new_this_month, icon: TrendingUp, color: 'bg-purple-500', change: stats.users.growth_percentage, href: '/admin/users?filter=new' },
+    { label: isRTL ? 'الاشتراكات النشطة' : 'Active Subscriptions', value: stats.subscriptions.active, icon: RefreshCw, color: 'bg-amber-500', href: '/admin/subscriptions' },
+    { label: isRTL ? 'إجمالي الإيرادات' : 'Total Revenue', value: `$${parseFloat(stats.revenue.total || '0').toLocaleString()}`, icon: DollarSign, color: 'bg-teal-500', href: '/admin/transactions' },
+    { label: isRTL ? 'إيرادات الشهر' : 'Revenue This Month', value: `$${parseFloat(stats.revenue.this_month || '0').toLocaleString()}`, icon: BarChart3, color: 'bg-pink-500', change: stats.revenue.growth_percentage, href: '/admin/transactions?period=month' },
   ];
 
   const getActivityIcon = (action: string) => {
@@ -78,28 +79,40 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="dashboard">
+    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {isRTL ? 'لوحة التحكم' : 'Dashboard Overview'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {isRTL ? 'نظرة عامة على أداء النظام' : 'System performance overview'}
+          </p>
+        </div>
+      </div>
+
       {/* Stats Grid */}
-      <div className="stats-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
         {statCards.map((card, index) => {
           const Icon = card.icon;
           return (
             <div 
               key={index} 
-              className="stat-card clickable"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 flex items-start gap-4 cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group"
               onClick={() => router.push(card.href)}
               role="button"
               tabIndex={0}
             >
-              <div className="stat-icon" style={{ background: card.color }}>
-                <Icon size={20} color="white" />
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 text-white ${card.color} group-hover:scale-110 transition-transform duration-300`}>
+                <Icon size={24} />
               </div>
-              <div className="stat-info">
-                <p className="stat-label">{card.label}</p>
-                <p className="stat-value">{card.value}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1 truncate">{card.label}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white truncate">{card.value}</p>
                 {card.change !== undefined && (
-                  <p className={`stat-change ${card.change >= 0 ? 'positive' : 'negative'}`}>
-                    {card.change >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                  <p className={`flex items-center gap-1 text-xs mt-1.5 font-medium ${card.change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {card.change >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                     {Math.abs(card.change)}% {isRTL ? 'من الشهر الماضي' : 'from last month'}
                   </p>
                 )}
@@ -110,79 +123,103 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts Row */}
-      <div className="charts-row">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue by Gateway */}
-        <div className="card">
-          <h3 className="card-title">{isRTL ? 'الإيرادات حسب البوابة' : 'Revenue by Gateway'}</h3>
-          <div className="card-content">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <Wallet size={18} className="text-gray-400" />
+            {isRTL ? 'الإيرادات حسب البوابة' : 'Revenue by Gateway'}
+          </h3>
+          <div className="space-y-4">
             {stats.revenue.by_gateway.length > 0 ? (
               stats.revenue.by_gateway.map((gateway, index) => (
-                <div key={index} className="gateway-item">
-                  <div className="gateway-info">
-                    <div className={`gateway-icon ${gateway.gateway}`}>
-                      {gateway.gateway === 'stripe' ? <CreditCard size={16} /> : <Wallet size={16} />}
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      gateway.gateway === 'stripe' 
+                        ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' 
+                        : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                    }`}>
+                      {gateway.gateway === 'stripe' ? <CreditCard size={20} /> : <Wallet size={20} />}
                     </div>
                     <div>
-                      <p className="gateway-name">{gateway.gateway}</p>
-                      <p className="gateway-count">{gateway.count} {isRTL ? 'معاملة' : 'transactions'}</p>
+                      <p className="font-medium text-gray-900 dark:text-white capitalize">{gateway.gateway}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{gateway.count} {isRTL ? 'معاملة' : 'transactions'}</p>
                     </div>
                   </div>
-                  <p className="gateway-total">${parseFloat(gateway.total || '0').toLocaleString()}</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">${parseFloat(gateway.total || '0').toLocaleString()}</p>
                 </div>
               ))
             ) : (
-              <p className="empty-text">{isRTL ? 'لا توجد معاملات بعد' : 'No transactions yet'}</p>
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <CreditCard size={32} className="mx-auto mb-3 opacity-50" />
+                <p>{isRTL ? 'لا توجد معاملات بعد' : 'No transactions yet'}</p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Subscriptions by Plan */}
-        <div className="card">
-          <h3 className="card-title">{isRTL ? 'الاشتراكات حسب الخطة' : 'Subscriptions by Plan'}</h3>
-          <div className="card-content">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <RefreshCw size={18} className="text-gray-400" />
+            {isRTL ? 'الاشتراكات حسب الخطة' : 'Subscriptions by Plan'}
+          </h3>
+          <div className="space-y-5">
             {stats.subscriptions.by_plan.length > 0 ? (
-              stats.subscriptions.by_plan.map((plan, index) => (
-                <div key={index} className="plan-item">
-                  <div className="plan-info">
-                    <p className="plan-name">{plan.name}</p>
-                    <p className="plan-price">${plan.price}/{isRTL ? 'شهر' : 'mo'}</p>
-                  </div>
-                  <div className="plan-bar-wrap">
-                    <div className="plan-bar">
-                      <div 
-                        className="plan-bar-fill"
-                        style={{ width: `${Math.min((plan.active_subscriptions_count / Math.max(stats.subscriptions.active, 1)) * 100, 100)}%` }}
-                      />
+              stats.subscriptions.by_plan.map((plan, index) => {
+                const percentage = Math.min((plan.active_subscriptions_count / Math.max(stats.subscriptions.active, 1)) * 100, 100);
+                return (
+                  <div key={index} className="flex items-center justify-between group">
+                    <div className="flex flex-col">
+                      <p className="font-medium text-gray-900 dark:text-white">{plan.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">${plan.price}/{isRTL ? 'شهر' : 'mo'}</p>
                     </div>
-                    <span className="plan-count">{plan.active_subscriptions_count}</span>
+                    <div className="flex items-center gap-3 w-1/2">
+                      <div className="h-2 flex-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-500 group-hover:bg-indigo-500"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <span className="font-semibold text-gray-900 dark:text-white min-w-[2rem] text-right">
+                        {plan.active_subscriptions_count}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
-              <p className="empty-text">{isRTL ? 'لا توجد خطط' : 'No plans configured'}</p>
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <FileText size={32} className="mx-auto mb-3 opacity-50" />
+                <p>{isRTL ? 'لا توجد خطط' : 'No plans configured'}</p>
+              </div>
             )}
           </div>
         </div>
       </div>
 
       {/* Recent Activity */}
-      <div className="card">
-        <h3 className="card-title">{isRTL ? 'النشاط الأخير' : 'Recent Activity'}</h3>
-        <div className="activity-list">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-8">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+          <TrendingUp size={18} className="text-gray-400" />
+          {isRTL ? 'النشاط الأخير' : 'Recent Activity'}
+        </h3>
+        <div className="space-y-4">
           {stats.recent_activity.length > 0 ? (
             stats.recent_activity.map((activity, index) => {
               const ActivityIcon = getActivityIcon(activity.action);
               return (
-                <div key={index} className="activity-item">
-                  <div className="activity-icon">
-                    <ActivityIcon size={16} />
+                <div key={index} className="flex items-center gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <ActivityIcon size={18} />
                   </div>
-                  <div className="activity-content">
-                    <p className="activity-text">
-                      <span className="activity-user">{activity.user?.name || 'System'}</span>
-                      {' '}<span className="activity-action">{activity.action.replace(/_/g, ' ')}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-900 dark:text-white truncate">
+                      <span className="font-semibold">{activity.user?.name || 'System'}</span>
+                      <span className="text-gray-500 dark:text-gray-400 ml-1">{activity.action.replace(/_/g, ' ')}</span>
                     </p>
-                    <p className="activity-time">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {new Date(activity.created_at).toLocaleString()}
                     </p>
                   </div>
@@ -190,326 +227,13 @@ export default function AdminDashboard() {
               );
             })
           ) : (
-            <p className="empty-text">{isRTL ? 'لا يوجد نشاط حديث' : 'No recent activity'}</p>
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <RefreshCw size={32} className="mx-auto mb-3 opacity-50" />
+              <p>{isRTL ? 'لا يوجد نشاط حديث' : 'No recent activity'}</p>
+            </div>
           )}
         </div>
       </div>
-
-      <style jsx>{`
-        .dashboard {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .loading-container {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 200px;
-        }
-
-        .spinner {
-          width: 32px;
-          height: 32px;
-          border: 3px solid #e2e8f0;
-          border-top-color: #6366f1;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .error-box {
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          border-radius: 8px;
-          padding: 1rem;
-          color: #dc2626;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(1, 1fr);
-          gap: 1rem;
-        }
-
-        @media (min-width: 640px) {
-          .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (min-width: 1024px) {
-          .stats-grid {
-            grid-template-columns: repeat(3, 1fr);
-          }
-        }
-
-        .stat-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 1rem;
-          display: flex;
-          align-items: flex-start;
-          gap: 1rem;
-          transition: all 0.2s ease;
-        }
-
-        .stat-card.clickable {
-          cursor: pointer;
-        }
-
-        .stat-card.clickable:hover {
-          border-color: #6366f1;
-          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-          transform: translateY(-2px);
-        }
-
-        .stat-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .stat-info {
-          flex: 1;
-        }
-
-        .stat-label {
-          color: #64748b;
-          font-size: 0.8rem;
-          margin: 0 0 0.25rem;
-        }
-
-        .stat-value {
-          color: #1e293b;
-          font-size: 1.35rem;
-          font-weight: 700;
-          margin: 0;
-        }
-
-        .stat-change {
-          display: flex;
-          align-items: center;
-          gap: 0.2rem;
-          font-size: 0.75rem;
-          margin: 0.25rem 0 0;
-        }
-
-        .stat-change.positive {
-          color: #22c55e;
-        }
-
-        .stat-change.negative {
-          color: #ef4444;
-        }
-
-        /* Charts Row */
-        .charts-row {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 1rem;
-        }
-
-        @media (min-width: 1024px) {
-          .charts-row {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        /* Card */
-        .card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 1rem;
-        }
-
-        .card-title {
-          color: #1e293b;
-          font-size: 0.95rem;
-          font-weight: 600;
-          margin: 0 0 1rem;
-        }
-
-        .card-content {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        .empty-text {
-          color: #94a3b8;
-          text-align: center;
-          padding: 1rem;
-          margin: 0;
-        }
-
-        /* Gateway Item */
-        .gateway-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .gateway-info {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .gateway-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .gateway-icon.stripe {
-          background: #f3f0ff;
-          color: #6366f1;
-        }
-
-        .gateway-icon.paypal {
-          background: #eff6ff;
-          color: #3b82f6;
-        }
-
-        .gateway-name {
-          color: #1e293b;
-          font-weight: 500;
-          text-transform: capitalize;
-          margin: 0;
-        }
-
-        .gateway-count {
-          color: #94a3b8;
-          font-size: 0.75rem;
-          margin: 0;
-        }
-
-        .gateway-total {
-          color: #1e293b;
-          font-weight: 600;
-          margin: 0;
-        }
-
-        /* Plan Item */
-        .plan-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .plan-info {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .plan-name {
-          color: #1e293b;
-          font-weight: 500;
-          margin: 0;
-        }
-
-        .plan-price {
-          color: #94a3b8;
-          font-size: 0.75rem;
-          margin: 0;
-        }
-
-        .plan-bar-wrap {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .plan-bar {
-          width: 100px;
-          height: 6px;
-          background: #e2e8f0;
-          border-radius: 3px;
-          overflow: hidden;
-        }
-
-        .plan-bar-fill {
-          height: 100%;
-          background: #6366f1;
-          border-radius: 3px;
-        }
-
-        .plan-count {
-          color: #1e293b;
-          font-weight: 600;
-          font-size: 0.85rem;
-          min-width: 20px;
-          text-align: right;
-        }
-
-        /* Activity */
-        .activity-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .activity-item {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.6rem;
-          background: #f8fafc;
-          border-radius: 8px;
-        }
-
-        .activity-icon {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: #f3f0ff;
-          color: #6366f1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .activity-content {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .activity-text {
-          font-size: 0.85rem;
-          margin: 0;
-        }
-
-        .activity-user {
-          color: #1e293b;
-          font-weight: 500;
-        }
-
-        .activity-action {
-          color: #64748b;
-        }
-
-        .activity-time {
-          color: #94a3b8;
-          font-size: 0.7rem;
-          margin: 0.15rem 0 0;
-        }
-      `}</style>
     </div>
   );
 }

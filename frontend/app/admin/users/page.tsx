@@ -15,6 +15,7 @@ import {
   User,
   Crown,
   AlertCircle,
+  Loader2
 } from 'lucide-react';
 
 export default function UsersPage() {
@@ -66,6 +67,7 @@ export default function UsersPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey(k => k + 1);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const loadUsers = async () => {
       setLoading(true);
@@ -125,6 +127,30 @@ export default function UsersPage() {
     return <User size={14} />;
   };
 
+  const getRoleClasses = (role: string) => {
+    switch (role) {
+      case 'super_admin':
+        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
+      case 'admin':
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      default:
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+    }
+  };
+
+  const getStatusClasses = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+      case 'suspended':
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+      case 'banned':
+        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+      default:
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+    }
+  };
+
   const getRoleLabel = (role: string) => {
     return t.roles[role as keyof typeof t.roles] || role.replace('_', ' ');
   };
@@ -134,24 +160,30 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="admin-users-page" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t.user}</h2>
+      </div>
+
       {/* Filters */}
-      <div className="filters-card">
-        <form onSubmit={handleSearch} className="filters-form">
-          <div className="search-input-wrap">
-            <Search size={18} className="search-icon" />
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
+        <form onSubmit={handleSearch} className="flex flex-wrap gap-4">
+          <div className="flex-1 min-w-[200px] relative">
+            <Search size={18} className="absolute left-3 rtl:right-3 rtl:left-auto top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder={t.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 rtl:pl-3 rtl:pr-10 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
             />
           </div>
-          <div className="filter-select-wrap">
-            <Filter size={16} />
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+            <Filter size={16} className="text-gray-500" />
             <select
               value={roleFilter}
               onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+              className="bg-transparent border-none text-gray-900 dark:text-white text-sm outline-none cursor-pointer"
             >
               <option value="">{t.allRoles}</option>
               <option value="user">{t.roles.user}</option>
@@ -159,10 +191,11 @@ export default function UsersPage() {
               <option value="super_admin">{t.roles.super_admin}</option>
             </select>
           </div>
-          <div className="filter-select-wrap">
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              className="bg-transparent border-none text-gray-900 dark:text-white text-sm outline-none cursor-pointer"
             >
               <option value="">{t.allStatus}</option>
               <option value="active">{t.status.active}</option>
@@ -170,7 +203,7 @@ export default function UsersPage() {
               <option value="banned">{t.status.banned}</option>
             </select>
           </div>
-          <button type="submit" className="search-btn">
+          <button type="submit" className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
             <Search size={16} />
             {t.search}
           </button>
@@ -178,74 +211,82 @@ export default function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="users-table-card">
-        <div className="table-wrap">
-          <table>
-            <thead>
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider font-semibold">
               <tr>
-                <th>{t.user}</th>
-                <th>{t.role}</th>
-                <th>{t.statusLabel}</th>
-                <th>{t.joined}</th>
-                <th className="actions-col">{t.actions}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 rtl:text-right">{t.user}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 rtl:text-right">{t.role}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 rtl:text-right">{t.statusLabel}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 rtl:text-right">{t.joined}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 text-right rtl:text-left">{t.actions}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="loading-cell">
-                    <div className="spinner" />
+                  <td colSpan={5} className="p-8">
+                    <div className="flex justify-center">
+                      <Loader2 size={32} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+                    </div>
                   </td>
                 </tr>
               ) : users?.data.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="empty-cell">
-                    <AlertCircle size={32} />
-                    <p>{t.noUsers}</p>
+                  <td colSpan={5} className="p-12">
+                    <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                      <AlertCircle size={32} className="mb-3 opacity-50" />
+                      <p className="text-lg">{t.noUsers}</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 users?.data.map((user) => (
-                  <tr key={user.id}>
-                    <td>
-                      <div className="user-cell">
-                        <div className="user-avatar">
+                  <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shadow-inner shrink-0">
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="user-name">{user.name}</p>
-                          <p className="user-email">{user.email}</p>
+                          <p className="font-semibold text-gray-900 dark:text-white leading-none mb-1">{user.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td>
-                      <span className={`role-badge ${user.role}`}>
+                    <td className="p-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold capitalize ${getRoleClasses(user.role)}`}>
                         {getRoleIcon(user.role)}
                         {getRoleLabel(user.role)}
                       </span>
                     </td>
-                    <td>
-                      <span className={`status-badge ${user.status}`}>
+                    <td className="p-4">
+                      <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold capitalize ${getStatusClasses(user.status)}`}>
                         {getStatusLabel(user.status)}
                       </span>
                     </td>
-                    <td className="date-cell">
-                      {new Date(user.created_at).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
+                    <td className="p-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                      {new Date(user.created_at).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
                     </td>
-                    <td className="actions-col">
-                      <div className="action-btns">
+                    <td className="p-4 text-right rtl:text-left">
+                      <div className="flex items-center justify-end rtl:justify-start gap-2">
                         {user.status === 'active' ? (
-                          <button onClick={() => handleSuspend(user.id)} className="action-btn suspend">
+                          <button onClick={() => handleSuspend(user.id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
                             <UserX size={14} />
                             {t.suspend}
                           </button>
                         ) : (
-                          <button onClick={() => handleActivate(user.id)} className="action-btn activate">
+                          <button onClick={() => handleActivate(user.id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
                             <UserCheck size={14} />
                             {t.activate}
                           </button>
                         )}
-                        <button onClick={() => handleDelete(user.id)} className="action-btn delete">
+                        <button onClick={() => handleDelete(user.id)} className="flex items-center justify-center p-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" title={t.deleteConfirm}>
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -259,15 +300,15 @@ export default function UsersPage() {
 
         {/* Pagination */}
         {users && users.last_page > 1 && (
-          <div className="pagination">
-            <p className="pagination-info">
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-100 dark:border-gray-700 gap-4 bg-gray-50/50 dark:bg-gray-800/30">
+            <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
               {t.showing} {((users.current_page - 1) * users.per_page) + 1} {t.to} {Math.min(users.current_page * users.per_page, users.total)} {t.of} {users.total} {t.users}
             </p>
-            <div className="pagination-btns">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="pagination-btn"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                 {t.previous}
@@ -275,7 +316,7 @@ export default function UsersPage() {
               <button
                 onClick={() => setPage(p => Math.min(users.last_page, p + 1))}
                 disabled={page === users.last_page}
-                className="pagination-btn"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {t.next}
                 {isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -284,376 +325,6 @@ export default function UsersPage() {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        .admin-users-page {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .filters-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 1rem;
-        }
-
-        .filters-form {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-        }
-
-        .search-input-wrap {
-          flex: 1;
-          min-width: 200px;
-          position: relative;
-        }
-
-        .search-input-wrap :global(.search-icon) {
-          position: absolute;
-          left: 0.75rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #94a3b8;
-        }
-
-        [dir="rtl"] .search-input-wrap :global(.search-icon) {
-          left: auto;
-          right: 0.75rem;
-        }
-
-        .search-input-wrap input {
-          width: 100%;
-          padding: 0.6rem 0.75rem 0.6rem 2.5rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          color: #1e293b;
-          font-size: 0.9rem;
-          transition: all 0.2s;
-        }
-
-        [dir="rtl"] .search-input-wrap input {
-          padding: 0.6rem 2.5rem 0.6rem 0.75rem;
-        }
-
-        .search-input-wrap input:focus {
-          outline: none;
-          border-color: #6366f1;
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .filter-select-wrap {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #64748b;
-        }
-
-        .filter-select-wrap select {
-          padding: 0.6rem 0.75rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          color: #1e293b;
-          font-size: 0.9rem;
-          cursor: pointer;
-          outline: none;
-        }
-
-        .search-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.6rem 1.25rem;
-          background: #6366f1;
-          border: none;
-          border-radius: 8px;
-          color: white;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-
-        .search-btn:hover {
-          background: #4f46e5;
-        }
-
-        .users-table-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          overflow: hidden;
-        }
-
-        .table-wrap {
-          overflow-x: auto;
-        }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        thead {
-          background: #f8fafc;
-        }
-
-        th {
-          padding: 0.75rem 1rem;
-          text-align: left;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #64748b;
-          text-transform: uppercase;
-        }
-
-        [dir="rtl"] th {
-          text-align: right;
-        }
-
-        th.actions-col {
-          text-align: right;
-        }
-
-        [dir="rtl"] th.actions-col {
-          text-align: left;
-        }
-
-        tbody tr {
-          border-top: 1px solid #e2e8f0;
-        }
-
-        tbody tr:hover {
-          background: #f8fafc;
-        }
-
-        td {
-          padding: 0.75rem 1rem;
-        }
-
-        .loading-cell, .empty-cell {
-          text-align: center;
-          padding: 3rem 1rem;
-          color: #64748b;
-        }
-
-        .empty-cell svg {
-          margin-bottom: 0.5rem;
-          opacity: 0.5;
-        }
-
-        .spinner {
-          width: 32px;
-          height: 32px;
-          border: 3px solid #e2e8f0;
-          border-top-color: #6366f1;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .user-cell {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .user-avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
-          background: #6366f1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 600;
-        }
-
-        .user-name {
-          color: #1e293b;
-          font-weight: 500;
-          margin: 0;
-        }
-
-        .user-email {
-          color: #64748b;
-          font-size: 0.8rem;
-          margin: 0;
-        }
-
-        .role-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.25rem 0.6rem;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 500;
-          text-transform: capitalize;
-        }
-
-        .role-badge.super_admin {
-          background: #f3e8ff;
-          color: #9333ea;
-        }
-
-        .role-badge.admin {
-          background: #dbeafe;
-          color: #2563eb;
-        }
-
-        .role-badge.user {
-          background: #f1f5f9;
-          color: #475569;
-        }
-
-        .status-badge {
-          display: inline-block;
-          padding: 0.25rem 0.6rem;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 500;
-          text-transform: capitalize;
-        }
-
-        .status-badge.active {
-          background: #dcfce7;
-          color: #16a34a;
-        }
-
-        .status-badge.suspended {
-          background: #fef3c7;
-          color: #d97706;
-        }
-
-        .status-badge.banned {
-          background: #fee2e2;
-          color: #dc2626;
-        }
-
-        .date-cell {
-          color: #64748b;
-          font-size: 0.85rem;
-        }
-
-        td.actions-col {
-          text-align: right;
-        }
-
-        [dir="rtl"] td.actions-col {
-          text-align: left;
-        }
-
-        .action-btns {
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 0.5rem;
-        }
-
-        [dir="rtl"] .action-btns {
-          justify-content: flex-start;
-        }
-
-        .action-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.4rem 0.75rem;
-          border: none;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-weight: 500;
-        }
-
-        .action-btn.suspend {
-          background: #fef3c7;
-          color: #d97706;
-        }
-
-        .action-btn.suspend:hover {
-          background: #fde68a;
-        }
-
-        .action-btn.activate {
-          background: #dcfce7;
-          color: #16a34a;
-        }
-
-        .action-btn.activate:hover {
-          background: #bbf7d0;
-        }
-
-        .action-btn.delete {
-          background: #fee2e2;
-          color: #dc2626;
-          padding: 0.4rem;
-        }
-
-        .action-btn.delete:hover {
-          background: #fecaca;
-        }
-
-        .pagination {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1rem;
-          border-top: 1px solid #e2e8f0;
-        }
-
-        .pagination-info {
-          color: #64748b;
-          font-size: 0.85rem;
-          margin: 0;
-        }
-
-        .pagination-btns {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .pagination-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.4rem 0.75rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          color: #64748b;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .pagination-btn:hover:not(:disabled) {
-          background: #e2e8f0;
-          color: #1e293b;
-        }
-
-        .pagination-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        @media (max-width: 768px) {
-          .pagination {
-            flex-direction: column;
-            gap: 0.75rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }

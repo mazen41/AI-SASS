@@ -17,7 +17,8 @@ import {
   UserCheck,
   AlertCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 
 export default function ActivityLogsPage() {
@@ -90,11 +91,11 @@ export default function ActivityLogsPage() {
   };
 
   const getActionStyle = (action: string) => {
-    if (action.includes('created')) return { bg: '#dcfce7', color: '#16a34a', icon: '#22c55e' };
-    if (action.includes('deleted')) return { bg: '#fee2e2', color: '#dc2626', icon: '#ef4444' };
-    if (action.includes('updated') || action.includes('activated')) return { bg: '#dbeafe', color: '#2563eb', icon: '#3b82f6' };
-    if (action.includes('suspended') || action.includes('canceled')) return { bg: '#fef3c7', color: '#d97706', icon: '#f59e0b' };
-    return { bg: '#f3f4f6', color: '#6b7280', icon: '#9ca3af' };
+    if (action.includes('created')) return { bg: 'bg-green-100 dark:bg-green-900/30', color: 'text-green-600 dark:text-green-400', icon: 'text-green-500 dark:text-green-400' };
+    if (action.includes('deleted')) return { bg: 'bg-red-100 dark:bg-red-900/30', color: 'text-red-600 dark:text-red-400', icon: 'text-red-500 dark:text-red-400' };
+    if (action.includes('updated') || action.includes('activated')) return { bg: 'bg-blue-100 dark:bg-blue-900/30', color: 'text-blue-600 dark:text-blue-400', icon: 'text-blue-500 dark:text-blue-400' };
+    if (action.includes('suspended') || action.includes('canceled')) return { bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400', icon: 'text-amber-500 dark:text-amber-400' };
+    return { bg: 'bg-gray-100 dark:bg-gray-800', color: 'text-gray-500 dark:text-gray-400', icon: 'text-gray-400 dark:text-gray-500' };
   };
 
   const getActionLabel = (action: string) => {
@@ -102,12 +103,13 @@ export default function ActivityLogsPage() {
   };
 
   return (
-    <div className="activity-page" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Filters */}
-      <div className="filters-card">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
         <select
           value={actionFilter}
           onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
+          className="w-full sm:w-auto px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer outline-none transition-all"
         >
           <option value="">{t.allActions}</option>
           <option value="user_created">{t.actions.user_created}</option>
@@ -127,43 +129,54 @@ export default function ActivityLogsPage() {
       </div>
 
       {/* Activity Logs */}
-      <div className="logs-card">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="loading-state">
-            <div className="spinner" />
+          <div className="flex items-center justify-center p-12">
+            <Loader2 size={32} className="animate-spin text-indigo-500" />
           </div>
         ) : logs?.data.length === 0 ? (
-          <div className="empty-state">
-            <AlertCircle size={32} />
-            <p>{t.noLogs}</p>
+          <div className="flex flex-col items-center justify-center text-center p-12 text-gray-500 dark:text-gray-400">
+            <AlertCircle size={48} className="mb-4 opacity-50" />
+            <p className="text-lg">{t.noLogs}</p>
           </div>
         ) : (
-          <div className="logs-list">
+          <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-700">
             {logs?.data.map((log) => {
               const style = getActionStyle(log.action);
               return (
-                <div key={log.id} className="log-item">
+                <div key={log.id} className="flex gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                   <div 
-                    className="log-icon"
-                    style={{ background: style.bg, color: style.icon }}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.bg} ${style.icon}`}
                   >
                     {getActionIcon(log.action)}
                   </div>
-                  <div className="log-content">
-                    <div className="log-header">
-                      <span className="log-user">{log.user?.name || 'System'}</span>
-                      <span className="log-action" style={{ color: style.color }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {log.user?.name || 'System'}
+                      </span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700/50 ${style.color}`}>
                         {getActionLabel(log.action)}
                       </span>
                       {log.entity_type && (
-                        <span className="log-entity">
-                          {t.on} {log.entity_type} #{log.entity_id}
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {t.on} <span className="font-medium text-gray-700 dark:text-gray-300">{log.entity_type} #{log.entity_id}</span>
                         </span>
                       )}
                     </div>
-                    <div className="log-meta">
-                      <span>{new Date(log.created_at).toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</span>
-                      {log.ip_address && <span>• {t.ip}: {log.ip_address}</span>}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="flex items-center gap-1">
+                        {new Date(log.created_at).toLocaleString(isRTL ? 'ar-SA' : 'en-US', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })}
+                      </span>
+                      {log.ip_address && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                          {t.ip}: <span className="font-mono">{log.ip_address}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -174,14 +187,15 @@ export default function ActivityLogsPage() {
 
         {/* Pagination */}
         {logs && logs.last_page > 1 && (
-          <div className="pagination">
-            <p className="pagination-info">
-              {t.page} {logs.current_page} {t.of} {logs.last_page}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {t.page} <span className="font-medium text-gray-900 dark:text-white">{logs.current_page}</span> {t.of} <span className="font-medium text-gray-900 dark:text-white">{logs.last_page}</span>
             </p>
-            <div className="pagination-btns">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 {isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                 {t.previous}
@@ -189,6 +203,7 @@ export default function ActivityLogsPage() {
               <button
                 onClick={() => setPage(p => Math.min(logs.last_page, p + 1))}
                 disabled={page === logs.last_page}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 {t.next}
                 {isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -197,177 +212,6 @@ export default function ActivityLogsPage() {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        .activity-page {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .filters-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 1rem;
-        }
-
-        .filters-card select {
-          padding: 0.5rem 0.75rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          color: #1e293b;
-          font-size: 0.9rem;
-          cursor: pointer;
-          outline: none;
-        }
-
-        .logs-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          overflow: hidden;
-        }
-
-        .loading-state, .empty-state {
-          text-align: center;
-          padding: 3rem 1rem;
-          color: #64748b;
-        }
-
-        .empty-state svg {
-          margin-bottom: 0.5rem;
-          opacity: 0.5;
-        }
-
-        .spinner {
-          width: 32px;
-          height: 32px;
-          border: 3px solid #e2e8f0;
-          border-top-color: #6366f1;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .logs-list {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .log-item {
-          display: flex;
-          gap: 0.75rem;
-          padding: 1rem;
-          border-bottom: 1px solid #e2e8f0;
-        }
-
-        .log-item:last-child {
-          border-bottom: none;
-        }
-
-        .log-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .log-content {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .log-header {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 0.25rem;
-        }
-
-        .log-user {
-          font-weight: 600;
-          color: #1e293b;
-        }
-
-        .log-action {
-          font-weight: 500;
-          padding: 0.15rem 0.5rem;
-          border-radius: 4px;
-          background: rgba(0,0,0,0.05);
-        }
-
-        .log-entity {
-          color: #64748b;
-          font-size: 0.85rem;
-        }
-
-        .log-meta {
-          display: flex;
-          gap: 1rem;
-          color: #94a3b8;
-          font-size: 0.8rem;
-        }
-
-        .pagination {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.75rem 1rem;
-          border-top: 1px solid #e2e8f0;
-        }
-
-        @media (max-width: 640px) {
-          .pagination {
-            flex-direction: column;
-            gap: 0.75rem;
-          }
-        }
-
-        .pagination-info {
-          color: #64748b;
-          font-size: 0.85rem;
-          margin: 0;
-        }
-
-        .pagination-btns {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .pagination-btns button {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.4rem 0.75rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          color: #64748b;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .pagination-btns button:hover:not(:disabled) {
-          background: #e2e8f0;
-          color: #1e293b;
-        }
-
-        .pagination-btns button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      `}</style>
     </div>
   );
 }

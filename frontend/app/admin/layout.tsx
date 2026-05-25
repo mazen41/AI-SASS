@@ -20,6 +20,7 @@ import {
   Server,
   Globe,
   Mail,
+  Loader2,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -58,29 +59,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="admin-loading" dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="admin-spinner" />
-        <style jsx>{`
-          .admin-loading {
-            min-height: 100vh;
-            background: #f8fafc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: default;
-          }
-          .admin-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e2e8f0;
-            border-top-color: #6366f1;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
+        <Loader2 size={40} className="animate-spin text-indigo-600" />
       </div>
     );
   }
@@ -99,357 +79,123 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="admin-shell" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex font-sans" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Mobile overlay */}
       {mobileMenuOpen && (
-        <div className="admin-overlay" onClick={() => setMobileMenuOpen(false)} />
+        <div 
+          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 lg:hidden transition-opacity" 
+          onClick={() => setMobileMenuOpen(false)} 
+        />
       )}
 
       {/* Sidebar */}
-      <aside className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <h1 className="sidebar-logo">StoryHero</h1>
-          <span className="sidebar-badge">{isRTL ? 'المدير' : 'Admin'}</span>
-          <button className="mobile-close" onClick={() => setMobileMenuOpen(false)}>
+      <aside className={`fixed inset-y-0 ${isRTL ? 'right-0' : 'left-0'} z-50 w-64 bg-white dark:bg-gray-800 border-x border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : (isRTL ? 'translate-x-full' : '-translate-x-full')} lg:static lg:shrink-0`}>
+        {/* Header */}
+        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate">StoryHero</h1>
+            <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 rounded-md shrink-0">
+              {isRTL ? 'المدير' : 'Admin'}
+            </span>
+          </div>
+          <button 
+            className="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors" 
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <X size={20} />
           </button>
         </div>
 
-        <nav className="sidebar-nav">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
+            
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`nav-item ${isActive ? 'active' : ''}`}
                 onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${
+                  isActive 
+                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400' 
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white'
+                }`}
               >
-                <Icon size={18} />
-                <span>{item.label}</span>
+                <Icon size={18} className={isActive ? 'text-indigo-700 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors'} />
+                {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="sidebar-footer">
-          <Link href="/" className="nav-item">
-            <Home size={18} />
-            <span>{isRTL ? 'العودة للموقع' : 'Back to Site'}</span>
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2 shrink-0">
+          <Link 
+            href="/" 
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white transition-all group"
+          >
+            <Home size={18} className="text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+            {isRTL ? 'العودة للموقع' : 'Back to Site'}
           </Link>
-          <button onClick={handleLogout} className="nav-item logout">
-            <LogOut size={18} />
-            <span>{isRTL ? 'تسجيل الخروج' : 'Logout'}</span>
+          <button 
+            onClick={handleLogout} 
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-all group"
+          >
+            <LogOut size={18} className="text-red-500 dark:text-red-400" />
+            {isRTL ? 'تسجيل الخروج' : 'Logout'}
           </button>
         </div>
       </aside>
 
-      {/* Main */}
-      <div className="admin-main">
-        <header className="admin-header">
-          <div className="header-left">
-            <button className="mobile-toggle" onClick={() => setMobileMenuOpen(true)}>
-              <Menu size={22} />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        {/* Top Header */}
+        <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 sticky top-0">
+          <div className="flex items-center gap-4">
+            <button 
+              className="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors p-1" 
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              <Menu size={24} />
             </button>
-            <h2 className="page-title">{currentPage?.label || (isRTL ? 'لوحة التحكم' : 'Dashboard')}</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white hidden sm:block truncate">
+              {currentPage?.label || (isRTL ? 'لوحة التحكم' : 'Dashboard')}
+            </h2>
           </div>
-          <div className="header-right">
-            <button onClick={toggleLocale} className="lang-switcher" title={isRTL ? 'Switch to English' : 'التبديل للعربية'}>
-              <Globe size={16} />
+
+          <div className="flex items-center gap-4">
+            {/* Language Switcher */}
+            <button 
+              onClick={toggleLocale} 
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-medium text-gray-600 dark:text-gray-300 transition-colors"
+              title={isRTL ? 'Switch to English' : 'التبديل للعربية'}
+            >
+              <Globe size={16} className="text-gray-500 dark:text-gray-400" />
               <span>{locale === 'ar' ? 'EN' : 'AR'}</span>
             </button>
-            <div className="user-info">
-              <div className="user-avatar">{user.name?.charAt(0).toUpperCase()}</div>
-              <span className="user-name">{user.name}</span>
+
+            {/* User Profile */}
+            <div className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-700">
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{user.name}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{user.role}</span>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-800 shadow-sm shrink-0">
+                {user.name?.charAt(0).toUpperCase()}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="admin-content">{children}</main>
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative">
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
+        </main>
       </div>
-
-      <style jsx global>{`
-        .admin-shell {
-          display: flex;
-          min-height: 100vh;
-          background: #f8fafc;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          cursor: default;
-        }
-
-        .admin-shell * {
-          cursor: inherit;
-        }
-
-        .admin-shell a, .admin-shell button {
-          cursor: pointer;
-        }
-
-        .admin-sidebar {
-          width: 240px;
-          background: #fff;
-          border-right: 1px solid #e2e8f0;
-          display: flex;
-          flex-direction: column;
-          position: fixed;
-          top: 0;
-          bottom: 0;
-          left: 0;
-          z-index: 100;
-          transition: transform 0.3s ease;
-        }
-
-        [dir="rtl"] .admin-sidebar {
-          left: auto;
-          right: 0;
-          border-right: none;
-          border-left: 1px solid #e2e8f0;
-        }
-
-        .sidebar-header {
-          padding: 1.25rem;
-          border-bottom: 1px solid #e2e8f0;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .sidebar-logo {
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin: 0;
-        }
-
-        .sidebar-badge {
-          font-size: 0.65rem;
-          background: #6366f1;
-          color: white;
-          padding: 0.15rem 0.4rem;
-          border-radius: 4px;
-          text-transform: uppercase;
-          font-weight: 600;
-        }
-
-        .mobile-close {
-          display: none;
-          margin-left: auto;
-          background: none;
-          border: none;
-          color: #64748b;
-          padding: 0.25rem;
-        }
-
-        [dir="rtl"] .mobile-close {
-          margin-left: 0;
-          margin-right: auto;
-        }
-
-        .sidebar-nav {
-          flex: 1;
-          padding: 0.75rem;
-          overflow-y: auto;
-        }
-
-        .nav-item {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.65rem 0.85rem;
-          border-radius: 6px;
-          color: #64748b;
-          text-decoration: none;
-          font-size: 0.875rem;
-          transition: all 0.15s;
-          border: none;
-          background: none;
-          width: 100%;
-          text-align: left;
-        }
-
-        [dir="rtl"] .nav-item {
-          text-align: right;
-        }
-
-        .nav-item:hover {
-          background: #f1f5f9;
-          color: #1e293b;
-        }
-
-        .nav-item.active {
-          background: #6366f1;
-          color: white;
-        }
-
-        .nav-item.logout {
-          color: #dc2626;
-        }
-
-        .nav-item.logout:hover {
-          background: #fef2f2;
-          color: #dc2626;
-        }
-
-        .sidebar-footer {
-          padding: 0.75rem;
-          border-top: 1px solid #e2e8f0;
-        }
-
-        .admin-main {
-          flex: 1;
-          margin-left: 240px;
-          display: flex;
-          flex-direction: column;
-          min-height: 100vh;
-        }
-
-        [dir="rtl"] .admin-main {
-          margin-left: 0;
-          margin-right: 240px;
-        }
-
-        .admin-header {
-          height: 60px;
-          background: #fff;
-          border-bottom: 1px solid #e2e8f0;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0 1.5rem;
-          position: sticky;
-          top: 0;
-          z-index: 50;
-        }
-
-        .header-left {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .mobile-toggle {
-          display: none;
-          background: none;
-          border: none;
-          color: #64748b;
-          padding: 0.25rem;
-        }
-
-        .page-title {
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin: 0;
-        }
-
-        .header-right {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .lang-switcher {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.4rem 0.75rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          color: #64748b;
-          font-size: 0.8rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .lang-switcher:hover {
-          background: #e2e8f0;
-          color: #1e293b;
-        }
-
-        .user-info {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .user-avatar {
-          width: 32px;
-          height: 32px;
-          background: #6366f1;
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 600;
-          font-size: 0.85rem;
-        }
-
-        .user-name {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #1e293b;
-        }
-
-        .admin-content {
-          flex: 1;
-          padding: 1.5rem;
-        }
-
-        .admin-overlay {
-          display: none;
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.3);
-          z-index: 90;
-        }
-
-        @media (max-width: 768px) {
-          .admin-sidebar {
-            transform: translateX(-100%);
-          }
-
-          [dir="rtl"] .admin-sidebar {
-            transform: translateX(100%);
-          }
-
-          .admin-sidebar.open {
-            transform: translateX(0);
-          }
-
-          .admin-overlay {
-            display: block;
-          }
-
-          .mobile-close {
-            display: block;
-          }
-
-          .mobile-toggle {
-            display: block;
-          }
-
-          .admin-main {
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-          }
-
-          .user-name {
-            display: none;
-          }
-
-          .admin-header {
-            padding: 0 1rem;
-          }
-
-          .admin-content {
-            padding: 1rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }
