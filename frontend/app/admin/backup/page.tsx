@@ -6,13 +6,11 @@ import { useLang } from '@/context/LangContext';
 import {
   Database,
   Download,
-  Settings,
   Server,
   Cloud,
   FolderOpen,
   Clock,
   Check,
-  AlertCircle,
   Loader2,
   RefreshCw,
   Eye,
@@ -63,7 +61,6 @@ export default function BackupPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
-  const [showJsonKey, setShowJsonKey] = useState(false);
   const [showS3Secret, setShowS3Secret] = useState(false);
 
   const [form, setForm] = useState({
@@ -111,7 +108,7 @@ export default function BackupPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const data: Record<string, any> = {
+      const data: Record<string, unknown> = {
         is_enabled: form.is_enabled,
         destination: form.destination,
         local_path: form.local_path,

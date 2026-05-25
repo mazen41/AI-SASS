@@ -20,7 +20,6 @@ import {
   EyeOff,
   Check,
   X,
-  ExternalLink,
   AlertTriangle,
   Lock,
   Zap,
@@ -267,7 +266,7 @@ export default function PaymentSettingsPage() {
     e.preventDefault();
     setSaving('s3');
     try {
-      const data: Record<string, any> = {
+      const data: Record<string, unknown> = {
         is_active: s3Form.is_active,
         region: s3Form.region,
         bucket: s3Form.bucket,
@@ -291,7 +290,7 @@ export default function PaymentSettingsPage() {
     e.preventDefault();
     setSaving('wasabi');
     try {
-      const data: Record<string, any> = {
+      const data: Record<string, unknown> = {
         is_active: wasabiForm.is_active,
         region: wasabiForm.region,
         bucket: wasabiForm.bucket,
