@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiGetUsers, apiSuspendUser, apiActivateUser, apiDeleteUser, AuthUser, PaginatedResponse } from '@/lib/api';
+import { useLang } from '@/context/LangContext';
 import {
   Search,
   Filter,
@@ -13,9 +14,49 @@ import {
   Shield,
   User,
   Crown,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function UsersPage() {
+  const { locale } = useLang();
+  const isRTL = locale === 'ar';
+  
+  const t = {
+    searchPlaceholder: isRTL ? 'البحث بالاسم أو البريد...' : 'Search by name or email...',
+    allRoles: isRTL ? 'جميع الأدوار' : 'All Roles',
+    allStatus: isRTL ? 'جميع الحالات' : 'All Status',
+    roles: {
+      user: isRTL ? 'مستخدم' : 'User',
+      admin: isRTL ? 'مدير' : 'Admin',
+      super_admin: isRTL ? 'مدير عام' : 'Super Admin',
+    },
+    status: {
+      active: isRTL ? 'نشط' : 'Active',
+      suspended: isRTL ? 'معلق' : 'Suspended',
+      banned: isRTL ? 'محظور' : 'Banned',
+    },
+    user: isRTL ? 'المستخدم' : 'User',
+    role: isRTL ? 'الدور' : 'Role',
+    statusLabel: isRTL ? 'الحالة' : 'Status',
+    joined: isRTL ? 'تاريخ الانضمام' : 'Joined',
+    actions: isRTL ? 'الإجراءات' : 'Actions',
+    search: isRTL ? 'بحث' : 'Search',
+    suspend: isRTL ? 'تعليق' : 'Suspend',
+    activate: isRTL ? 'تفعيل' : 'Activate',
+    suspendConfirm: isRTL ? 'هل أنت متأكد من تعليق هذا المستخدم؟' : 'Are you sure you want to suspend this user?',
+    deleteConfirm: isRTL ? 'هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to delete this user? This action cannot be undone.',
+    suspendError: isRTL ? 'فشل تعليق المستخدم' : 'Failed to suspend user',
+    activateError: isRTL ? 'فشل تفعيل المستخدم' : 'Failed to activate user',
+    deleteError: isRTL ? 'فشل حذف المستخدم' : 'Failed to delete user',
+    noUsers: isRTL ? 'لا يوجد مستخدمين' : 'No users found',
+    previous: isRTL ? 'السابق' : 'Previous',
+    next: isRTL ? 'التالي' : 'Next',
+    showing: isRTL ? 'عرض' : 'Showing',
+    to: isRTL ? 'إلى' : 'to',
+    of: isRTL ? 'من' : 'of',
+    users: isRTL ? 'مستخدمين' : 'users',
+  };
+
   const [users, setUsers] = useState<PaginatedResponse<AuthUser> | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,12 +91,12 @@ export default function UsersPage() {
   };
 
   const handleSuspend = async (id: number) => {
-    if (!confirm('Are you sure you want to suspend this user?')) return;
+    if (!confirm(t.suspendConfirm)) return;
     try {
       await apiSuspendUser(id);
       refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to suspend user');
+      alert(err instanceof Error ? err.message : t.suspendError);
     }
   };
 
@@ -64,17 +105,17 @@ export default function UsersPage() {
       await apiActivateUser(id);
       refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to activate user');
+      alert(err instanceof Error ? err.message : t.activateError);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    if (!confirm(t.deleteConfirm)) return;
     try {
       await apiDeleteUser(id);
       refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete user');
+      alert(err instanceof Error ? err.message : t.deleteError);
     }
   };
 
@@ -84,8 +125,16 @@ export default function UsersPage() {
     return <User size={14} />;
   };
 
+  const getRoleLabel = (role: string) => {
+    return t.roles[role as keyof typeof t.roles] || role.replace('_', ' ');
+  };
+
+  const getStatusLabel = (status: string) => {
+    return t.status[status as keyof typeof t.status] || status;
+  };
+
   return (
-    <div className="admin-users-page">
+    <div className="admin-users-page" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Filters */}
       <div className="filters-card">
         <form onSubmit={handleSearch} className="filters-form">
@@ -93,7 +142,7 @@ export default function UsersPage() {
             <Search size={18} className="search-icon" />
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder={t.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -104,10 +153,10 @@ export default function UsersPage() {
               value={roleFilter}
               onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
             >
-              <option value="">All Roles</option>
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-              <option value="super_admin">Super Admin</option>
+              <option value="">{t.allRoles}</option>
+              <option value="user">{t.roles.user}</option>
+              <option value="admin">{t.roles.admin}</option>
+              <option value="super_admin">{t.roles.super_admin}</option>
             </select>
           </div>
           <div className="filter-select-wrap">
@@ -115,15 +164,15 @@ export default function UsersPage() {
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
             >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-              <option value="banned">Banned</option>
+              <option value="">{t.allStatus}</option>
+              <option value="active">{t.status.active}</option>
+              <option value="suspended">{t.status.suspended}</option>
+              <option value="banned">{t.status.banned}</option>
             </select>
           </div>
           <button type="submit" className="search-btn">
             <Search size={16} />
-            Search
+            {t.search}
           </button>
         </form>
       </div>
@@ -134,11 +183,11 @@ export default function UsersPage() {
           <table>
             <thead>
               <tr>
-                <th>User</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Joined</th>
-                <th className="actions-col">Actions</th>
+                <th>{t.user}</th>
+                <th>{t.role}</th>
+                <th>{t.statusLabel}</th>
+                <th>{t.joined}</th>
+                <th className="actions-col">{t.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -150,7 +199,10 @@ export default function UsersPage() {
                 </tr>
               ) : users?.data.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="empty-cell">No users found</td>
+                  <td colSpan={5} className="empty-cell">
+                    <AlertCircle size={32} />
+                    <p>{t.noUsers}</p>
+                  </td>
                 </tr>
               ) : (
                 users?.data.map((user) => (
@@ -169,28 +221,28 @@ export default function UsersPage() {
                     <td>
                       <span className={`role-badge ${user.role}`}>
                         {getRoleIcon(user.role)}
-                        {user.role.replace('_', ' ')}
+                        {getRoleLabel(user.role)}
                       </span>
                     </td>
                     <td>
                       <span className={`status-badge ${user.status}`}>
-                        {user.status}
+                        {getStatusLabel(user.status)}
                       </span>
                     </td>
                     <td className="date-cell">
-                      {new Date(user.created_at).toLocaleDateString()}
+                      {new Date(user.created_at).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
                     </td>
                     <td className="actions-col">
                       <div className="action-btns">
                         {user.status === 'active' ? (
                           <button onClick={() => handleSuspend(user.id)} className="action-btn suspend">
                             <UserX size={14} />
-                            Suspend
+                            {t.suspend}
                           </button>
                         ) : (
                           <button onClick={() => handleActivate(user.id)} className="action-btn activate">
                             <UserCheck size={14} />
-                            Activate
+                            {t.activate}
                           </button>
                         )}
                         <button onClick={() => handleDelete(user.id)} className="action-btn delete">
@@ -209,7 +261,7 @@ export default function UsersPage() {
         {users && users.last_page > 1 && (
           <div className="pagination">
             <p className="pagination-info">
-              Showing {((users.current_page - 1) * users.per_page) + 1} to {Math.min(users.current_page * users.per_page, users.total)} of {users.total} users
+              {t.showing} {((users.current_page - 1) * users.per_page) + 1} {t.to} {Math.min(users.current_page * users.per_page, users.total)} {t.of} {users.total} {t.users}
             </p>
             <div className="pagination-btns">
               <button
@@ -217,16 +269,16 @@ export default function UsersPage() {
                 disabled={page === 1}
                 className="pagination-btn"
               >
-                <ChevronLeft size={16} />
-                Previous
+                {isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                {t.previous}
               </button>
               <button
                 onClick={() => setPage(p => Math.min(users.last_page, p + 1))}
                 disabled={page === users.last_page}
                 className="pagination-btn"
               >
-                Next
-                <ChevronRight size={16} />
+                {t.next}
+                {isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
               </button>
             </div>
           </div>

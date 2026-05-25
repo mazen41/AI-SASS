@@ -18,11 +18,12 @@ import {
   X,
   Home,
   Server,
+  Globe,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
-  const { locale } = useLang();
+  const { locale, toggleLocale } = useLang();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -152,6 +153,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <h2 className="page-title">{currentPage?.label || (isRTL ? 'لوحة التحكم' : 'Dashboard')}</h2>
           </div>
           <div className="header-right">
+            <button onClick={toggleLocale} className="lang-switcher" title={isRTL ? 'Switch to English' : 'التبديل للعربية'}>
+              <Globe size={16} />
+              <span>{locale === 'ar' ? 'EN' : 'AR'}</span>
+            </button>
             <div className="user-info">
               <div className="user-avatar">{user.name?.charAt(0).toUpperCase()}</div>
               <span className="user-name">{user.name}</span>
@@ -340,6 +345,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           display: flex;
           align-items: center;
           gap: 1rem;
+        }
+
+        .lang-switcher {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.4rem 0.75rem;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          color: #64748b;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .lang-switcher:hover {
+          background: #e2e8f0;
+          color: #1e293b;
         }
 
         .user-info {
