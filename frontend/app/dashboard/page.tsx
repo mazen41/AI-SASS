@@ -6,7 +6,7 @@ import { motion, Variants } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
-import { apiGetStories, Story } from '@/lib/api';
+import { apiGetStories, Story, apiGetActiveSubscription, Subscription } from '@/lib/api';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
@@ -35,17 +35,23 @@ export default function DashboardPage() {
     if (!isLoggedIn) router.push('/login');
   }, [isLoggedIn, router]);
 
+  const [activeSub, setActiveSub] = useState<Subscription | null>(null);
+
   useEffect(() => {
     if (!isLoggedIn) return;
-    const loadStories = async () => {
+    const loadDashboardData = async () => {
       try {
-        const data = await apiGetStories();
-        setStories(data.data || []);
+        const [storiesData, subData] = await Promise.all([
+          apiGetStories(),
+          apiGetActiveSubscription()
+        ]);
+        setStories(storiesData.data || []);
+        setActiveSub(subData.subscription);
       } catch {
         setStories([]);
       }
     };
-    loadStories();
+    loadDashboardData();
   }, [isLoggedIn]);
 
   if (!isLoggedIn) return null;
@@ -234,16 +240,33 @@ export default function DashboardPage() {
                 </div>
                 <p className="widget-title">{locale === 'ar' ? 'الحساب' : 'Account'}</p>
               </div>
-              <div>
-                <p style={{ color: 'var(--text-2)', fontSize: '0.88rem', margin: '0 0 0.25rem', fontWeight: 600 }}>
-                  {user?.name}
-                </p>
-                <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', margin: '0 0 1rem' }}>
-                  {user?.email}
-                </p>
-                <span className="plan-badge">
-                  {locale === 'ar' ? 'مجاني' : 'FREE PLAN'}
-                </span>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+                <div>
+                  <p style={{ color: 'var(--text-2)', fontSize: '0.88rem', margin: '0 0 0.25rem', fontWeight: 600 }}>
+                    {user?.name}
+                  </p>
+                  <p style={{ color: 'var(--text-3)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
+                    {user?.email}
+                  </p>
+                  <span className="plan-badge" style={{ textTransform: 'uppercase' }}>
+                    {activeSub ? activeSub.plan?.name : (locale === 'ar' ? 'الخطة المجانية' : 'FREE PLAN')}
+                  </span>
+                </div>
+                <Link
+                  href="/billing"
+                  style={{
+                    color: 'var(--k-blue)',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    marginTop: '1rem',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem'
+                  }}
+                >
+                  {activeSub ? (locale === 'ar' ? 'إدارة الاشتراك ←' : 'Manage subscription →') : (locale === 'ar' ? 'ترقية الخطة ←' : 'Upgrade plan →')}
+                </Link>
               </div>
             </motion.div>
 

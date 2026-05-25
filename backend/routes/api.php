@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PaymentSettingsController;
+use App\Http\Controllers\Admin\StorageSettingsController;
+use App\Http\Controllers\Admin\BackupSettingsController;
 use App\Http\Controllers\Admin\SubscriptionController;
 use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\ActivityLogController;
@@ -13,6 +15,7 @@ use App\Http\Controllers\Admin\MailController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use App\Http\Controllers\Webhook\PaypalWebhookController;
 use App\Http\Controllers\StoryController;
+use App\Http\Controllers\BillingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,6 +32,9 @@ Route::post('/login',    [AuthController::class, 'login']);
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
 Route::post('/webhooks/paypal', [PaypalWebhookController::class, 'handle']);
 
+// Backup download (uses api_token query param for authentication)
+Route::get('/admin/backup-settings/download', [BackupSettingsController::class, 'downloadBackup']);
+
 // Protected routes — require valid Sanctum token
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -41,6 +47,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/stories/{story}', [StoryController::class, 'update']);
     Route::delete('/stories/{story}', [StoryController::class, 'destroy']);
     Route::post('/stories/{story}/generate', [StoryController::class, 'generate']);
+
+    // Billing
+    Route::get('/billing/plans', [BillingController::class, 'plans']);
+    Route::get('/billing/subscription', [BillingController::class, 'activeSubscription']);
+    Route::post('/billing/subscribe/stripe', [BillingController::class, 'subscribeStripe']);
+    Route::post('/billing/subscribe/paypal', [BillingController::class, 'subscribePaypal']);
+    Route::post('/billing/subscription/cancel', [BillingController::class, 'cancelSubscription']);
 
     // Super Admin routes
     Route::middleware('super_admin')->prefix('admin')->group(function () {
@@ -67,6 +80,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/payment-settings', [PaymentSettingsController::class, 'index']);
         Route::put('/payment-settings/{gateway}', [PaymentSettingsController::class, 'update']);
         Route::post('/payment-settings/{gateway}/test', [PaymentSettingsController::class, 'testConnection']);
+
+        // Storage Settings
+        Route::get('/storage-settings', [StorageSettingsController::class, 'index']);
+        Route::put('/storage-settings/{driver}', [StorageSettingsController::class, 'update']);
+        Route::post('/storage-settings/{driver}/test', [StorageSettingsController::class, 'testConnection']);
+
+        // Backup Settings
+        Route::get('/backup-settings', [BackupSettingsController::class, 'index']);
+        Route::put('/backup-settings', [BackupSettingsController::class, 'update']);
+        Route::post('/backup-settings/run', [BackupSettingsController::class, 'runBackup']);
 
         // Subscriptions Management
         Route::get('/subscriptions', [SubscriptionController::class, 'index']);

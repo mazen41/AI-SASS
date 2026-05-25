@@ -60,8 +60,12 @@ class StoryController extends Controller
 
         // Handle photo upload
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('stories/photos', 'public');
-            $data['photo_url'] = asset('storage/' . $path);
+            $disk = config('filesystems.default');
+            $path = $request->file('photo')->store('stories/photos', [
+                'disk' => $disk,
+                'visibility' => 'public'
+            ]);
+            $data['photo_url'] = Storage::disk($disk)->url($path);
         }
 
         $story = Story::create($data);
@@ -157,8 +161,14 @@ class StoryController extends Controller
 
         // Delete photo if exists
         if ($story->photo_url) {
-            $path = str_replace(asset('storage/'), '', $story->photo_url);
-            Storage::disk('public')->delete($path);
+            $disk = config('filesystems.default');
+            if (preg_match('/stories\/photos\/.+$/', $story->photo_url, $matches)) {
+                $path = $matches[0];
+                Storage::disk($disk)->delete($path);
+            } else {
+                $path = str_replace(asset('storage/'), '', $story->photo_url);
+                Storage::disk('public')->delete($path);
+            }
         }
 
         $story->delete();

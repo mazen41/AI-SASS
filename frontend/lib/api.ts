@@ -481,3 +481,114 @@ export async function apiGetMailLogs(params?: Record<string, string>): Promise<P
   const query = params ? '?' + new URLSearchParams(params).toString() : '';
   return apiFetch<PaginatedResponse<MailLog>>(`/admin/mail-logs${query}`);
 }
+
+// ── Storage Settings ─────────────────────────────────────────────────────────
+
+export interface StorageGatewaySettings {
+  id: number;
+  driver: string;
+  is_active: boolean;
+  region: string | null;
+  bucket: string | null;
+  endpoint: string | null;
+  use_path_style_endpoint: boolean;
+  has_key: boolean;
+  has_secret: boolean;
+}
+
+export interface StorageSettings {
+  local: StorageGatewaySettings;
+  s3: StorageGatewaySettings;
+  wasabi: StorageGatewaySettings;
+}
+
+export async function apiGetStorageSettings(): Promise<{ settings: StorageSettings }> {
+  return apiFetch<{ settings: StorageSettings }>('/admin/storage-settings');
+}
+
+export async function apiUpdateStorageSettings(
+  driver: string,
+  data: Partial<StorageGatewaySettings> & { key?: string; secret?: string }
+): Promise<{ setting: StorageGatewaySettings }> {
+  return apiFetch<{ setting: StorageGatewaySettings }>(`/admin/storage-settings/${driver}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiTestStorageConnection(driver: string): Promise<{ success: boolean; message: string }> {
+  return apiFetch<{ success: boolean; message: string }>(`/admin/storage-settings/${driver}/test`, {
+    method: 'POST',
+  });
+}
+
+// ── Backup Settings ──────────────────────────────────────────────────────────
+
+export interface BackupSettings {
+  id: number;
+  is_enabled: boolean;
+  destination: 'local' | 's3' | 'wasabi' | 'google_drive';
+  local_path: string;
+  region: string | null;
+  bucket: string | null;
+  endpoint: string | null;
+  google_folder_id: string | null;
+  backup_time: string;
+  has_s3_key: boolean;
+  has_s3_secret: boolean;
+  has_google_json_key: boolean;
+}
+
+export async function apiGetBackupSettings(): Promise<{ settings: BackupSettings }> {
+  return apiFetch<{ settings: BackupSettings }>('/admin/backup-settings');
+}
+
+export async function apiUpdateBackupSettings(
+  data: Partial<BackupSettings> & { s3_key?: string; s3_secret?: string; google_json_key?: string }
+): Promise<{ settings: BackupSettings }> {
+  return apiFetch<{ settings: BackupSettings }>('/admin/backup-settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiRunBackup(): Promise<{ success: boolean; message: string }> {
+  return apiFetch<{ success: boolean; message: string }>('/admin/backup-settings/run', {
+    method: 'POST',
+  });
+}
+
+export function apiGetDownloadBackupUrl(): string {
+  const token = getToken();
+  return `${API_URL}/admin/backup-settings/download${token ? `?api_token=${token}` : ''}`;
+}
+
+// ── User Billing ─────────────────────────────────────────────────────────────
+
+export async function apiGetBillingPlans(): Promise<{ plans: Plan[] }> {
+  return apiFetch<{ plans: Plan[] }>('/billing/plans');
+}
+
+export async function apiGetActiveSubscription(): Promise<{ subscription: Subscription | null }> {
+  return apiFetch<{ subscription: Subscription | null }>('/billing/subscription');
+}
+
+export async function apiSubscribeStripe(planId: number): Promise<{ url: string }> {
+  return apiFetch<{ url: string }>('/billing/subscribe/stripe', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId }),
+  });
+}
+
+export async function apiSubscribePaypal(planId: number): Promise<{ url: string }> {
+  return apiFetch<{ url: string }>('/billing/subscribe/paypal', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId }),
+  });
+}
+
+export async function apiUserCancelSubscription(): Promise<{ message: string; subscription: Subscription }> {
+  return apiFetch<{ message: string; subscription: Subscription }>('/billing/subscription/cancel', {
+    method: 'POST',
+  });
+}

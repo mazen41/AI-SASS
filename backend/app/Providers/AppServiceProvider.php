@@ -19,6 +19,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('storage_settings')) {
+                $setting = \App\Models\StorageSetting::getActive();
+                if ($setting) {
+                    $setting->applyConfiguration();
+                }
+            }
+        } catch (\Exception $e) {
+            // Avoid failing during migrations or database connection issues
+        }
     }
 }

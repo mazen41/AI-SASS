@@ -21,6 +21,7 @@ import {
   Globe,
   Mail,
   Loader2,
+  Database,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/transactions', label: isRTL ? 'المعاملات' : 'Transactions', icon: CreditCard },
     { href: '/admin/payments', label: isRTL ? 'التكاملات' : 'Integrations', icon: Settings },
     { href: '/admin/email', label: isRTL ? 'البريد' : 'Email', icon: Mail },
+    { href: '/admin/backup', label: isRTL ? 'النسخ الاحتياطي' : 'Backups', icon: Database },
     { href: '/admin/activity', label: isRTL ? 'سجل النشاط' : 'Activity', icon: Activity },
     { href: '/admin/system', label: isRTL ? 'صحة النظام' : 'System Health', icon: Server },
   ];
