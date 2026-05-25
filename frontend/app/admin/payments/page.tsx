@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiGetPaymentSettings, apiUpdatePaymentSettings, apiTestPaymentConnection, PaymentSettings } from '@/lib/api';
+import { useLang } from '@/context/LangContext';
 import {
   CreditCard,
   Wallet,
@@ -19,6 +20,40 @@ import {
 } from 'lucide-react';
 
 export default function PaymentSettingsPage() {
+  const { locale } = useLang();
+  const isRTL = locale === 'ar';
+  
+  const t = {
+    securityNotice: isRTL ? 'ملاحظة أمان: مفاتيح API مشفرة في الراحة. المفاتيح السرية لا تظهر أبداً بعد الحفظ. استخدم دائماً مفاتيح الاختبار/الرملية أثناء التطوير.' : 'Security Notice: API keys are encrypted at rest. Secret keys are never displayed after saving. Always use sandbox/test keys during development.',
+    stripe: isRTL ? 'Stripe' : 'Stripe',
+    paypal: isRTL ? 'PayPal' : 'PayPal',
+    enabled: isRTL ? 'مفعل' : 'Enabled',
+    disabled: isRTL ? 'غير مفعل' : 'Disabled',
+    sandbox: isRTL ? 'وضع الرمل' : 'Sandbox',
+    enableStripe: isRTL ? 'تفعيل Stripe' : 'Enable Stripe',
+    enablePaypal: isRTL ? 'تفعيل PayPal' : 'Enable PayPal',
+    sandboxMode: isRTL ? 'وضع الرمل' : 'Sandbox Mode',
+    publishableKey: isRTL ? 'المفتاح العام' : 'Publishable Key',
+    secretKey: isRTL ? 'المفتاح السري' : 'Secret Key',
+    configured: isRTL ? 'مكون' : 'Configured',
+    webhookSecret: isRTL ? 'سر webhook' : 'Webhook Secret',
+    webhookUrl: isRTL ? 'رابط Webhook' : 'Webhook URL',
+    copy: isRTL ? 'نسخ' : 'Copy',
+    copied: isRTL ? 'تم النسخ!' : 'Copied!',
+    saveSettings: isRTL ? 'حفظ الإعدادات' : 'Save Settings',
+    saving: isRTL ? 'جاري الحفظ...' : 'Saving...',
+    testConnection: isRTL ? 'اختبار الاتصال' : 'Test Connection',
+    testing: isRTL ? 'جاري الاختبار...' : 'Testing...',
+    saveSuccess: isRTL ? 'تم حفظ الإعدادات بنجاح!' : 'Settings saved successfully!',
+    saveError: isRTL ? 'فشل حفظ الإعدادات' : 'Failed to save settings',
+    testError: isRTL ? 'فشل اختبار الاتصال' : 'Connection test failed',
+    placeholder: {
+      publicKey: isRTL ? 'pk_test_...' : 'pk_test_...',
+      secretKey: isRTL ? 'sk_test_... (اتركه فارغاً للإبقاء على الحالي)' : 'sk_test_... (leave empty to keep current)',
+      webhookSecret: isRTL ? 'whsec_... (اتركه فارغاً للإبقاء على الحالي)' : 'whsec_... (leave empty to keep current)',
+    },
+  };
+
   const [settings, setSettings] = useState<PaymentSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -83,10 +118,10 @@ export default function PaymentSettingsPage() {
       if (stripeForm.webhook_secret) data.webhook_secret = stripeForm.webhook_secret;
       
       await apiUpdatePaymentSettings('stripe', data);
-      alert('Stripe settings saved successfully!');
+      alert(t.saveSuccess);
       window.location.reload();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save Stripe settings');
+      alert(err instanceof Error ? err.message : t.saveError);
     } finally {
       setSaving(null);
     }
@@ -105,10 +140,10 @@ export default function PaymentSettingsPage() {
       if (paypalForm.webhook_secret) data.webhook_secret = paypalForm.webhook_secret;
       
       await apiUpdatePaymentSettings('paypal', data);
-      alert('PayPal settings saved successfully!');
+      alert(t.saveSuccess);
       window.location.reload();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save PayPal settings');
+      alert(err instanceof Error ? err.message : t.saveError);
     } finally {
       setSaving(null);
     }
@@ -120,7 +155,7 @@ export default function PaymentSettingsPage() {
       const result = await apiTestPaymentConnection(gateway);
       alert(result.message);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Connection test failed');
+      alert(err instanceof Error ? err.message : t.testError);
     } finally {
       setTesting(null);
     }
@@ -145,14 +180,11 @@ export default function PaymentSettingsPage() {
   }
 
   return (
-    <div className="integrations-page">
+    <div className="integrations-page" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Security Notice */}
       <div className="security-notice">
         <Shield size={20} />
-        <div>
-          <strong>Security Notice:</strong> API keys are encrypted at rest. Secret keys are never displayed after saving.
-          Always use sandbox/test keys during development.
-        </div>
+        <div><strong>{isRTL ? 'ملاحظة أمان:' : 'Security Notice:'}</strong> {t.securityNotice}</div>
       </div>
 
       <div className="integrations-grid">
@@ -163,15 +195,15 @@ export default function PaymentSettingsPage() {
               <CreditCard size={24} />
             </div>
             <div className="integration-info">
-              <h3>Stripe</h3>
+              <h3>{t.stripe}</h3>
               <div className="integration-status">
                 {settings?.stripe?.is_enabled ? (
-                  <span className="status-badge enabled"><Check size={12} /> Enabled</span>
+                  <span className="status-badge enabled"><Check size={12} /> {t.enabled}</span>
                 ) : (
-                  <span className="status-badge disabled"><X size={12} /> Disabled</span>
+                  <span className="status-badge disabled"><X size={12} /> {t.disabled}</span>
                 )}
                 {settings?.stripe?.is_sandbox && (
-                  <span className="status-badge sandbox"><AlertTriangle size={12} /> Sandbox</span>
+                  <span className="status-badge sandbox"><AlertTriangle size={12} /> {t.sandbox}</span>
                 )}
               </div>
             </div>
@@ -186,7 +218,7 @@ export default function PaymentSettingsPage() {
                   onChange={(e) => setStripeForm({ ...stripeForm, is_enabled: e.target.checked })}
                 />
                 <span className="toggle-switch" />
-                Enable Stripe
+                {t.enableStripe}
               </label>
               <label className="toggle-label">
                 <input
@@ -195,31 +227,31 @@ export default function PaymentSettingsPage() {
                   onChange={(e) => setStripeForm({ ...stripeForm, is_sandbox: e.target.checked })}
                 />
                 <span className="toggle-switch" />
-                Sandbox Mode
+                {t.sandboxMode}
               </label>
             </div>
 
             <div className="form-group">
-              <label>Publishable Key</label>
+              <label>{t.publishableKey}</label>
               <input
                 type="text"
                 value={stripeForm.public_key}
                 onChange={(e) => setStripeForm({ ...stripeForm, public_key: e.target.value })}
-                placeholder="pk_test_..."
+                placeholder={t.placeholder.publicKey}
               />
             </div>
 
             <div className="form-group">
               <label>
-                Secret Key
-                {settings?.stripe?.has_secret_key && <span className="key-set"><Lock size={12} /> Configured</span>}
+                {t.secretKey}
+                {settings?.stripe?.has_secret_key && <span className="key-set"><Lock size={12} /> {t.configured}</span>}
               </label>
               <div className="input-with-toggle">
                 <input
                   type={showStripeSecret ? 'text' : 'password'}
                   value={stripeForm.secret_key}
                   onChange={(e) => setStripeForm({ ...stripeForm, secret_key: e.target.value })}
-                  placeholder="sk_test_... (leave empty to keep current)"
+                  placeholder={t.placeholder.secretKey}
                 />
                 <button type="button" onClick={() => setShowStripeSecret(!showStripeSecret)} className="toggle-visibility">
                   {showStripeSecret ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -229,27 +261,27 @@ export default function PaymentSettingsPage() {
 
             <div className="form-group">
               <label>
-                Webhook Secret
-                {settings?.stripe?.has_webhook_secret && <span className="key-set"><Lock size={12} /> Configured</span>}
+                {t.webhookSecret}
+                {settings?.stripe?.has_webhook_secret && <span className="key-set"><Lock size={12} /> {t.configured}</span>}
               </label>
               <input
                 type="password"
                 value={stripeForm.webhook_secret}
                 onChange={(e) => setStripeForm({ ...stripeForm, webhook_secret: e.target.value })}
-                placeholder="whsec_... (leave empty to keep current)"
+                placeholder={t.placeholder.webhookSecret}
               />
             </div>
 
             <div className="webhook-url-box">
               <div className="webhook-url-header">
-                <span>Webhook URL</span>
+                <span>{t.webhookUrl}</span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(settings?.stripe?.webhook_url || '', 'stripe-webhook')}
                   className="copy-btn"
                 >
                   {copied === 'stripe-webhook' ? <CheckCircle size={14} /> : <Copy size={14} />}
-                  {copied === 'stripe-webhook' ? 'Copied!' : 'Copy'}
+                  {copied === 'stripe-webhook' ? t.copied : t.copy}
                 </button>
               </div>
               <code>{settings?.stripe?.webhook_url}</code>
@@ -257,7 +289,7 @@ export default function PaymentSettingsPage() {
 
             <div className="form-actions">
               <button type="submit" disabled={saving === 'stripe'} className="btn-primary">
-                {saving === 'stripe' ? 'Saving...' : 'Save Settings'}
+                {saving === 'stripe' ? t.saving : t.saveSettings}
               </button>
               <button
                 type="button"
@@ -266,7 +298,7 @@ export default function PaymentSettingsPage() {
                 className="btn-secondary"
               >
                 <Zap size={16} />
-                {testing === 'stripe' ? 'Testing...' : 'Test Connection'}
+                {testing === 'stripe' ? t.testing : t.testConnection}
               </button>
             </div>
           </form>
@@ -279,15 +311,15 @@ export default function PaymentSettingsPage() {
               <Wallet size={24} />
             </div>
             <div className="integration-info">
-              <h3>PayPal</h3>
+              <h3>{t.paypal}</h3>
               <div className="integration-status">
                 {settings?.paypal?.is_enabled ? (
-                  <span className="status-badge enabled"><Check size={12} /> Enabled</span>
+                  <span className="status-badge enabled"><Check size={12} /> {t.enabled}</span>
                 ) : (
-                  <span className="status-badge disabled"><X size={12} /> Disabled</span>
+                  <span className="status-badge disabled"><X size={12} /> {t.disabled}</span>
                 )}
                 {settings?.paypal?.is_sandbox && (
-                  <span className="status-badge sandbox"><AlertTriangle size={12} /> Sandbox</span>
+                  <span className="status-badge sandbox"><AlertTriangle size={12} /> {t.sandbox}</span>
                 )}
               </div>
             </div>
@@ -302,7 +334,7 @@ export default function PaymentSettingsPage() {
                   onChange={(e) => setPaypalForm({ ...paypalForm, is_enabled: e.target.checked })}
                 />
                 <span className="toggle-switch" />
-                Enable PayPal
+                {t.enablePaypal}
               </label>
               <label className="toggle-label">
                 <input
@@ -311,31 +343,31 @@ export default function PaymentSettingsPage() {
                   onChange={(e) => setPaypalForm({ ...paypalForm, is_sandbox: e.target.checked })}
                 />
                 <span className="toggle-switch" />
-                Sandbox Mode
+                {t.sandboxMode}
               </label>
             </div>
 
             <div className="form-group">
-              <label>Client ID</label>
+              <label>{t.publishableKey}</label>
               <input
                 type="text"
                 value={paypalForm.public_key}
                 onChange={(e) => setPaypalForm({ ...paypalForm, public_key: e.target.value })}
-                placeholder="Client ID from PayPal Developer"
+                placeholder="Client ID"
               />
             </div>
 
             <div className="form-group">
               <label>
-                Client Secret
-                {settings?.paypal?.has_secret_key && <span className="key-set"><Lock size={12} /> Configured</span>}
+                {t.secretKey}
+                {settings?.paypal?.has_secret_key && <span className="key-set"><Lock size={12} /> {t.configured}</span>}
               </label>
               <div className="input-with-toggle">
                 <input
                   type={showPaypalSecret ? 'text' : 'password'}
                   value={paypalForm.secret_key}
                   onChange={(e) => setPaypalForm({ ...paypalForm, secret_key: e.target.value })}
-                  placeholder="Client Secret (leave empty to keep current)"
+                  placeholder="Client Secret"
                 />
                 <button type="button" onClick={() => setShowPaypalSecret(!showPaypalSecret)} className="toggle-visibility">
                   {showPaypalSecret ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -345,27 +377,27 @@ export default function PaymentSettingsPage() {
 
             <div className="form-group">
               <label>
-                Webhook ID
-                {settings?.paypal?.has_webhook_secret && <span className="key-set"><Lock size={12} /> Configured</span>}
+                {t.webhookSecret}
+                {settings?.paypal?.has_webhook_secret && <span className="key-set"><Lock size={12} /> {t.configured}</span>}
               </label>
               <input
                 type="text"
                 value={paypalForm.webhook_secret}
                 onChange={(e) => setPaypalForm({ ...paypalForm, webhook_secret: e.target.value })}
-                placeholder="Webhook ID from PayPal (leave empty to keep current)"
+                placeholder="Webhook ID"
               />
             </div>
 
             <div className="webhook-url-box paypal">
               <div className="webhook-url-header">
-                <span>Webhook URL</span>
+                <span>{t.webhookUrl}</span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(settings?.paypal?.webhook_url || '', 'paypal-webhook')}
                   className="copy-btn"
                 >
                   {copied === 'paypal-webhook' ? <CheckCircle size={14} /> : <Copy size={14} />}
-                  {copied === 'paypal-webhook' ? 'Copied!' : 'Copy'}
+                  {copied === 'paypal-webhook' ? t.copied : t.copy}
                 </button>
               </div>
               <code>{settings?.paypal?.webhook_url}</code>
@@ -373,7 +405,7 @@ export default function PaymentSettingsPage() {
 
             <div className="form-actions">
               <button type="submit" disabled={saving === 'paypal'} className="btn-primary paypal">
-                {saving === 'paypal' ? 'Saving...' : 'Save Settings'}
+                {saving === 'paypal' ? t.saving : t.saveSettings}
               </button>
               <button
                 type="button"
@@ -382,7 +414,7 @@ export default function PaymentSettingsPage() {
                 className="btn-secondary"
               >
                 <Zap size={16} />
-                {testing === 'paypal' ? 'Testing...' : 'Test Connection'}
+                {testing === 'paypal' ? t.testing : t.testConnection}
               </button>
             </div>
           </form>
@@ -391,13 +423,13 @@ export default function PaymentSettingsPage() {
 
       {/* Documentation Links */}
       <div className="docs-section">
-        <h3>Setup Documentation</h3>
+        <h3>{isRTL ? 'Documentation' : 'Setup Documentation'}</h3>
         <div className="docs-grid">
           <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="doc-link stripe">
             <CreditCard size={24} />
             <div>
               <p className="doc-title">Stripe Dashboard</p>
-              <p className="doc-desc">Get your API keys and configure webhooks</p>
+              <p className="doc-desc">{isRTL ? 'احصل على مفاتيح API واعداد webhooks' : 'Get your API keys and configure webhooks'}</p>
             </div>
             <ExternalLink size={16} />
           </a>
@@ -405,7 +437,7 @@ export default function PaymentSettingsPage() {
             <Wallet size={24} />
             <div>
               <p className="doc-title">PayPal Developer</p>
-              <p className="doc-desc">Manage your REST API apps and webhooks</p>
+              <p className="doc-desc">{isRTL ? 'إدارة تطبيقات REST API والwebhooks' : 'Manage your REST API apps and webhooks'}</p>
             </div>
             <ExternalLink size={16} />
           </a>
