@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MailLog;
 use App\Models\MailSetting;
 use App\Models\MailTemplate;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -13,7 +14,9 @@ class MailService
 {
     public static function configureMail(): bool
     {
-        $settings = MailSetting::getSettings();
+        $settings = Cache::remember('mail_settings', 300, function () {
+            return MailSetting::getSettings();
+        });
         if (!$settings || !$settings->is_enabled) {
             return false;
         }

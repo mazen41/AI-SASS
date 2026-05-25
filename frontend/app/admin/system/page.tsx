@@ -70,6 +70,7 @@ export default function SystemHealthPage() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadHealth();
   }, []);

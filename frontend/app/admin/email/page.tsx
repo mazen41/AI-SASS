@@ -111,7 +111,7 @@ export default function EmailPage() {
       {activeTab === 'templates' && <TemplatesTab t={t} isRTL={isRTL} />}
       {activeTab === 'logs' && <LogsTab t={t} isRTL={isRTL} />}
 
-      <style jsx>{`
+      <style jsx global>{`
         .email-page {
           display: flex;
           flex-direction: column;
@@ -284,7 +284,7 @@ function SettingsTab({ t }: { t: Record<string, string> }) {
         </div>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .settings-tab { display: flex; flex-direction: column; gap: 1rem; }
         .alert { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; }
         .alert.success { background: #dcfce7; color: #166534; }
@@ -334,7 +334,8 @@ function TemplatesTab({ t }: { t: Record<string, string>; isRTL?: boolean }) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const handleSave = async (template: Partial<MailTemplate>) => {
     try {
@@ -468,7 +469,7 @@ function TemplatesTab({ t }: { t: Record<string, string>; isRTL?: boolean }) {
         </div>
       )}
 
-      <style jsx>{`
+      <style jsx global>{`
         .templates-tab { display: flex; flex-direction: column; gap: 1rem; }
         .toolbar { display: flex; gap: 0.75rem; }
         .btn-secondary { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; cursor: pointer; }
@@ -555,7 +556,7 @@ function TemplateEditor({ template, onSave, onCancel, t }: { template: MailTempl
         <button className="btn-secondary" onClick={onCancel}>{t.close}</button>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .editor-tab { display: flex; flex-direction: column; gap: 1rem; }
         .editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .full { grid-column: 1 / -1; }
@@ -594,7 +595,8 @@ function LogsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
     }
   }, [page, search]);
 
-  useEffect(() => { load(); }, [load]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [page, search]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -644,7 +646,7 @@ function LogsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
         </>
       )}
 
-      <style jsx>{`
+      <style jsx global>{`
         .logs-tab { display: flex; flex-direction: column; gap: 1rem; }
         .logs-toolbar { display: flex; gap: 0.75rem; }
         .logs-toolbar input { flex: 1; padding: 0.6rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; }

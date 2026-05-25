@@ -21,18 +21,22 @@ async function apiFetch<T>(
     },
   });
 
-  const data = await res.json();
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+  }
 
   if (!res.ok) {
-    // Laravel validation errors come as { message, errors }
     const message =
-      data?.message ||
-      (data?.errors
-        ? Object.values(data.errors as Record<string, string[]>)
+      (data as Record<string, unknown>)?.message ||
+      ((data as Record<string, unknown>)?.errors
+        ? Object.values((data as Record<string, string[]>).errors)
             .flat()
             .join(' ')
         : 'An error occurred');
-    throw new Error(message);
+    throw new Error(String(message));
   }
 
   return data as T;

@@ -10,13 +10,16 @@ use App\Models\MailTemplate;
 use App\Services\MailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 
 class MailController extends Controller
 {
     public function getSettings(): JsonResponse
     {
-        $settings = MailSetting::first();
+        $settings = Cache::remember('mail_settings', 300, function () {
+            return MailSetting::first();
+        });
         return response()->json([
             'settings' => $settings ? [
                 'id' => $settings->id,
@@ -58,6 +61,8 @@ class MailController extends Controller
         } else {
             $settings = MailSetting::create($data);
         }
+
+        Cache::forget('mail_settings');
 
         return response()->json([
             'message' => 'Settings saved successfully',
@@ -114,7 +119,9 @@ class MailController extends Controller
 
     public function getTemplates(): JsonResponse
     {
-        $templates = MailTemplate::orderBy('name')->get();
+        $templates = Cache::remember('mail_templates', 300, function () {
+            return MailTemplate::orderBy('name')->get();
+        });
         return response()->json(['templates' => $templates]);
     }
 
@@ -150,6 +157,8 @@ class MailController extends Controller
             $template = MailTemplate::create($data);
         }
 
+        Cache::forget('mail_templates');
+
         return response()->json([
             'message' => 'Template saved successfully',
             'template' => $template,
@@ -160,6 +169,7 @@ class MailController extends Controller
     {
         $template = MailTemplate::findOrFail($id);
         $template->delete();
+        Cache::forget('mail_templates');
         return response()->json(['message' => 'Template deleted']);
     }
 
@@ -221,26 +231,16 @@ class MailController extends Controller
         $data = $request->input('variables', []);
         $toEmail = $request->input('to_email');
 
-        $log = MailService::sendWithTemplate(
-            $template->key,
-            $toEmail,
-            $data,
-            ['source' => 'admin_test']
-        );
+        SendMailJob::dispatch($template->key, $toEmail, $data, ['source' => 'admin_test']);
 
-        if ($log->status === 'sent') {
-            return response()->json(['message' => 'Test email sent successfully']);
-        }
-
-        return response()->json([
-            'message' => 'Failed to send test email',
-            'error' => $log->error_message,
-        ], 500);
+        return response()->json(['message' => 'Test email queued successfully']);
     }
 
     public function getLogs(Request $request): JsonResponse
     {
-        $query = MailLog::query()->orderBy('created_at', 'desc');
+        $cacheKey = 'mail_logs:' . md5($request->getQueryString() ?: 'all');
+        $logs = Cache::remember($cacheKey, 60, function () use ($request) {
+            $query = MailLog::query()->orderBy('created_at', 'desc');
 
         if ($request->has('status')) {
             $query->where('status', $request->input('status'));
@@ -256,7 +256,8 @@ class MailController extends Controller
             });
         }
 
-        $logs = $query->paginate(20);
+            return $query->paginate(20);
+        });
         return response()->json($logs);
     }
 
@@ -273,6 +274,7 @@ class MailController extends Controller
             }
         }
 
+        Cache::forget('mail_templates');
         return response()->json([
             'message' => "{$created} default templates created",
             'templates' => MailTemplate::orderBy('name')->get(),
