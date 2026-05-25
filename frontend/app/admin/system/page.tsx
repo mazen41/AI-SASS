@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLang } from '@/context/LangContext';
 import { apiGetSystemHealth, SystemHealth } from '@/lib/api';
 import {
@@ -59,7 +59,7 @@ export default function SystemHealthPage() {
     driver: isRTL ? 'المشغل' : 'Driver',
   };
 
-  const loadHealth = async () => {
+  const loadHealth = useCallback(async () => {
     try {
       const data = await apiGetSystemHealth();
       setHealth(data);
@@ -69,12 +69,11 @@ export default function SystemHealthPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    loadHealth();
   }, []);
+
+  useEffect(() => {
+    void loadHealth();
+  }, [loadHealth]);
 
   const handleRefresh = () => {
     setRefreshing(true);

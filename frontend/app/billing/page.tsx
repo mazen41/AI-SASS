@@ -22,15 +22,13 @@ import {
   Wallet,
   CheckCircle,
   HelpCircle,
-  AlertCircle,
   Loader2,
   Calendar,
-  Lock,
   ArrowRight,
 } from 'lucide-react';
 
 export default function BillingPage() {
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn } = useAuth();
   const { theme } = useTheme();
   const { locale } = useLang();
   const router = useRouter();
@@ -105,7 +103,7 @@ export default function BillingPage() {
       }
       
       if (url) {
-        window.location.href = url;
+        window.location.assign(url);
       } else {
         throw new Error('Redirection URL not returned.');
       }
@@ -231,7 +229,7 @@ export default function BillingPage() {
 
             {/* Plans Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {plans.map((plan, i) => {
+              {plans.map((plan) => {
                 const isFeatured = plan.is_featured;
                 const featuresList = plan.features || [];
 
