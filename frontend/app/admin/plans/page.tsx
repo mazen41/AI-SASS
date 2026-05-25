@@ -60,7 +60,6 @@ export default function PlansPage() {
     stripe_price_id: '',
     paypal_plan_id: '',
   });
-  const [saving, setSaving] = useState(false);
 
   const inputClass = "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none";
   const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
@@ -77,7 +76,7 @@ export default function PlansPage() {
   }, []);
 
   useEffect(() => {
-    loadPlans();
+    void loadPlans();
   }, [loadPlans]);
 
   const openCreateModal = () => {

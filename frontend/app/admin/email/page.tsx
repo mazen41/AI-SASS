@@ -393,8 +393,9 @@ function TemplatesTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean 
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const handleSave = async (template: Partial<MailTemplate>) => {
     try {
@@ -775,8 +776,9 @@ function LogsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
     }
   }, [page, search]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [page, search]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
