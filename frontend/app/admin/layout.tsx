@@ -179,7 +179,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           cursor: pointer;
         }
 
-        /* Sidebar */
         .admin-sidebar {
           width: 240px;
           background: #fff;
@@ -189,12 +188,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           position: fixed;
           top: 0;
           bottom: 0;
-          ${isRTL ? 'right: 0;' : 'left: 0;'}
+          left: 0;
           z-index: 100;
           transition: transform 0.3s ease;
         }
 
         [dir="rtl"] .admin-sidebar {
+          left: auto;
+          right: 0;
           border-right: none;
           border-left: 1px solid #e2e8f0;
         }
@@ -257,7 +258,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           border: none;
           background: none;
           width: 100%;
-          text-align: ${isRTL ? 'right' : 'left'};
+          text-align: left;
+        }
+
+        [dir="rtl"] .nav-item {
+          text-align: right;
         }
 
         .nav-item:hover {
@@ -284,13 +289,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           border-top: 1px solid #e2e8f0;
         }
 
-        /* Main */
         .admin-main {
           flex: 1;
-          ${isRTL ? 'margin-right: 240px;' : 'margin-left: 240px;'}
+          margin-left: 240px;
           display: flex;
           flex-direction: column;
           min-height: 100vh;
+        }
+
+        [dir="rtl"] .admin-main {
+          margin-left: 0;
+          margin-right: 240px;
         }
 
         .admin-header {
@@ -363,7 +372,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           padding: 1.5rem;
         }
 
-        /* Overlay */
         .admin-overlay {
           display: none;
           position: fixed;
@@ -372,10 +380,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           z-index: 90;
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
           .admin-sidebar {
-            transform: ${isRTL ? 'translateX(100%)' : 'translateX(-100%)'};
+            transform: translateX(-100%);
+          }
+
+          [dir="rtl"] .admin-sidebar {
+            transform: translateX(100%);
           }
 
           .admin-sidebar.open {
