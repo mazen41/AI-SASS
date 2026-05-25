@@ -16,6 +16,7 @@ import {
   Activity,
   Globe,
   Zap,
+  Loader2
 } from 'lucide-react';
 
 export default function SystemHealthPage() {
@@ -104,27 +105,8 @@ export default function SystemHealthPage() {
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="spinner" />
-        <style jsx>{`
-          .loading-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 200px;
-          }
-          .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid #e2e8f0;
-            border-top-color: #6366f1;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 size={40} className="animate-spin text-indigo-600" />
       </div>
     );
   }
@@ -147,128 +129,169 @@ export default function SystemHealthPage() {
   };
 
   return (
-    <div className="system-health" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="header">
-        <div className="status-badge" style={{ background: getStatusColor(health.status) }}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full text-white font-medium text-sm shadow-sm" style={{ background: getStatusColor(health.status) }}>
           {renderStatusIcon(health.status, 16)}
           <span>{t[health.status as keyof typeof t]}</span>
         </div>
-        <button className="refresh-btn" onClick={handleRefresh} disabled={refreshing}>
-          <RefreshCw size={16} className={refreshing ? 'spinning' : ''} />
+        <button 
+          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700/50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm" 
+          onClick={handleRefresh} 
+          disabled={refreshing}
+        >
+          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
           {t.refresh}
         </button>
       </div>
 
       {/* Overview Cards */}
-      <div className="overview-grid">
-        <div className="overview-card">
-          <Clock size={20} color="#6366f1" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+          <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+            <Clock size={20} />
+          </div>
           <div>
-            <p className="label">{t.uptime}</p>
-            <p className="value">{health.uptime}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-0.5">{t.uptime}</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{health.uptime}</p>
           </div>
         </div>
-        <div className="overview-card">
-          <Zap size={20} color="#6366f1" />
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+          <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+            <Zap size={20} />
+          </div>
           <div>
-            <p className="label">{t.phpVersion}</p>
-            <p className="value">{health.php_version}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-0.5">{t.phpVersion}</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{health.php_version}</p>
           </div>
         </div>
-        <div className="overview-card">
-          <Server size={20} color="#6366f1" />
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+          <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+            <Server size={20} />
+          </div>
           <div>
-            <p className="label">{t.laravelVersion}</p>
-            <p className="value">{health.laravel_version}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-0.5">{t.laravelVersion}</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{health.laravel_version}</p>
           </div>
         </div>
       </div>
 
       {/* System Components */}
-      <div className="components-grid">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Database */}
-        <div className="component-card">
-          <div className="component-header">
-            <Database size={18} />
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-white font-bold mb-4">
+            <Database size={18} className="text-gray-400 dark:text-gray-500" />
             <span>{t.database}</span>
-            <span className="status-dot" style={{ background: getStatusColor(health.database.status) }} />
+            <span className="w-2.5 h-2.5 rounded-full ml-auto rtl:ml-0 rtl:mr-auto shadow-sm" style={{ background: getStatusColor(health.database.status) }} />
           </div>
-          <div className="component-details">
-            <p><strong>{t.status}:</strong> {t[health.database.status as keyof typeof t]}</p>
-            <p><strong>{t.type}:</strong> {health.database.type}</p>
-            <p><strong>{t.size}:</strong> {health.database.size}</p>
+          <div className="space-y-2 text-sm">
+            <p className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+              <strong className="text-gray-900 dark:text-gray-200 font-medium">{t.status}:</strong> 
+              <span>{t[health.database.status as keyof typeof t]}</span>
+            </p>
+            <p className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+              <strong className="text-gray-900 dark:text-gray-200 font-medium">{t.type}:</strong> 
+              <span>{health.database.type}</span>
+            </p>
+            <p className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+              <strong className="text-gray-900 dark:text-gray-200 font-medium">{t.size}:</strong> 
+              <span>{health.database.size}</span>
+            </p>
           </div>
         </div>
 
         {/* Cache */}
-        <div className="component-card">
-          <div className="component-header">
-            <HardDrive size={18} />
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-white font-bold mb-4">
+            <HardDrive size={18} className="text-gray-400 dark:text-gray-500" />
             <span>{t.cache}</span>
-            <span className="status-dot" style={{ background: getStatusColor(health.cache.status) }} />
+            <span className="w-2.5 h-2.5 rounded-full ml-auto rtl:ml-0 rtl:mr-auto shadow-sm" style={{ background: getStatusColor(health.cache.status) }} />
           </div>
-          <div className="component-details">
-            <p><strong>{t.status}:</strong> {t[health.cache.status as keyof typeof t]}</p>
-            <p><strong>{t.driver}:</strong> {health.cache.driver}</p>
+          <div className="space-y-2 text-sm">
+            <p className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+              <strong className="text-gray-900 dark:text-gray-200 font-medium">{t.status}:</strong> 
+              <span>{t[health.cache.status as keyof typeof t]}</span>
+            </p>
+            <p className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+              <strong className="text-gray-900 dark:text-gray-200 font-medium">{t.driver}:</strong> 
+              <span>{health.cache.driver}</span>
+            </p>
           </div>
         </div>
 
         {/* Queue */}
-        <div className="component-card">
-          <div className="component-header">
-            <Activity size={18} />
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-white font-bold mb-4">
+            <Activity size={18} className="text-gray-400 dark:text-gray-500" />
             <span>{t.queue}</span>
-            <span className="status-dot" style={{ background: getStatusColor(health.queue.status) }} />
+            <span className="w-2.5 h-2.5 rounded-full ml-auto rtl:ml-0 rtl:mr-auto shadow-sm" style={{ background: getStatusColor(health.queue.status) }} />
           </div>
-          <div className="component-details">
-            <p><strong>{t.status}:</strong> {t[health.queue.status as keyof typeof t]}</p>
-            <p><strong>{t.pendingJobs}:</strong> {health.queue.pending_jobs}</p>
+          <div className="space-y-2 text-sm">
+            <p className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+              <strong className="text-gray-900 dark:text-gray-200 font-medium">{t.status}:</strong> 
+              <span>{t[health.queue.status as keyof typeof t]}</span>
+            </p>
+            <p className="flex justify-between items-center text-gray-600 dark:text-gray-400">
+              <strong className="text-gray-900 dark:text-gray-200 font-medium">{t.pendingJobs}:</strong> 
+              <span>{health.queue.pending_jobs}</span>
+            </p>
           </div>
         </div>
       </div>
 
       {/* Resource Usage */}
-      <div className="resources-grid">
-        <div className="resource-card">
-          <div className="resource-header">
-            <HardDrive size={18} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-white font-bold mb-4">
+            <HardDrive size={18} className="text-gray-400 dark:text-gray-500" />
             <span>{t.storage}</span>
           </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${health.storage.percentage}%` }} />
+          <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+            <div 
+              className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-500" 
+              style={{ width: `${health.storage.percentage}%` }} 
+            />
           </div>
-          <p className="resource-text">{health.storage.used} / {health.storage.total} ({health.storage.percentage}%)</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
+            <span className="font-medium text-gray-700 dark:text-gray-300">{health.storage.used}</span> / {health.storage.total} ({health.storage.percentage}%)
+          </p>
         </div>
 
-        <div className="resource-card">
-          <div className="resource-header">
-            <MemoryStick size={18} />
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-900 dark:text-white font-bold mb-4">
+            <MemoryStick size={18} className="text-gray-400 dark:text-gray-500" />
             <span>{t.memory}</span>
           </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${health.memory.percentage}%` }} />
+          <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+            <div 
+              className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-500" 
+              style={{ width: `${health.memory.percentage}%` }} 
+            />
           </div>
-          <p className="resource-text">{health.memory.used} / {health.memory.limit} ({health.memory.percentage}%)</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
+            <span className="font-medium text-gray-700 dark:text-gray-300">{health.memory.used}</span> / {health.memory.limit} ({health.memory.percentage}%)
+          </p>
         </div>
       </div>
 
       {/* Services */}
-      <div className="card">
-        <h3 className="card-title">
-          <Globe size={18} />
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+        <h3 className="flex items-center gap-2 text-gray-900 dark:text-white font-bold mb-4">
+          <Globe size={18} className="text-gray-400 dark:text-gray-500" />
           {t.services}
         </h3>
-        <div className="services-list">
+        <div className="flex flex-col gap-2">
           {health.services.map((service, index) => (
-            <div key={index} className="service-item">
-              <div className="service-info">
+            <div key={index} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+              <div className="flex items-center gap-2">
                 {renderStatusIcon(service.status, 16)}
-                <span className="service-name">{service.name}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-200 text-sm">{service.name}</span>
               </div>
-              <div className="service-status">
-                {service.latency && <span className="latency">{service.latency} {t.ms}</span>}
-                <span className="status-text" style={{ color: getStatusColor(service.status) }}>
+              <div className="flex items-center gap-3">
+                {service.latency && <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{service.latency} {t.ms}</span>}
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: getStatusColor(service.status) }}>
                   {t[service.status as keyof typeof t]}
                 </span>
               </div>
@@ -278,306 +301,31 @@ export default function SystemHealthPage() {
       </div>
 
       {/* Recent Errors */}
-      <div className="card">
-        <h3 className="card-title">
-          <AlertTriangle size={18} />
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
+        <h3 className="flex items-center gap-2 text-gray-900 dark:text-white font-bold mb-4">
+          <AlertTriangle size={18} className="text-gray-400 dark:text-gray-500" />
           {t.recentErrors}
         </h3>
         {health.recent_errors.length > 0 ? (
-          <div className="errors-list">
+          <div className="flex flex-col gap-2">
             {health.recent_errors.map((error, index) => (
-              <div key={index} className="error-item">
-                <span className={`error-level ${error.level}`}>{error.level}</span>
-                <span className="error-message">{error.message}</span>
-                <span className="error-time">{error.timestamp}</span>
+              <div key={index} className="flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-900/30">
+                <span className={`shrink-0 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider
+                  ${error.level === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}
+                `}>
+                  {error.level}
+                </span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 break-all sm:break-normal">{error.message}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono shrink-0 w-full sm:w-auto text-right sm:text-left mt-1 sm:mt-0">{error.timestamp}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="empty-text">{t.noErrors}</p>
+          <div className="py-8 text-center bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">{t.noErrors}</p>
+          </div>
         )}
       </div>
-
-      <style jsx>{`
-        .system-health {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .status-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          color: white;
-          font-weight: 500;
-          font-size: 0.9rem;
-        }
-
-        .refresh-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          color: #64748b;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .refresh-btn:hover {
-          background: #f8fafc;
-          color: #1e293b;
-        }
-
-        .refresh-btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .refresh-btn :global(.spinning) {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .overview-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-        }
-
-        .overview-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .overview-card .label {
-          color: #64748b;
-          font-size: 0.8rem;
-          margin: 0;
-        }
-
-        .overview-card .value {
-          color: #1e293b;
-          font-weight: 600;
-          margin: 0;
-        }
-
-        .components-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1rem;
-        }
-
-        .component-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 1rem;
-        }
-
-        .component-header {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #1e293b;
-          font-weight: 600;
-          margin-bottom: 0.75rem;
-        }
-
-        .status-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          margin-left: auto;
-        }
-
-        [dir="rtl"] .status-dot {
-          margin-left: 0;
-          margin-right: auto;
-        }
-
-        .component-details p {
-          color: #64748b;
-          font-size: 0.85rem;
-          margin: 0.25rem 0;
-        }
-
-        .component-details strong {
-          color: #1e293b;
-        }
-
-        .resources-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 1rem;
-        }
-
-        .resource-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 1rem;
-        }
-
-        .resource-header {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #1e293b;
-          font-weight: 600;
-          margin-bottom: 0.75rem;
-        }
-
-        .progress-bar {
-          height: 8px;
-          background: #e2e8f0;
-          border-radius: 4px;
-          overflow: hidden;
-        }
-
-        .progress-fill {
-          height: 100%;
-          background: #6366f1;
-          border-radius: 4px;
-          transition: width 0.3s;
-        }
-
-        .resource-text {
-          color: #64748b;
-          font-size: 0.8rem;
-          margin: 0.5rem 0 0;
-        }
-
-        .card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 1rem;
-        }
-
-        .card-title {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #1e293b;
-          font-size: 0.95rem;
-          font-weight: 600;
-          margin: 0 0 1rem;
-        }
-
-        .services-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .service-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem;
-          background: #f8fafc;
-          border-radius: 8px;
-        }
-
-        .service-info {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .service-name {
-          color: #1e293b;
-          font-weight: 500;
-        }
-
-        .service-status {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .latency {
-          color: #64748b;
-          font-size: 0.8rem;
-        }
-
-        .status-text {
-          font-weight: 500;
-          font-size: 0.85rem;
-        }
-
-        .empty-text {
-          color: #94a3b8;
-          text-align: center;
-          padding: 1rem;
-          margin: 0;
-        }
-
-        .errors-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .error-item {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.75rem;
-          background: #fef2f2;
-          border-radius: 8px;
-        }
-
-        .error-level {
-          padding: 0.2rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-
-        .error-level.error {
-          background: #fee2e2;
-          color: #dc2626;
-        }
-
-        .error-level.warning {
-          background: #fef3c7;
-          color: #d97706;
-        }
-
-        .error-message {
-          flex: 1;
-          color: #1e293b;
-          font-size: 0.85rem;
-        }
-
-        .error-time {
-          color: #64748b;
-          font-size: 0.75rem;
-        }
-      `}</style>
     </div>
   );
 }

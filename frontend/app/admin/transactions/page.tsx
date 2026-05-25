@@ -11,7 +11,8 @@ import {
   RotateCcw,
   AlertCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 
 export default function TransactionsPage() {
@@ -67,13 +68,13 @@ export default function TransactionsPage() {
   }, [page, statusFilter, gatewayFilter]);
 
   const getStatusBadge = (status: string) => {
-    const colors: Record<string, { bg: string; color: string; icon: React.ReactNode }> = {
-      completed: { bg: '#dcfce7', color: '#16a34a', icon: <CheckCircle size={14} /> },
-      pending: { bg: '#fef3c7', color: '#d97706', icon: <Clock size={14} /> },
-      failed: { bg: '#fee2e2', color: '#dc2626', icon: <XCircle size={14} /> },
-      refunded: { bg: '#f3e8ff', color: '#9333ea', icon: <RotateCcw size={14} /> },
+    const badges: Record<string, { bg: string; color: string; icon: React.ReactNode }> = {
+      completed: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', color: 'text-emerald-700 dark:text-emerald-400', icon: <CheckCircle size={14} /> },
+      pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-700 dark:text-amber-400', icon: <Clock size={14} /> },
+      failed: { bg: 'bg-red-100 dark:bg-red-900/30', color: 'text-red-700 dark:text-red-400', icon: <XCircle size={14} /> },
+      refunded: { bg: 'bg-purple-100 dark:bg-purple-900/30', color: 'text-purple-700 dark:text-purple-400', icon: <RotateCcw size={14} /> },
     };
-    return colors[status] || { bg: '#f3f4f6', color: '#6b7280', icon: <AlertCircle size={14} /> };
+    return badges[status] || { bg: 'bg-gray-100 dark:bg-gray-800', color: 'text-gray-700 dark:text-gray-400', icon: <AlertCircle size={14} /> };
   };
 
   const getStatusLabel = (status: string) => {
@@ -81,14 +82,19 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="transactions-page" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h2>
+      </div>
+
       {/* Filters */}
-      <div className="filters-card">
-        <div className="filters-row">
-          <div className="filter-group">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
+        <div className="flex flex-wrap gap-4">
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+              className="bg-transparent border-none text-gray-900 dark:text-white text-sm outline-none cursor-pointer w-full min-w-[140px]"
             >
               <option value="">{t.allStatus}</option>
               <option value="completed">{t.status.completed}</option>
@@ -97,11 +103,12 @@ export default function TransactionsPage() {
               <option value="refunded">{t.status.refunded}</option>
             </select>
           </div>
-          <div className="filter-group">
-            <CreditCard size={16} className="filter-icon" />
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
+            <CreditCard size={16} className="text-gray-500 dark:text-gray-400" />
             <select
               value={gatewayFilter}
               onChange={(e) => { setGatewayFilter(e.target.value); setPage(1); }}
+              className="bg-transparent border-none text-gray-900 dark:text-white text-sm outline-none cursor-pointer w-full min-w-[140px]"
             >
               <option value="">{t.allGateways}</option>
               <option value="stripe">Stripe</option>
@@ -112,67 +119,90 @@ export default function TransactionsPage() {
       </div>
 
       {/* Transactions Table */}
-      <div className="table-card">
-        <div className="table-wrap">
-          <table>
-            <thead>
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider font-semibold">
               <tr>
-                <th>{t.id}</th>
-                <th>{t.user}</th>
-                <th>{t.amount}</th>
-                <th>{t.gateway}</th>
-                <th>{t.statusLabel}</th>
-                <th>{t.type}</th>
-                <th>{t.date}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.id}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.user}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.amount}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.gateway}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.statusLabel}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.type}</th>
+                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.date}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="loading-cell">
-                    <div className="spinner" />
+                  <td colSpan={7} className="p-8">
+                    <div className="flex justify-center">
+                      <Loader2 size={32} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+                    </div>
                   </td>
                 </tr>
               ) : transactions?.data.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="empty-cell">
-                    <AlertCircle size={32} />
-                    <p>{t.noTransactions}</p>
+                  <td colSpan={7} className="p-12">
+                    <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                      <AlertCircle size={32} className="mb-3 opacity-50" />
+                      <p className="text-lg">{t.noTransactions}</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 transactions?.data.map((tx) => {
                   const status = getStatusBadge(tx.status);
+                  const isNegative = parseFloat(tx.amount) < 0;
                   return (
-                    <tr key={tx.id}>
-                      <td className="id-cell">#{tx.id}</td>
-                      <td>
-                        <div className="user-cell">
-                          <div className="user-avatar">{tx.user?.name?.charAt(0).toUpperCase()}</div>
+                    <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
+                      <td className="p-4 text-sm text-gray-500 dark:text-gray-400 font-mono">#{tx.id}</td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shadow-inner shrink-0">
+                            {tx.user?.name?.charAt(0).toUpperCase()}
+                          </div>
                           <div>
-                            <p className="user-name">{tx.user?.name}</p>
-                            <p className="user-email">{tx.user?.email}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white leading-none mb-1">{tx.user?.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{tx.user?.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <span className={`amount ${parseFloat(tx.amount) < 0 ? 'negative' : 'positive'}`}>
-                          {parseFloat(tx.amount) < 0 ? '-' : '+'}${Math.abs(parseFloat(tx.amount)).toFixed(2)}
+                      <td className="p-4">
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-lg font-bold ${isNegative ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {isNegative ? '-' : '+'}${Math.abs(parseFloat(tx.amount)).toFixed(2)}
+                          </span>
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">{tx.currency}</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wider ${
+                            tx.gateway === 'stripe' 
+                              ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800' 
+                              : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800'
+                          }`}>
+                          {tx.gateway}
                         </span>
-                        <span className="currency">{tx.currency}</span>
                       </td>
-                      <td>
-                        <span className={`gateway-badge ${tx.gateway}`}>{tx.gateway}</span>
-                      </td>
-                      <td>
-                        <span className="status-badge" style={{ background: status.bg, color: status.color }}>
+                      <td className="p-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}>
                           {status.icon}
                           {getStatusLabel(tx.status)}
                         </span>
                       </td>
-                      <td className="type-cell">{tx.type.replace('_', ' ')}</td>
-                      <td className="date-cell">
-                        {new Date(tx.created_at).toLocaleString(isRTL ? 'ar-SA' : 'en-US')}
+                      <td className="p-4 text-sm text-gray-600 dark:text-gray-400 capitalize whitespace-nowrap">
+                        {tx.type.replace('_', ' ')}
+                      </td>
+                      <td className="p-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        {new Date(tx.created_at).toLocaleString(isRTL ? 'ar-SA' : 'en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </td>
                     </tr>
                   );
@@ -184,14 +214,15 @@ export default function TransactionsPage() {
 
         {/* Pagination */}
         {transactions && transactions.last_page > 1 && (
-          <div className="pagination">
-            <p className="pagination-info">
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-100 dark:border-gray-700 gap-4 bg-gray-50/50 dark:bg-gray-800/30">
+            <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
               {t.page} {transactions.current_page} {t.of} {transactions.last_page}
             </p>
-            <div className="pagination-btns">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                 {t.previous}
@@ -199,6 +230,7 @@ export default function TransactionsPage() {
               <button
                 onClick={() => setPage(p => Math.min(transactions.last_page, p + 1))}
                 disabled={page === transactions.last_page}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {t.next}
                 {isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -207,260 +239,6 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        .transactions-page {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .filters-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 1rem;
-        }
-
-        .filters-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-        }
-
-        .filter-group {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 0.75rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-        }
-
-        .filter-icon {
-          color: #64748b;
-        }
-
-        .filter-group select {
-          border: none;
-          background: transparent;
-          color: #1e293b;
-          font-size: 0.9rem;
-          cursor: pointer;
-          outline: none;
-        }
-
-        .table-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          overflow: hidden;
-        }
-
-        .table-wrap {
-          overflow-x: auto;
-        }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        thead {
-          background: #f8fafc;
-        }
-
-        th {
-          padding: 0.75rem 1rem;
-          text-align: left;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #64748b;
-          text-transform: uppercase;
-          white-space: nowrap;
-        }
-
-        [dir="rtl"] th {
-          text-align: right;
-        }
-
-        td {
-          padding: 0.75rem 1rem;
-          border-top: 1px solid #e2e8f0;
-        }
-
-        .loading-cell, .empty-cell {
-          text-align: center;
-          padding: 3rem 1rem;
-          color: #64748b;
-        }
-
-        .empty-cell svg {
-          margin-bottom: 0.5rem;
-          opacity: 0.5;
-        }
-
-        .spinner {
-          width: 32px;
-          height: 32px;
-          border: 3px solid #e2e8f0;
-          border-top-color: #6366f1;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .id-cell {
-          color: #64748b;
-          font-size: 0.85rem;
-          font-family: monospace;
-        }
-
-        .user-cell {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .user-avatar {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          background: #6366f1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: 600;
-          font-size: 0.85rem;
-        }
-
-        .user-name {
-          font-weight: 500;
-          color: #1e293b;
-          margin: 0;
-        }
-
-        .user-email {
-          color: #64748b;
-          font-size: 0.8rem;
-          margin: 0;
-        }
-
-        .amount {
-          font-size: 1.1rem;
-          font-weight: 600;
-        }
-
-        .amount.positive {
-          color: #16a34a;
-        }
-
-        .amount.negative {
-          color: #dc2626;
-        }
-
-        .currency {
-          color: #64748b;
-          font-size: 0.85rem;
-          margin-left: 0.25rem;
-        }
-
-        .gateway-badge {
-          padding: 0.25rem 0.6rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
-          font-weight: 500;
-          text-transform: uppercase;
-        }
-
-        .gateway-badge.stripe {
-          background: #f3f0ff;
-          color: #6366f1;
-        }
-
-        .gateway-badge.paypal {
-          background: #eff6ff;
-          color: #3b82f6;
-        }
-
-        .status-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.35rem 0.75rem;
-          border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: 500;
-        }
-
-        .type-cell {
-          color: #64748b;
-          font-size: 0.85rem;
-          text-transform: capitalize;
-        }
-
-        .date-cell {
-          color: #64748b;
-          font-size: 0.85rem;
-          white-space: nowrap;
-        }
-
-        .pagination {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.75rem 1rem;
-          border-top: 1px solid #e2e8f0;
-        }
-
-        @media (max-width: 640px) {
-          .pagination {
-            flex-direction: column;
-            gap: 0.75rem;
-          }
-        }
-
-        .pagination-info {
-          color: #64748b;
-          font-size: 0.85rem;
-          margin: 0;
-        }
-
-        .pagination-btns {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .pagination-btns button {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.4rem 0.75rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          color: #64748b;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .pagination-btns button:hover:not(:disabled) {
-          background: #e2e8f0;
-          color: #1e293b;
-        }
-
-        .pagination-btns button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      `}</style>
     </div>
   );
 }
