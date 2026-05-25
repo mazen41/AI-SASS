@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiGetAdminStats, DashboardStats } from '@/lib/api';
 import { useLang } from '@/context/LangContext';
 import {
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const { locale } = useLang();
   const isRTL = locale === 'ar';
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -59,12 +61,12 @@ export default function AdminDashboard() {
   if (!stats) return null;
 
   const statCards = [
-    { label: isRTL ? 'إجمالي المستخدمين' : 'Total Users', value: stats.users.total, icon: Users, color: '#6366f1' },
-    { label: isRTL ? 'المستخدمين النشطين' : 'Active Users', value: stats.users.active, icon: UserCheck, color: '#22c55e' },
-    { label: isRTL ? 'الجدد هذا الشهر' : 'New This Month', value: stats.users.new_this_month, icon: TrendingUp, color: '#8b5cf6', change: stats.users.growth_percentage },
-    { label: isRTL ? 'الاشتراكات النشطة' : 'Active Subscriptions', value: stats.subscriptions.active, icon: RefreshCw, color: '#f59e0b' },
-    { label: isRTL ? 'إجمالي الإيرادات' : 'Total Revenue', value: `$${parseFloat(stats.revenue.total || '0').toLocaleString()}`, icon: DollarSign, color: '#10b981' },
-    { label: isRTL ? 'إيرادات الشهر' : 'Revenue This Month', value: `$${parseFloat(stats.revenue.this_month || '0').toLocaleString()}`, icon: BarChart3, color: '#ec4899', change: stats.revenue.growth_percentage },
+    { label: isRTL ? 'إجمالي المستخدمين' : 'Total Users', value: stats.users.total, icon: Users, color: '#6366f1', href: '/admin/users' },
+    { label: isRTL ? 'المستخدمين النشطين' : 'Active Users', value: stats.users.active, icon: UserCheck, color: '#22c55e', href: '/admin/users?status=active' },
+    { label: isRTL ? 'الجدد هذا الشهر' : 'New This Month', value: stats.users.new_this_month, icon: TrendingUp, color: '#8b5cf6', change: stats.users.growth_percentage, href: '/admin/users?filter=new' },
+    { label: isRTL ? 'الاشتراكات النشطة' : 'Active Subscriptions', value: stats.subscriptions.active, icon: RefreshCw, color: '#f59e0b', href: '/admin/subscriptions' },
+    { label: isRTL ? 'إجمالي الإيرادات' : 'Total Revenue', value: `$${parseFloat(stats.revenue.total || '0').toLocaleString()}`, icon: DollarSign, color: '#10b981', href: '/admin/transactions' },
+    { label: isRTL ? 'إيرادات الشهر' : 'Revenue This Month', value: `$${parseFloat(stats.revenue.this_month || '0').toLocaleString()}`, icon: BarChart3, color: '#ec4899', change: stats.revenue.growth_percentage, href: '/admin/transactions?period=month' },
   ];
 
   const getActivityIcon = (action: string) => {
@@ -82,7 +84,13 @@ export default function AdminDashboard() {
         {statCards.map((card, index) => {
           const Icon = card.icon;
           return (
-            <div key={index} className="stat-card">
+            <div 
+              key={index} 
+              className="stat-card clickable"
+              onClick={() => router.push(card.href)}
+              role="button"
+              tabIndex={0}
+            >
               <div className="stat-icon" style={{ background: card.color }}>
                 <Icon size={20} color="white" />
               </div>
@@ -249,6 +257,17 @@ export default function AdminDashboard() {
           display: flex;
           align-items: flex-start;
           gap: 1rem;
+          transition: all 0.2s ease;
+        }
+
+        .stat-card.clickable {
+          cursor: pointer;
+        }
+
+        .stat-card.clickable:hover {
+          border-color: #6366f1;
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+          transform: translateY(-2px);
         }
 
         .stat-icon {

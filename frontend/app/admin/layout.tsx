@@ -12,12 +12,12 @@ import {
   CreditCard,
   Settings,
   Activity,
-  FileText,
   RefreshCw,
   LogOut,
   Menu,
   X,
   Home,
+  Server,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -33,11 +33,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { href: '/admin', label: isRTL ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/users', label: isRTL ? 'المستخدمين' : 'Users', icon: Users },
-    { href: '/admin/plans', label: isRTL ? 'الخطط' : 'Plans', icon: FileText },
     { href: '/admin/subscriptions', label: isRTL ? 'الاشتراكات' : 'Subscriptions', icon: RefreshCw },
     { href: '/admin/transactions', label: isRTL ? 'المعاملات' : 'Transactions', icon: CreditCard },
     { href: '/admin/payments', label: isRTL ? 'التكاملات' : 'Integrations', icon: Settings },
     { href: '/admin/activity', label: isRTL ? 'سجل النشاط' : 'Activity', icon: Activity },
+    { href: '/admin/system', label: isRTL ? 'صحة النظام' : 'System Health', icon: Server },
   ];
 
   useEffect(() => {
