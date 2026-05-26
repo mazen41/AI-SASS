@@ -46,6 +46,7 @@ export default function PlansPage() {
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [formData, setFormData] = useState({
@@ -115,6 +116,7 @@ export default function PlansPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     try {
       const data = {
         ...formData,
@@ -131,6 +133,8 @@ export default function PlansPage() {
       loadPlans();
     } catch (err) {
       alert(err instanceof Error ? err.message : t.saveError);
+    } finally {
+      setSaving(false);
     }
   };
 
