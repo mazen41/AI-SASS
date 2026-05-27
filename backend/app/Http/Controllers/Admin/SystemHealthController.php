@@ -140,16 +140,16 @@ class SystemHealthController extends Controller
 
     private function getServicesStatus()
     {
-        return Cache::remember('system_health_services_status', 900, function () {
+        return Cache::remember('system_health_services_status', 300, function () {
             return [
                 [
                     'name' => 'Stripe API',
-                    'status' => $this->pingService('https://api.stripe.com/healthcheck') ? 'online' : 'offline',
+                    'status' => $this->pingService('https://api.stripe.com', false) ? 'online' : 'offline',
                     'latency' => rand(50, 150)
                 ],
                 [
                     'name' => 'PayPal API',
-                    'status' => $this->pingService('https://api.paypal.com/v1/oauth2/token', false) ? 'online' : 'offline',
+                    'status' => $this->pingService('https://api.paypal.com', false) ? 'online' : 'offline',
                     'latency' => rand(80, 200)
                 ]
             ];

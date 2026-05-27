@@ -13,7 +13,9 @@ class StorageSettingsController extends Controller
 {
     public function index(): JsonResponse
     {
-        $settings = StorageSetting::all()->keyBy('driver');
+        $settings = \Illuminate\Support\Facades\Cache::rememberForever('storage_settings', function () {
+            return StorageSetting::all();
+        })->keyBy('driver');
         $drivers = ['local', 's3', 'wasabi'];
 
         foreach ($drivers as $driver) {
@@ -74,6 +76,8 @@ class StorageSettingsController extends Controller
         $updateData = array_filter($validated, fn($v) => $v !== null);
 
         $setting->update($updateData);
+
+        \Illuminate\Support\Facades\Cache::forget('storage_settings');
 
         if ($setting->is_active) {
             // Deactivate all other drivers

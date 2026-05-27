@@ -13,7 +13,9 @@ class PaymentSettingsController extends Controller
 {
     public function index(): JsonResponse
     {
-        $settings = PaymentSetting::all()->keyBy('gateway');
+        $settings = \Illuminate\Support\Facades\Cache::rememberForever('payment_settings', function () {
+            return PaymentSetting::all();
+        })->keyBy('gateway');
 
         // Ensure both gateways exist
         $gateways = ['stripe', 'paypal'];
@@ -76,6 +78,8 @@ class PaymentSettingsController extends Controller
         $updateData = array_filter($validated, fn($v) => $v !== null);
         
         $setting->update($updateData);
+
+        \Illuminate\Support\Facades\Cache::forget('payment_settings');
 
         ActivityLog::log(
             'payment_settings_updated',

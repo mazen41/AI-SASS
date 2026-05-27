@@ -38,6 +38,10 @@ class PlanController extends Controller
             'slug' => ['required', 'string', 'max:255', 'unique:plans'],
             'description' => ['nullable', 'string'],
             'price' => ['required', 'numeric', 'min:0'],
+            'story_limit' => ['integer', 'min:0'],
+            'video_limit' => ['integer', 'min:0'],
+            'daily_story_limit' => ['integer', 'min:0'],
+            'daily_video_limit' => ['integer', 'min:0'],
             'billing_period' => ['required', Rule::in(['monthly', 'yearly'])],
             'features' => ['nullable', 'array'],
             'is_active' => ['boolean'],
@@ -48,6 +52,8 @@ class PlanController extends Controller
         ]);
 
         $plan = Plan::create($validated);
+
+        \Illuminate\Support\Facades\Cache::forget('active_plans');
 
         ActivityLog::log('plan_created', auth()->id(), 'Plan', $plan->id, null, $plan->toArray());
 
@@ -64,6 +70,10 @@ class PlanController extends Controller
             'slug' => ['sometimes', 'string', 'max:255', Rule::unique('plans')->ignore($plan->id)],
             'description' => ['nullable', 'string'],
             'price' => ['sometimes', 'numeric', 'min:0'],
+            'story_limit' => ['integer', 'min:0'],
+            'video_limit' => ['integer', 'min:0'],
+            'daily_story_limit' => ['integer', 'min:0'],
+            'daily_video_limit' => ['integer', 'min:0'],
             'billing_period' => ['sometimes', Rule::in(['monthly', 'yearly'])],
             'features' => ['nullable', 'array'],
             'is_active' => ['boolean'],
@@ -75,6 +85,8 @@ class PlanController extends Controller
 
         $oldValues = $plan->toArray();
         $plan->update($validated);
+
+        \Illuminate\Support\Facades\Cache::forget('active_plans');
 
         ActivityLog::log('plan_updated', auth()->id(), 'Plan', $plan->id, $oldValues, $plan->fresh()->toArray());
 
@@ -95,6 +107,7 @@ class PlanController extends Controller
         ActivityLog::log('plan_deleted', auth()->id(), 'Plan', $plan->id, $plan->toArray(), null);
 
         $plan->delete();
+        \Illuminate\Support\Facades\Cache::forget('active_plans');
 
         return response()->json([
             'message' => 'Plan deleted successfully.',

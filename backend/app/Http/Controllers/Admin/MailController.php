@@ -17,7 +17,7 @@ class MailController extends Controller
 {
     public function getSettings(): JsonResponse
     {
-        $settings = Cache::remember('mail_settings', 300, function () {
+        $settings = Cache::rememberForever('mail_settings', function () {
             return MailSetting::first();
         });
         return response()->json([
