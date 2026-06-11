@@ -7,17 +7,18 @@ function getToken(): string | null {
 
 async function apiFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isFormData = false
 ): Promise<T> {
   const token = getToken();
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       Accept: 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
+      ...(!isFormData ? options.headers ?? {} : {}),
     },
   });
 
@@ -326,6 +327,30 @@ export async function apiGetActivityLogs(params?: Record<string, string>): Promi
 
 // â”€â”€ Stories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+export interface StoryScene {
+  scene_number: number;
+  description: string;
+  image_prompt: string;
+}
+
+export interface StoryAsset {
+  id: number;
+  story_id: number;
+  scene_number: number;
+  asset_type: 'image' | 'video';
+  url: string;
+  prompt: string | null;
+}
+
+export interface StoryStatus {
+  status: string;
+  processing_step: string | null;
+  error_message: string | null;
+  assembled_video_url: string | null;
+  narration_url: string | null;
+  assets_count: { images: number; videos: number };
+}
+
 export interface Story {
   id: number;
   user_id: number;
@@ -336,8 +361,12 @@ export interface Story {
   child_age: number | null;
   photo_url: string | null;
   video_url: string | null;
+  assembled_video_url: string | null;
+  narration_url: string | null;
   status: 'draft' | 'processing' | 'completed' | 'failed';
-  scenes: Array<{ chapter: number; description: string; duration: number }> | null;
+  processing_step: string | null;
+  error_message: string | null;
+  scenes: StoryScene[] | null;
   duration_seconds: number | null;
   language: string;
   created_at: string;
@@ -350,16 +379,19 @@ export async function apiGetStories(params?: Record<string, string>): Promise<Pa
   return apiFetch<PaginatedResponse<Story>>(`/stories${query}`);
 }
 
-export async function apiGetStory(id: number): Promise<{ story: Story }> {
-  return apiFetch<{ story: Story }>(`/stories/${id}`);
+export async function apiGetStory(id: number): Promise<{ story: Story; assets: StoryAsset[] }> {
+  return apiFetch<{ story: Story; assets: StoryAsset[] }>(`/stories/${id}`);
+}
+
+export async function apiGetStoryStatus(id: number): Promise<StoryStatus> {
+  return apiFetch<StoryStatus>(`/stories/${id}/status`);
 }
 
 export async function apiCreateStory(data: FormData): Promise<{ message: string; story: Story }> {
   return apiFetch<{ message: string; story: Story }>('/stories', {
     method: 'POST',
     body: data,
-    headers: {}, // Let browser set Content-Type with boundary for FormData
-  });
+  }, true);
 }
 
 export async function apiUpdateStory(id: number, data: Partial<Story>): Promise<{ message: string; story: Story }> {

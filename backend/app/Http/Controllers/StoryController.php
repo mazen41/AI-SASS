@@ -90,12 +90,14 @@ class StoryController extends Controller
         $user         = $request->user();
         $videoDetails = $user->getVideoLimitDetails();
 
-        if (!$videoDetails['is_unlimited'] && $videoDetails['usage'] >= $videoDetails['total_limit']) {
-            return response()->json(['message' => 'Monthly video limit reached.', 'limit_details' => $videoDetails], 403);
-        }
-
-        if (!$videoDetails['is_daily_unlimited'] && $videoDetails['daily_usage'] >= $videoDetails['daily_total_limit']) {
-            return response()->json(['message' => 'Daily video limit reached.', 'limit_details' => $videoDetails], 403);
+        // Only enforce limits when a subscription exists; allow free use otherwise
+        if ($user->activeSubscription()) {
+            if (!$videoDetails['is_unlimited'] && $videoDetails['usage'] >= $videoDetails['total_limit']) {
+                return response()->json(['message' => 'Monthly video limit reached.', 'limit_details' => $videoDetails], 403);
+            }
+            if (!$videoDetails['is_daily_unlimited'] && $videoDetails['daily_usage'] >= $videoDetails['daily_total_limit']) {
+                return response()->json(['message' => 'Daily video limit reached.', 'limit_details' => $videoDetails], 403);
+            }
         }
 
         $story->update(['status' => 'processing', 'processing_step' => 'queued']);
