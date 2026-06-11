@@ -58,21 +58,19 @@ export default function StoryViewPage() {
       );
 
       if (status.status === 'processing') {
-        // Reload full story + assets if images/videos are coming in
-        if (status.assets_count.images > 0 || status.assets_count.videos > 0) {
-          const fresh = await apiGetStory(storyId);
-          setStory(fresh.story);
-          setAssets(fresh.assets);
+        const assetTotal = status.assets_count.images + status.assets_count.videos;
+        if (assetTotal !== assets.length) {
+          const { story: freshStory, assets: freshAssets } = await apiGetStory(storyId);
+          setStory(freshStory);
+          setAssets(freshAssets);
         }
         pollingRef.current = setTimeout(() => pollStatus(storyId), 5000);
       } else if (status.status === 'completed') {
-        // Final load
-        const fresh = await apiGetStory(storyId);
-        setStory(fresh.story);
-        setAssets(fresh.assets);
+        const { story: freshStory, assets: freshAssets } = await apiGetStory(storyId);
+        setStory(freshStory);
+        setAssets(freshAssets);
       }
     } catch {
-      // Retry on transient errors
       pollingRef.current = setTimeout(() => pollStatus(storyId), 8000);
     }
   };
@@ -140,6 +138,24 @@ export default function StoryViewPage() {
     return emojis[theme] || '✨';
   };
 
+  const getStepLabel = (step: string | null) => {
+    if (!step) return 'Ready';
+    return STEP_LABELS[step] || step.replaceAll('_', ' ');
+  };
+
+  const getProgress = () => {
+    if (!story) return 0;
+    if (story.status === 'completed') return 100;
+    if (story.status === 'failed') return 100;
+    const step = story.processing_step;
+    if (step === 'generate_story') return 15;
+    if (step === 'generate_images') return 35;
+    if (step === 'generate_videos') return 65;
+    if (step === 'generate_narration') return 82;
+    if (step === 'assemble_video') return 94;
+    return story.status === 'processing' ? 8 : 0;
+  };
+
   const imageAssets = assets.filter((a) => a.asset_type === 'image').sort((a, b) => a.scene_number - b.scene_number);
   const videoAssets = assets.filter((a) => a.asset_type === 'video').sort((a, b) => a.scene_number - b.scene_number);
 
@@ -171,6 +187,8 @@ export default function StoryViewPage() {
     );
   }
 
+  const finalVideoUrl = story.assembled_video_url || story.video_url;
+
   return (
     <div className="site-shell" style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <CustomCursor />
@@ -191,77 +209,72 @@ export default function StoryViewPage() {
             </p>
           </motion.div>
 
-          {/* Processing indicator */}
-          {story.status === 'processing' && (
+          {/* AI Status / Progress bar */}
+          {(story.status === 'processing' || story.status === 'failed' || story.status === 'completed') && (
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              style={{
-                marginTop: '1.5rem',
-                padding: '1.25rem 1.5rem',
-                borderRadius: 'var(--r-lg)',
-                background: 'rgba(251,191,36,0.08)',
-                border: '1.5px solid rgba(251,191,36,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-              }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              style={{ marginTop: '1.5rem', padding: '1.25rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}
             >
-              <div style={{ width: 24, height: 24, border: '2.5px solid #fbbf24', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
-              <div>
-                <p style={{ fontWeight: 600, color: '#fbbf24' }}>
-                  {story.processing_step ? (STEP_LABELS[story.processing_step] ?? story.processing_step) : 'Processing…'}
-                </p>
-                <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginTop: '0.15rem' }}>This can take a few minutes. The page updates automatically.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                <strong>{getStepLabel(story.processing_step)}</strong>
+                <span style={{ color: 'var(--text-3)' }}>{getProgress()}%</span>
               </div>
-            </motion.div>
-          )}
-
-          {/* Error */}
-          {story.status === 'failed' && story.error_message && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              style={{
-                marginTop: '1.5rem',
-                padding: '1.25rem 1.5rem',
-                borderRadius: 'var(--r-lg)',
-                background: 'rgba(248,113,113,0.08)',
-                border: '1.5px solid rgba(248,113,113,0.3)',
-              }}
-            >
-              <p style={{ fontWeight: 600, color: '#f87171' }}>Generation Failed</p>
-              <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginTop: '0.25rem' }}>{story.error_message}</p>
+              <div style={{ height: 10, borderRadius: 999, background: 'rgba(148,163,184,0.18)', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${getProgress()}%`,
+                  height: '100%',
+                  background: story.status === 'failed'
+                    ? 'var(--k-pink)'
+                    : 'linear-gradient(90deg, var(--k-blue), var(--k-pink))',
+                  transition: 'width 0.4s ease',
+                }} />
+              </div>
+              {story.status === 'processing' && (
+                <p style={{ color: 'var(--text-3)', fontSize: '0.9rem', marginTop: '0.75rem' }}>
+                  This page updates automatically while AI writes the story, creates images, builds videos, narrates, and assembles the final MP4.
+                </p>
+              )}
+              {story.error_message && (
+                <p style={{ color: 'var(--k-pink)', marginTop: '0.75rem' }}>{story.error_message}</p>
+              )}
             </motion.div>
           )}
 
           {/* Final Video */}
-          {(story.assembled_video_url || story.video_url) && (
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ marginTop: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}><span className="gradient-text">🎬 Final Story Video</span></h3>
-              <video
-                controls
-                style={{ width: '100%', borderRadius: 'var(--r-lg)', border: '1.5px solid var(--border)', background: '#000' }}
-                src={story.assembled_video_url || story.video_url || undefined}
-              />
-              <div style={{ marginTop: '0.75rem' }}>
-                <a
-                  href={story.assembled_video_url || story.video_url || '#'}
-                  download
-                  className="btn btn-primary"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-                >
-                  ⬇️ Download Video
-                </a>
-              </div>
+          {finalVideoUrl && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.08 }}
+              style={{ marginTop: '2rem', padding: '1rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}
+            >
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}><span className="gradient-text">🎞️ Final Story Video</span></h3>
+              <video src={finalVideoUrl} controls style={{ width: '100%', borderRadius: 'var(--r-md)', background: '#000' }} />
+              <a className="btn btn-primary" href={finalVideoUrl} download style={{ display: 'inline-block', marginTop: '1rem' }}>⬇️ Download Video</a>
             </motion.div>
           )}
 
           {/* Narration */}
           {story.narration_url && (
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} style={{ marginTop: '2rem' }}>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} style={{ marginTop: '2rem' }}>
               <h3 style={{ marginBottom: '0.75rem', fontSize: '1.2rem' }}><span className="gradient-text">🎙️ Narration</span></h3>
               <audio controls src={story.narration_url} style={{ width: '100%' }} />
+            </motion.div>
+          )}
+
+          {/* Photo */}
+          {story.photo_url && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              style={{ marginTop: '2rem' }}
+            >
+              <div style={{ borderRadius: 'var(--r-lg)', overflow: 'hidden', border: '1.5px solid var(--border)' }}>
+                <Image src={story.photo_url} alt="Story photo" width={800} height={400} style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block' }} />
+              </div>
             </motion.div>
           )}
 
@@ -276,51 +289,76 @@ export default function StoryViewPage() {
 
           {/* Scene Images */}
           {imageAssets.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} style={{ marginTop: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}><span className="gradient-text">🎨 Scene Images</span></h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.32 }}
+              style={{ marginTop: '2rem' }}
+            >
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}><span className="gradient-text">🖼️ Generated Images</span></h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                 {imageAssets.map((asset) => (
-                  <div key={asset.id} style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1.5px solid var(--border)', background: 'var(--surface)' }}>
-                    <Image src={asset.url} alt={`Scene ${asset.scene_number}`} width={480} height={270} style={{ width: '100%', display: 'block', objectFit: 'cover' }} />
-                    <div style={{ padding: '0.5rem 0.75rem' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>Scene {asset.scene_number}</span>
-                    </div>
+                  <div key={asset.id} style={{ borderRadius: 'var(--r-lg)', overflow: 'hidden', border: '1.5px solid var(--border)', background: 'var(--surface)' }}>
+                    <Image src={asset.url} alt={`Scene ${asset.scene_number}`} width={420} height={236} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }} />
+                    <p style={{ padding: '0.75rem', color: 'var(--text-2)', fontSize: '0.9rem' }}>Scene {asset.scene_number}</p>
                   </div>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {/* Scene Videos */}
-          {videoAssets.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} style={{ marginTop: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}><span className="gradient-text">🎞️ Scene Videos</span></h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+          {/* Scene Videos (only when no final video yet) */}
+          {videoAssets.length > 0 && !finalVideoUrl && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.34 }}
+              style={{ marginTop: '2rem' }}
+            >
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}><span className="gradient-text">🎥 Scene Videos</span></h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
                 {videoAssets.map((asset) => (
                   <div key={asset.id} style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1.5px solid var(--border)', background: 'var(--surface)' }}>
-                    <video controls src={asset.url} style={{ width: '100%', display: 'block' }} />
-                    <div style={{ padding: '0.5rem 0.75rem' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>Scene {asset.scene_number}</span>
-                    </div>
+                    <video src={asset.url} controls style={{ width: '100%', display: 'block' }} />
+                    <p style={{ padding: '0.5rem 0.75rem', color: 'var(--text-3)', fontSize: '0.8rem' }}>Scene {asset.scene_number}</p>
                   </div>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {/* Scenes list */}
+          {/* Scene Breakdown */}
           {story.scenes && story.scenes.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} style={{ marginTop: '2rem' }}>
               <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}><span className="gradient-text">📋 Scene Breakdown</span></h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {story.scenes.map((scene, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem 1.25rem', borderRadius: 'var(--r-md)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, var(--k-blue), var(--k-pink))', display: 'grid', placeItems: 'center', color: 'white', fontWeight: 700, fontSize: '0.85rem', flexShrink: 0 }}>
-                      {scene.scene_number}
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '1rem',
+                      padding: '1rem 1.25rem',
+                      borderRadius: 'var(--r-md)',
+                      background: 'var(--surface)',
+                      border: '1.5px solid var(--border)',
+                    }}
+                  >
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, var(--k-blue), var(--k-pink))',
+                      display: 'grid', placeItems: 'center',
+                      color: 'white', fontWeight: 700, fontSize: '0.85rem',
+                      flexShrink: 0,
+                    }}>
+                      {scene.scene_number || i + 1}
                     </div>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontWeight: 600, marginBottom: '0.15rem' }}>{scene.description}</p>
-                      <p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>{scene.image_prompt}</p>
+                      {scene.image_prompt && (
+                        <p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>{scene.image_prompt}</p>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -66,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Stories
     Route::get('/stories', [StoryController::class, 'index']);
     Route::post('/stories', [StoryController::class, 'store']);
+    Route::get('/stories/{story}/status', [StoryController::class, 'status']);
     Route::get('/stories/{story}', [StoryController::class, 'show']);
     Route::put('/stories/{story}', [StoryController::class, 'update']);
     Route::delete('/stories/{story}', [StoryController::class, 'destroy']);

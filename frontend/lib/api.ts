@@ -340,6 +340,8 @@ export interface StoryAsset {
   asset_type: 'image' | 'video';
   url: string;
   prompt: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StoryStatus {
@@ -366,6 +368,7 @@ export interface Story {
   status: 'draft' | 'processing' | 'completed' | 'failed';
   processing_step: string | null;
   error_message: string | null;
+  custom_prompt: string | null;
   scenes: StoryScene[] | null;
   duration_seconds: number | null;
   language: string;
