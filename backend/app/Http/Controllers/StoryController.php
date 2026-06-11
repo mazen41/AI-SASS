@@ -6,13 +6,9 @@ use App\Models\Story;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class StoryController extends Controller
 {
-    /**
-     * List user's stories
-     */
     public function index(Request $request)
     {
         $stories = $request->user()->stories()
@@ -22,89 +18,65 @@ class StoryController extends Controller
         return response()->json($stories);
     }
 
-    /**
-     * Get a single story
-     */
     public function show(Request $request, Story $story)
     {
         if ($story->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        return response()->json(['story' => $story->load('user')]);
+        return response()->json([
+            'story'  => $story->load('user'),
+            'assets' => $story->assets()->orderBy('scene_number')->get(),
+        ]);
     }
 
-    /**
-     * Create a new story (upload photo + choose theme)
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'theme'       => 'required|string|in:adventure,space,jungle,fantasy,ocean,dinosaur,superhero,princess,pirate',
-            'child_name'  => 'nullable|string|max:100',
-            'child_age'   => 'nullable|integer|min:1|max:18',
-            'language'    => 'nullable|string|in:en,ar',
-            'photo'       => 'nullable|image|max:10240', // 10MB max
+            'title'         => 'required|string|max:255',
+            'theme'         => 'required|string|in:adventure,space,jungle,fantasy,ocean,dinosaur,superhero,princess,pirate',
+            'child_name'    => 'nullable|string|max:100',
+            'child_age'     => 'nullable|integer|min:1|max:18',
+            'language'      => 'nullable|string|in:en,ar',
+            'custom_prompt' => 'nullable|string|max:500',
+            'photo'         => 'nullable|image|max:10240',
         ]);
 
-        $user = $request->user();
+        $user         = $request->user();
         $limitDetails = $user->getStoryLimitDetails();
-        
+
         if (!$limitDetails['is_unlimited'] && $limitDetails['usage'] >= $limitDetails['total_limit']) {
-            return response()->json([
-                'message' => 'You have reached your monthly story limit. Please upgrade your plan or purchase an add-on to create more stories.',
-                'limit_details' => $limitDetails
-            ], 403);
+            return response()->json(['message' => 'Monthly story limit reached.', 'limit_details' => $limitDetails], 403);
         }
 
         if (!$limitDetails['is_daily_unlimited'] && $limitDetails['daily_usage'] >= $limitDetails['daily_total_limit']) {
-            return response()->json([
-                'message' => 'You have reached your daily story creation limit.',
-                'limit_details' => $limitDetails
-            ], 403);
+            return response()->json(['message' => 'Daily story limit reached.', 'limit_details' => $limitDetails], 403);
         }
 
         $data = [
-            'user_id'    => $request->user()->id,
-            'title'      => $validated['title'],
-            'theme'      => $validated['theme'],
-            'child_name' => $validated['child_name'] ?? null,
-            'child_age'  => $validated['child_age'] ?? null,
-            'language'   => $validated['language'] ?? 'en',
-            'status'     => 'draft',
+            'user_id'       => $user->id,
+            'title'         => $validated['title'],
+            'theme'         => $validated['theme'],
+            'child_name'    => $validated['child_name']    ?? null,
+            'child_age'     => $validated['child_age']     ?? null,
+            'language'      => $validated['language']      ?? 'en',
+            'custom_prompt' => $validated['custom_prompt'] ?? null,
+            'status'        => 'draft',
         ];
 
-        // Handle photo upload
         if ($request->hasFile('photo')) {
-            $disk = config('filesystems.default');
-            $path = $request->file('photo')->store('stories/photos', [
-                'disk' => $disk,
-                'visibility' => 'public'
-            ]);
+            $disk        = config('filesystems.default');
+            $path        = $request->file('photo')->store('stories/photos', ['disk' => $disk, 'visibility' => 'public']);
             $data['photo_url'] = Storage::disk($disk)->url($path);
         }
 
         $story = Story::create($data);
 
-        // Log activity
-        ActivityLog::log(
-            userId: $request->user()->id,
-            action: 'story_created',
-            entityType: 'story',
-            entityId: $story->id,
-            newValues: $data
-        );
+        ActivityLog::log(userId: $user->id, action: 'story_created', entityType: 'story', entityId: $story->id, newValues: $data);
 
-        return response()->json([
-            'message' => 'Story created successfully',
-            'story'   => $story,
-        ], 201);
+        return response()->json(['message' => 'Story created successfully', 'story' => $story], 201);
     }
 
-    /**
-     * Generate story content (simulate AI generation)
-     */
     public function generate(Request $request, Story $story)
     {
         if ($story->user_id !== $request->user()->id) {
@@ -115,36 +87,43 @@ class StoryController extends Controller
             return response()->json(['message' => 'Story can only be generated from draft status'], 400);
         }
 
-        $user = $request->user();
+        $user         = $request->user();
         $videoDetails = $user->getVideoLimitDetails();
 
         if (!$videoDetails['is_unlimited'] && $videoDetails['usage'] >= $videoDetails['total_limit']) {
-            return response()->json([
-                'message' => 'You have reached your monthly video generation limit. Please upgrade your plan or purchase an add-on to generate more videos.',
-                'limit_details' => $videoDetails
-            ], 403);
+            return response()->json(['message' => 'Monthly video limit reached.', 'limit_details' => $videoDetails], 403);
         }
 
         if (!$videoDetails['is_daily_unlimited'] && $videoDetails['daily_usage'] >= $videoDetails['daily_total_limit']) {
-            return response()->json([
-                'message' => 'You have reached your daily video generation limit.',
-                'limit_details' => $videoDetails
-            ], 403);
+            return response()->json(['message' => 'Daily video limit reached.', 'limit_details' => $videoDetails], 403);
         }
 
-        $story->update(['status' => 'processing']);
+        $story->update(['status' => 'processing', 'processing_step' => 'queued']);
 
         \App\Jobs\GenerateStoryJob::dispatch($story);
 
-        return response()->json([
-            'message' => 'Story generation started',
-            'story'   => $story->fresh(),
-        ], 202);
+        return response()->json(['message' => 'Story generation started', 'story' => $story->fresh()], 202);
     }
 
-    /**
-     * Update story
-     */
+    public function status(Request $request, Story $story)
+    {
+        if ($story->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'status'          => $story->status,
+            'processing_step' => $story->processing_step,
+            'error_message'   => $story->error_message,
+            'assembled_video_url' => $story->assembled_video_url,
+            'narration_url'   => $story->narration_url,
+            'assets_count'    => [
+                'images' => $story->imageAssets()->count(),
+                'videos' => $story->videoAssets()->count(),
+            ],
+        ]);
+    }
+
     public function update(Request $request, Story $story)
     {
         if ($story->user_id !== $request->user()->id) {
@@ -152,44 +131,36 @@ class StoryController extends Controller
         }
 
         $validated = $request->validate([
-            'title'      => 'sometimes|string|max:255',
-            'child_name' => 'sometimes|nullable|string|max:100',
-            'child_age'  => 'sometimes|nullable|integer|min:1|max:18',
+            'title'         => 'sometimes|string|max:255',
+            'child_name'    => 'sometimes|nullable|string|max:100',
+            'child_age'     => 'sometimes|nullable|integer|min:1|max:18',
+            'custom_prompt' => 'sometimes|nullable|string|max:500',
         ]);
 
         $story->update($validated);
 
-        return response()->json([
-            'message' => 'Story updated',
-            'story'   => $story->fresh(),
-        ]);
+        return response()->json(['message' => 'Story updated', 'story' => $story->fresh()]);
     }
 
-    /**
-     * Delete story
-     */
     public function destroy(Request $request, Story $story)
     {
         if ($story->user_id !== $request->user()->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Delete photo if exists
         if ($story->photo_url) {
             $disk = config('filesystems.default');
             if (preg_match('/stories\/photos\/.+$/', $story->photo_url, $matches)) {
-                $path = $matches[0];
-                Storage::disk($disk)->delete($path);
-            } else {
-                $path = str_replace(asset('storage/'), '', $story->photo_url);
-                Storage::disk('public')->delete($path);
+                Storage::disk($disk)->delete($matches[0]);
             }
         }
+
+        // Delete all story storage folder
+        $disk = config('filesystems.default');
+        Storage::disk($disk)->deleteDirectory("stories/{$story->id}");
 
         $story->delete();
 
         return response()->json(['message' => 'Story deleted']);
     }
-
-
 }

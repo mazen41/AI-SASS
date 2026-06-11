@@ -3,42 +3,113 @@
 namespace App\Jobs;
 
 use App\Models\Story;
+use App\Models\StoryAsset;
+use App\Models\AiJobLog;
 use App\Models\ActivityLog;
+use App\Services\OpenAIService;
+use App\Services\FalAiService;
+use App\Services\ElevenLabsService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class GenerateStoryJob implements ShouldQueue
 {
     use Queueable;
 
-    public $story;
+    public int $timeout = 3600;
+    public int $tries   = 1;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct(Story $story)
-    {
-        $this->story = $story;
-    }
+    public function __construct(public Story $story) {}
 
-    /**
-     * Execute the job.
-     */
-    public function handle(): void
+    public function handle(OpenAIService $openAI, FalAiService $fal, ElevenLabsService $elevenLabs): void
     {
         try {
-            $themeData = $this->generateStoryContent($this->story);
+            // ── Phase 2a: Generate story text ──────────────────────────────
+            $this->runStep('generate_story', function () use ($openAI) {
+                $data = $openAI->generateStory([
+                    'child_name'    => $this->story->child_name,
+                    'child_age'     => $this->story->child_age,
+                    'theme'         => $this->story->theme,
+                    'language'      => $this->story->language,
+                    'custom_prompt' => $this->story->custom_prompt,
+                ]);
 
-            $this->story->update([
-                'status'           => 'completed',
-                'content'          => $themeData['content'],
-                'scenes'           => $themeData['scenes'],
-                'duration_seconds' => $themeData['duration'],
-                'video_url'        => $themeData['video_url'],
-            ]);
+                $this->story->update([
+                    'title'   => $data['title'],
+                    'content' => $data['story_text'],
+                    'scenes'  => $data['scenes'],
+                ]);
+            });
 
-            // Log activity
+            // ── Phase 2b: Generate images ──────────────────────────────────
+            $this->runStep('generate_images', function () use ($fal) {
+                $scenes = $this->story->fresh()->scenes ?? [];
+                foreach ($scenes as $scene) {
+                    $imageUrl = $fal->generateImage(
+                        $scene['image_prompt'],
+                        $this->story->photo_url
+                    );
+
+                    $stored = $fal->downloadAndStore(
+                        $imageUrl,
+                        "stories/{$this->story->id}/scene_{$scene['scene_number']}.jpg"
+                    );
+
+                    StoryAsset::updateOrCreate(
+                        ['story_id' => $this->story->id, 'scene_number' => $scene['scene_number'], 'asset_type' => 'image'],
+                        ['url' => $stored, 'prompt' => $scene['image_prompt']]
+                    );
+                }
+            });
+
+            // ── Phase 3: Generate videos ───────────────────────────────────
+            $this->runStep('generate_videos', function () use ($fal) {
+                $imageAssets = $this->story->imageAssets()->get();
+                $scenes      = collect($this->story->scenes)->keyBy('scene_number');
+
+                foreach ($imageAssets as $asset) {
+                    $scene    = $scenes->get($asset->scene_number);
+                    $prompt   = $scene['description'] ?? 'gentle camera movement, children\'s story scene';
+
+                    $videoUrl = $fal->generateVideo($asset->url, $prompt);
+                    $stored   = $fal->downloadAndStore(
+                        $videoUrl,
+                        "stories/{$this->story->id}/scene_{$asset->scene_number}.mp4"
+                    );
+
+                    StoryAsset::updateOrCreate(
+                        ['story_id' => $this->story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'video'],
+                        ['url' => $stored, 'prompt' => $prompt]
+                    );
+                }
+            });
+
+            // ── Phase 4a: Generate narration ───────────────────────────────
+            $this->runStep('generate_narration', function () use ($elevenLabs) {
+                $narrationUrl = $elevenLabs->generateNarration(
+                    $this->story->content,
+                    $this->story->language,
+                    $this->story->id
+                );
+                $this->story->update(['narration_url' => $narrationUrl]);
+            });
+
+            // ── Phase 4b: Assemble final video ─────────────────────────────
+            $this->runStep('assemble_video', function () {
+                $videoAssets  = $this->story->videoAssets()->get();
+                $narrationUrl = $this->story->fresh()->narration_url;
+
+                $finalUrl = $this->assembleVideo($videoAssets, $narrationUrl);
+                $this->story->update([
+                    'assembled_video_url' => $finalUrl,
+                    'video_url'           => $finalUrl,
+                    'status'              => 'completed',
+                    'processing_step'     => null,
+                ]);
+            });
+
             ActivityLog::log(
                 userId: $this->story->user_id,
                 action: 'story_generated',
@@ -47,86 +118,92 @@ class GenerateStoryJob implements ShouldQueue
                 oldValues: ['status' => 'processing'],
                 newValues: ['status' => 'completed']
             );
-        } catch (\Exception $e) {
-            Log::error('Story generation failed: ' . $e->getMessage());
-            $this->story->update(['status' => 'failed']);
-            
+
+        } catch (\Throwable $e) {
+            Log::error('Story generation failed', ['story_id' => $this->story->id, 'error' => $e->getMessage()]);
+            $this->story->update([
+                'status'        => 'failed',
+                'error_message' => $e->getMessage(),
+            ]);
+
             ActivityLog::log(
                 userId: $this->story->user_id,
                 action: 'story_generation_failed',
                 entityType: 'story',
                 entityId: $this->story->id,
-                oldValues: ['status' => 'processing'],
-                newValues: ['status' => 'failed']
+                newValues: ['error' => $e->getMessage()]
             );
         }
     }
 
-    private function generateStoryContent(Story $story): array
+    private function runStep(string $step, callable $fn): void
     {
-        // Add a slight delay to simulate an external API call
-        sleep(2);
-        
-        $themes = [
-            'adventure' => [
-                'title' => 'The Great Adventure of {name}',
-                'content' => "Once upon a time, in a land filled with wonder, {name} embarked on an incredible journey. Through mystical forests and over towering mountains, {name} discovered courage they never knew they had. With the help of new friends, they solved ancient riddles and found the treasure that was friendship itself.",
-            ],
-            'space' => [
-                'title' => '{name} and the Cosmic Quest',
-                'content' => "In the vast expanse of the cosmos, {name} piloted a shiny spacecraft through swirling nebulas and past twinkling stars. On a mission to save the galaxy from a dark force, {name} showed extraordinary bravery. Along the way, they discovered that the brightest light comes from within.",
-            ],
-            'jungle' => [
-                'title' => '{name} and the Jungle Kingdom',
-                'content' => "Deep in the heart of the emerald jungle, {name} swung from vine to vine, befriending colorful parrots and wise old elephants. When the ancient Tree of Life began to wither, {name} embarked on a quest to find the magical water that would restore it, learning that true strength comes from helping others.",
-            ],
-            'fantasy' => [
-                'title' => '{name} and the Magic Realm',
-                'content' => "In a world where dragons soared and castles floated in the clouds, {name} discovered a magical amulet that granted one special wish. But instead of using it for themselves, {name} chose to heal the broken kingdom and bring happiness to everyone, proving that the greatest magic of all is kindness.",
-            ],
-            'ocean' => [
-                'title' => '{name} Under the Sea',
-                'content' => "Beneath the sparkling waves, {name} explored coral cities and danced with dolphins. When a mysterious darkness threatened the underwater world, {name} discovered they could communicate with sea creatures and led them to restore the light, showing that courage flows like the tides.",
-            ],
-            'dinosaur' => [
-                'title' => '{name} and the Dino World',
-                'content' => "In a world where dinosaurs still roamed, {name} became the youngest dinosaur whisperer. Through jungles of giant ferns and valleys of volcanoes, {name} helped a lost baby T-Rex find its family, learning that even the fiercest creatures need a friend.",
-            ],
-            'superhero' => [
-                'title' => '{name} the Superhero',
-                'content' => "When a strange meteor gave {name} extraordinary powers, they faced a choice: use them for personal gain or protect the city. {name} chose heroism, saving the day with courage and heart. The city cheered their name, but {name} knew the real power was in always doing what's right.",
-            ],
-            'princess' => [
-                'title' => '{name} and the Royal Quest',
-                'content' => "In a magnificent kingdom, {name} proved that being royal isn't about wearing a crown - it's about leading with kindness. When the kingdom faced a great challenge, {name} used wisdom, bravery, and compassion to unite everyone and save the day, showing that true royalty comes from the heart.",
-            ],
-            'pirate' => [
-                'title' => '{name} and the Treasure Map',
-                'content' => "Aboard the mighty ship Starfinder, Captain {name} led a crew of quirky pirates across the seven seas. Following a mysterious map, they discovered that the greatest treasure wasn't gold or jewels, but the unbreakable bonds of friendship forged during their incredible voyage.",
-            ],
-        ];
+        $this->story->setStep($step);
+        $log = AiJobLog::start($this->story->id, $step);
+        try {
+            $fn();
+            $log->complete();
+        } catch (\Throwable $e) {
+            $log->fail($e->getMessage());
+            throw $e;
+        }
+    }
 
-        $theme = $themes[$story->theme] ?? $themes['adventure'];
-        $childName = $story->child_name ?? 'the hero';
+    private function assembleVideo($videoAssets, ?string $narrationUrl): string
+    {
+        // Build ffmpeg concat list
+        $disk      = config('filesystems.default');
+        $tmpDir    = storage_path("app/tmp/story_{$this->story->id}");
+        @mkdir($tmpDir, 0755, true);
 
-        $content = str_replace('{name}', $childName, $theme['content']);
-        $title = str_replace('{name}', $childName, $theme['title']);
+        $listFile = "{$tmpDir}/concat.txt";
+        $lines    = [];
 
-        // Generate scenes
-        $scenes = [
-            ['chapter' => 1, 'description' => 'The beginning of the journey', 'duration' => 30],
-            ['chapter' => 2, 'description' => 'Meeting new friends', 'duration' => 45],
-            ['chapter' => 3, 'description' => 'Facing the challenge', 'duration' => 60],
-            ['chapter' => 4, 'description' => 'The heroic moment', 'duration' => 50],
-            ['chapter' => 5, 'description' => 'Happy ending', 'duration' => 35],
-        ];
+        foreach ($videoAssets as $asset) {
+            // Get local path
+            $storagePath = str_replace(Storage::disk($disk)->url(''), '', $asset->url);
+            $storagePath = ltrim($storagePath, '/');
+            $localPath   = Storage::disk($disk)->path($storagePath);
+            $lines[]     = "file '" . addslashes($localPath) . "'";
+        }
 
-        return [
-            'title'    => $title,
-            'content'  => $content,
-            'scenes'   => $scenes,
-            'duration' => array_sum(array_column($scenes, 'duration')),
-            'video_url'  => null, // Would be generated by actual AI service
-        ];
+        file_put_contents($listFile, implode("\n", $lines));
+
+        $outputConcat = "{$tmpDir}/concat.mp4";
+        $finalOutput  = "{$tmpDir}/final.mp4";
+
+        // Concatenate videos
+        exec("ffmpeg -y -f concat -safe 0 -i \"{$listFile}\" -c copy \"{$outputConcat}\" 2>&1", $out, $code);
+        if ($code !== 0 || !file_exists($outputConcat)) {
+            throw new \RuntimeException('FFmpeg concat failed: ' . implode("\n", $out));
+        }
+
+        // Mix with narration if available
+        if ($narrationUrl) {
+            $narrationStoragePath = str_replace(Storage::disk($disk)->url(''), '', $narrationUrl);
+            $narrationStoragePath = ltrim($narrationStoragePath, '/');
+            $narrationLocal       = Storage::disk($disk)->path($narrationStoragePath);
+
+            exec("ffmpeg -y -i \"{$outputConcat}\" -i \"{$narrationLocal}\" -c:v copy -c:a aac -shortest \"{$finalOutput}\" 2>&1", $out2, $code2);
+
+            if ($code2 !== 0 || !file_exists($finalOutput)) {
+                // Narration failed — use concat without audio
+                $finalOutput = $outputConcat;
+            }
+        } else {
+            $finalOutput = $outputConcat;
+        }
+
+        // Store final video
+        $storedPath = "stories/{$this->story->id}/final.mp4";
+        Storage::disk($disk)->put($storedPath, file_get_contents($finalOutput));
+
+        // Clean up tmp
+        @unlink($listFile);
+        @unlink("{$tmpDir}/concat.mp4");
+        @unlink("{$tmpDir}/final.mp4");
+        @rmdir($tmpDir);
+
+        return Storage::disk($disk)->url($storedPath);
     }
 }

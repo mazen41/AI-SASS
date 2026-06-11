@@ -16,6 +16,8 @@ use App\Http\Controllers\Admin\MailController;
 use App\Http\Controllers\Admin\LandingPageSettingsController;
 use App\Http\Controllers\Admin\AddonController;
 use App\Http\Controllers\Admin\InvoiceController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Api\Admin\AuthSettingsController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use App\Http\Controllers\Webhook\PaypalWebhookController;
@@ -56,7 +58,7 @@ Route::post('/webhooks/paypal', [PaypalWebhookController::class, 'handle']);
 // Backup download (uses api_token query param for authentication)
 Route::get('/admin/backup-settings/download', [BackupSettingsController::class, 'downloadBackup']);
 
-// Protected routes — require valid Sanctum token
+// Protected routes - require valid Sanctum token
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user',    [AuthController::class, 'user']);
@@ -108,6 +110,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/addons', [AddonController::class, 'store']);
         Route::put('/addons/{id}', [AddonController::class, 'update']);
         Route::delete('/addons/{id}', [AddonController::class, 'destroy']);
+
+        // Products Management
+        Route::get('/products', [ProductController::class, 'index']);
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::put('/products/{id}', [ProductController::class, 'update']);
+        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+
+        // Packages Management
+        Route::get('/packages', [PackageController::class, 'index']);
+        Route::post('/packages', [PackageController::class, 'store']);
+        Route::put('/packages/{id}', [PackageController::class, 'update']);
+        Route::delete('/packages/{id}', [PackageController::class, 'destroy']);
 
         // Invoices Management
         Route::get('/invoices', [InvoiceController::class, 'index']);

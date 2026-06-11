@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 /* ============================================================
-   KIDO — KIDS AI STORYTELLING DESIGN SYSTEM v2.0
-   Disney/Pixar Inspired · Magical · Premium · Cinematic
-   Reference: Wilderlore × EverCare Kids × Penny Juice
+   KIDO  KIDS AI STORYTELLING DESIGN SYSTEM v2.0
+   Disney/Pixar Inspired  Magical  Premium  Cinematic
+   Reference: Wilderlore  EverCare Kids  Penny Juice
    ============================================================ */
 
 /* ============================================================
    DESIGN TOKENS
    ============================================================ */
 :root {
-  /* ── Brand Palette — blending all 7 palettes ── */
+  /*  Brand Palette  blending all 7 palettes  */
   --k-yellow:   #FFDE42;   /* Electric Hero */
   --k-sky:      #53CBF3;   /* Electric Hero */
   --k-blue:     #5478FF;   /* Electric Hero */
@@ -32,7 +32,7 @@
   --k-sand:     #FFE8BE;   /* Vintage Coast */
   --k-amber:    #FFC94D;   /* Soft Tropics */
 
-  /* ── Gradients ── */
+  /*  Gradients  */
   --grad-magic:   linear-gradient(135deg, #5478FF 0%, #FFA6FB 55%, #FF3E9B 100%);
   --grad-hero:    linear-gradient(135deg, #FFDE42 0%, #E87F24 45%, #FF3E9B 100%);
   --grad-sky:     linear-gradient(135deg, #03AED2 0%, #5478FF 100%);
@@ -46,12 +46,12 @@
   --grad-peach:   linear-gradient(135deg, #FAE7CB 0%, #FFC94D 100%);
   --grad-coast:   linear-gradient(135deg, #427AB5 0%, #F7DD7D 100%);
 
-  /* ── Easing ── */
+  /*  Easing  */
   --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-bounce: cubic-bezier(0.68, -0.55, 0.27, 1.55);
 
-  /* ── Radii ── */
+  /*  Radii  */
   --r-sm:   12px;
   --r-md:   20px;
   --r-lg:   28px;
@@ -60,7 +60,7 @@
   --r-3xl:  64px;
   --r-full: 9999px;
 
-  /* ── Shadows ── */
+  /*  Shadows  */
   --shadow-card:   0 8px 32px rgba(84,120,255,0.14), 0 2px 8px rgba(0,0,0,0.06);
   --shadow-float:  0 24px 64px rgba(84,120,255,0.2), 0 6px 20px rgba(0,0,0,0.08);
   --shadow-glow:   0 0 48px rgba(84,120,255,0.4);
@@ -68,7 +68,7 @@
   --shadow-yellow: 0 8px 32px rgba(255,222,66,0.4);
   --shadow-magic:  0 20px 60px rgba(84,120,255,0.25), 0 0 0 1px rgba(84,120,255,0.08);
 
-  /* ── kido-specific ── */
+  /*  kido-specific  */
   --kido-yellow:  var(--k-yellow);
   --kido-blue:    var(--k-blue);
   --kido-pink:    var(--k-pink);
@@ -85,7 +85,7 @@
 }
 
 /* ============================================================
-   LIGHT THEME — Sunny Cream Canvas (Learnly × EverCare × Penny Juice)
+   LIGHT THEME  Sunny Cream Canvas (Learnly  EverCare  Penny Juice)
    Bright white base, warm cream accents, vivid pops of color
    ============================================================ */
 :root, [data-theme="light"] {
@@ -117,7 +117,7 @@
 }
 
 /* ============================================================
-   DARK THEME — Wilderlore Enchanted Forest
+   DARK THEME  Wilderlore Enchanted Forest
    Rich deep teal-indigo, warm golden accents, NOT flat black
    ============================================================ */
 [data-theme="dark"] {
@@ -250,7 +250,7 @@ body:has(button:hover) #cursor-ring {
 }
 
 /* ============================================================
-   NAVBAR — Floating Glass Pill
+   NAVBAR  Floating Glass Pill
    ============================================================ */
 .kido-nav {
   position: fixed;
@@ -455,7 +455,7 @@ body:has(button:hover) #cursor-ring {
 .badge { composes: kido-badge if defined; }
 
 /* ============================================================
-   HERO SECTION — Cinematic Full Viewport
+   HERO SECTION  Cinematic Full Viewport
    ============================================================ */
 .kido-hero {
   min-height: 100vh;
@@ -666,7 +666,7 @@ body:has(button:hover) #cursor-ring {
 }
 
 /* ============================================================
-   FEATURE CARDS — Floating, Colorful
+   FEATURE CARDS  Floating, Colorful
    ============================================================ */
 .features-grid {
   display: grid;
@@ -1674,7 +1674,7 @@ body:has(button:hover) #cursor-ring {
 @media (max-width: 1100px) { .dash-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px)  { .dash-grid { grid-template-columns: 1fr; } }
 
-/* Hero CTA card — full width */
+/* Hero CTA card  full width */
 .dash-hero-card {
   grid-column: 1 / -1;
   border-radius: var(--r-xl);
@@ -2177,7 +2177,7 @@ body:has(button:hover) #cursor-ring {
 .animate-wave        { animation: wave 1.5s ease-in-out infinite; display: inline-block; }
 
 /* ============================================================
-   NAVBAR RESPONSIVE — Hamburger + Desktop links
+   NAVBAR RESPONSIVE  Hamburger + Desktop links
    ============================================================ */
 
 /* Desktop-only nav links */
@@ -2209,7 +2209,7 @@ body:has(button:hover) #cursor-ring {
   gap: 0.5rem;
 }
 
-/* Hamburger button — hidden on desktop */
+/* Hamburger button  hidden on desktop */
 .nav-hamburger {
   display: none;
   flex-direction: column;
@@ -2246,7 +2246,7 @@ body:has(button:hover) #cursor-ring {
   .nav-links-desktop { display: none; }
   .nav-auth-desktop  { display: none; }
   .nav-hamburger     { display: flex; }
-  /* hide lang+theme from top bar on mobile — they live inside the drawer */
+  /* hide lang+theme from top bar on mobile  they live inside the drawer */
   .kido-nav .lang-toggle,
   .kido-nav .theme-toggle { display: none; }
 }
@@ -2285,12 +2285,12 @@ body:has(button:hover) #cursor-ring {
 
 
 /* ============================================================
-   AUTH-LAYOUT � login/register responsive layout
+   AUTH-LAYOUT  login/register responsive layout
    Desktop: illustration LEFT | form RIGHT (50/50 grid)
    Mobile:  illustration on TOP (compact) + form BELOW (centered)
    ============================================================ */
 
-/* Desktop layout � both classes */
+/* Desktop layout  both classes */
 .auth-layout,
 .auth-wrap {
   min-height: 100vh;

@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+﻿const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -42,7 +42,7 @@ async function apiFetch<T>(
   return data as T;
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface AuthUser {
   id: number;
@@ -89,7 +89,7 @@ export async function apiGetUser(): Promise<{ user: AuthUser }> {
   return apiFetch<{ user: AuthUser }>('/user');
 }
 
-// ── Token helpers ─────────────────────────────────────────────────────────────
+// â”€â”€ Token helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function saveToken(token: string): void {
   localStorage.setItem('auth_token', token);
@@ -103,7 +103,7 @@ export function isAuthenticated(): boolean {
   return Boolean(getToken());
 }
 
-// ── Admin API ─────────────────────────────────────────────────────────────────
+// â”€â”€ Admin API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface DashboardStats {
   users: {
@@ -324,7 +324,7 @@ export async function apiGetActivityLogs(params?: Record<string, string>): Promi
   return apiFetch<PaginatedResponse<ActivityLog>>(`/admin/activity-logs${query}`);
 }
 
-// ── Stories ────────────────────────────────────────────────────────────────────
+// â”€â”€ Stories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface Story {
   id: number;
@@ -396,7 +396,7 @@ export async function apiGetSystemHealth(): Promise<SystemHealth> {
   return apiFetch<SystemHealth>('/admin/system-health');
 }
 
-// ── Mail ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Mail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface MailSetting {
   id?: number;
@@ -482,7 +482,7 @@ export async function apiGetMailLogs(params?: Record<string, string>): Promise<P
   return apiFetch<PaginatedResponse<MailLog>>(`/admin/mail-logs${query}`);
 }
 
-// ── Storage Settings ─────────────────────────────────────────────────────────
+// â”€â”€ Storage Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface StorageGatewaySettings {
   id: number;
@@ -522,7 +522,7 @@ export async function apiTestStorageConnection(driver: string): Promise<{ succes
   });
 }
 
-// ── Backup Settings ──────────────────────────────────────────────────────────
+// â”€â”€ Backup Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface BackupSettings {
   id: number;
@@ -563,7 +563,7 @@ export function apiGetDownloadBackupUrl(): string {
   return `${API_URL}/admin/backup-settings/download${token ? `?api_token=${token}` : ''}`;
 }
 
-// ── User Billing ─────────────────────────────────────────────────────────────
+// â”€â”€ User Billing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function apiGetBillingPlans(): Promise<{ plans: Plan[] }> {
   return apiFetch<{ plans: Plan[] }>('/billing/plans');
@@ -591,4 +591,69 @@ export async function apiUserCancelSubscription(): Promise<{ message: string; su
   return apiFetch<{ message: string; subscription: Subscription }>('/billing/subscription/cancel', {
     method: 'POST',
   });
+}
+
+// -- Products ------------------------------------------------------------------
+
+export interface Product {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export async function apiGetProducts(): Promise<{ products: Product[] }> {
+  return apiFetch<{ products: Product[] }>('/admin/products');
+}
+
+export async function apiCreateProduct(data: Partial<Product>): Promise<{ product: Product }> {
+  return apiFetch<{ product: Product }>('/admin/products', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateProduct(id: number, data: Partial<Product>): Promise<{ product: Product }> {
+  return apiFetch<{ product: Product }>(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function apiDeleteProduct(id: number): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/admin/products/${id}`, { method: 'DELETE' });
+}
+
+// -- Packages ------------------------------------------------------------------
+
+export interface PackageItem {
+  id: number;
+  product_id: number;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  product: Product;
+}
+
+export interface Package {
+  id: number;
+  name: string;
+  description: string | null;
+  total_price: number;
+  is_active: boolean;
+  items: PackageItem[];
+  created_at: string;
+}
+
+export async function apiGetPackages(): Promise<{ packages: Package[] }> {
+  return apiFetch<{ packages: Package[] }>('/admin/packages');
+}
+
+export async function apiCreatePackage(data: { name: string; description?: string; is_active: boolean; items: { product_id: number; quantity: number }[] }): Promise<{ package: Package }> {
+  return apiFetch<{ package: Package }>('/admin/packages', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdatePackage(id: number, data: { name: string; description?: string; is_active: boolean; items: { product_id: number; quantity: number }[] }): Promise<{ package: Package }> {
+  return apiFetch<{ package: Package }>(`/admin/packages/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function apiDeletePackage(id: number): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/admin/packages/${id}`, { method: 'DELETE' });
 }
