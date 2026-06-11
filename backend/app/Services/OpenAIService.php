@@ -13,13 +13,17 @@ class OpenAIService
 
     public function __construct()
     {
-        $this->apiKey    = config('services.openai.key');
+        $this->apiKey    = (string) config('services.openai.key', '');
         $this->model     = config('services.openai.model', 'gpt-4o');
         $this->maxTokens = config('services.openai.max_tokens', 4000);
     }
 
     public function generateStory(array $params): array
     {
+        if ($this->apiKey === '') {
+            throw new \RuntimeException('OPENAI_API_KEY is not configured.');
+        }
+
         $childName   = $params['child_name'] ?? 'the hero';
         $childAge    = $params['child_age']  ?? 6;
         $theme       = $params['theme']      ?? 'adventure';

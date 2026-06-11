@@ -16,7 +16,7 @@ class FalAiService
 
     public function __construct()
     {
-        $this->apiKey          = config('services.fal.key');
+        $this->apiKey          = (string) config('services.fal.key', '');
         $this->imageModel      = config('services.fal.image_model', 'fal-ai/flux/schnell');
         $this->videoModel      = config('services.fal.video_model', 'fal-ai/minimax-video/image-to-video');
         $this->pollInterval    = config('services.fal.poll_interval', 5);
@@ -27,7 +27,9 @@ class FalAiService
 
     public function generateImage(string $prompt, ?string $photoUrl = null): string
     {
-        $model   = $photoUrl ? 'fal-ai/flux/dev/image-to-image' : 'fal-ai/flux/schnell';
+        $this->ensureConfigured();
+
+        $model   = $photoUrl ? 'fal-ai/flux/dev/image-to-image' : $this->imageModel;
         $payload = [
             'prompt'          => $prompt . ', children\'s book illustration style, vibrant colors, safe for kids',
             'num_images'      => 1,
@@ -40,8 +42,8 @@ class FalAiService
             $payload['strength']  = 0.75;
         }
 
-        $requestId = $this->submitRequest($model, $payload);
-        $result    = $this->pollForResult($requestId);
+        [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($model, $payload);
+        $result    = $this->pollForResult($model, $requestId, $statusUrl, $responseUrl);
 
         $imageUrl = $result['images'][0]['url'] ?? null;
         if (!$imageUrl) {
@@ -55,14 +57,16 @@ class FalAiService
 
     public function generateVideo(string $imageUrl, string $prompt): string
     {
+        $this->ensureConfigured();
+
         $payload = [
             'image_url'   => $imageUrl,
-            'prompt'      => $prompt,
+            'prompt'      => $prompt . ', gentle cinematic motion, smooth camera movement, child-safe storybook animation',
             'duration'    => '5',
         ];
 
-        $requestId = $this->submitRequest($this->videoModel, $payload);
-        $result    = $this->pollForResult($requestId);
+        [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($this->videoModel, $payload);
+        $result    = $this->pollForResult($this->videoModel, $requestId, $statusUrl, $responseUrl);
 
         $videoUrl = $result['video']['url'] ?? $result['videos'][0]['url'] ?? null;
         if (!$videoUrl) {
@@ -74,7 +78,7 @@ class FalAiService
 
     // ─── Internal Helpers ─────────────────────────────────────────────────────
 
-    private function submitRequest(string $model, array $payload): string
+    private function submitRequest(string $model, array $payload): array
     {
         $response = Http::withHeaders([
             'Authorization' => 'Key ' . $this->apiKey,
@@ -91,17 +95,17 @@ class FalAiService
             throw new \RuntimeException('No request_id from Fal.ai');
         }
 
-        return $requestId;
+        return [$requestId, $response->json('status_url'), $response->json('response_url')];
     }
 
-    private function pollForResult(string $requestId): array
+    private function pollForResult(string $model, string $requestId, ?string $statusUrl, ?string $responseUrl): array
     {
         for ($i = 0; $i < $this->pollMaxAttempts; $i++) {
             sleep($this->pollInterval);
 
             $response = Http::withHeaders([
                 'Authorization' => 'Key ' . $this->apiKey,
-            ])->timeout(30)->get("https://queue.fal.run/requests/{$requestId}");
+            ])->timeout(30)->get($statusUrl ?: "https://queue.fal.run/{$model}/requests/{$requestId}/status");
 
             if (!$response->successful()) {
                 continue;
@@ -113,7 +117,7 @@ class FalAiService
             if ($status === 'COMPLETED') {
                 $result = Http::withHeaders([
                     'Authorization' => 'Key ' . $this->apiKey,
-                ])->timeout(30)->get("https://queue.fal.run/requests/{$requestId}/response");
+                ])->timeout(30)->get($responseUrl ?: "https://queue.fal.run/{$model}/requests/{$requestId}/response");
 
                 if ($result->successful()) {
                     return $result->json();
@@ -126,6 +130,13 @@ class FalAiService
         }
 
         throw new \RuntimeException('Fal.ai polling timed out for request: ' . $requestId);
+    }
+
+    private function ensureConfigured(): void
+    {
+        if ($this->apiKey === '') {
+            throw new \RuntimeException('FAL_API_KEY is not configured.');
+        }
     }
 
     public function downloadAndStore(string $url, string $storagePath): string

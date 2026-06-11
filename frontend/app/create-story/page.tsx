@@ -30,6 +30,8 @@ export default function CreateStoryPage() {
   const [childName, setChildName] = useState('');
   const [childAge, setChildAge] = useState('');
   const [selectedTheme, setSelectedTheme] = useState('adventure');
+  const [language, setLanguage] = useState('en');
+  const [customPrompt, setCustomPrompt] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,6 +65,8 @@ export default function CreateStoryPage() {
       formData.append('theme', selectedTheme);
       if (childName) formData.append('child_name', childName);
       if (childAge) formData.append('child_age', childAge);
+      formData.append('language', language);
+      if (customPrompt) formData.append('custom_prompt', customPrompt);
       if (photo) formData.append('photo', photo);
 
       const { story } = await apiCreateStory(formData);
@@ -124,7 +128,7 @@ export default function CreateStoryPage() {
                 {generating ? (
                   <>
                     <span className="spinner" style={{ display: 'inline-block', width: 18, height: 18, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', marginRight: 8 }} />
-                    Generating Magic...
+                    Starting AI Pipeline...
                   </>
                 ) : (
                   <>🪄 Generate Story</>
@@ -267,6 +271,55 @@ export default function CreateStoryPage() {
                   placeholder="5"
                   min={1}
                   max={18}
+                  style={{
+                    width: '100%',
+                    padding: '0.85rem 1rem',
+                    borderRadius: 'var(--r-md)',
+                    border: '1.5px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text)',
+                    fontSize: '1rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+
+            {/* Language + Custom Prompt */}
+            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                  Language
+                </label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.85rem 1rem',
+                    borderRadius: 'var(--r-md)',
+                    border: '1.5px solid var(--border)',
+                    background: 'var(--surface)',
+                    color: 'var(--text)',
+                    fontSize: '1rem',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="en">English</option>
+                  <option value="ar">Arabic</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                  Custom story idea <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="e.g. Make it about kindness, space robots, or learning bravery"
+                  maxLength={500}
                   style={{
                     width: '100%',
                     padding: '0.85rem 1rem',

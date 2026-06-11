@@ -326,6 +326,25 @@ export async function apiGetActivityLogs(params?: Record<string, string>): Promi
 
 // â”€â”€ Stories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+export interface StoryAsset {
+  id: number;
+  story_id: number;
+  scene_number: number;
+  asset_type: 'image' | 'video';
+  url: string;
+  prompt: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoryScene {
+  scene_number?: number;
+  chapter?: number;
+  description: string;
+  image_prompt?: string;
+  duration?: number;
+}
+
 export interface Story {
   id: number;
   user_id: number;
@@ -337,7 +356,12 @@ export interface Story {
   photo_url: string | null;
   video_url: string | null;
   status: 'draft' | 'processing' | 'completed' | 'failed';
-  scenes: Array<{ chapter: number; description: string; duration: number }> | null;
+  scenes: StoryScene[] | null;
+  processing_step: string | null;
+  error_message: string | null;
+  custom_prompt: string | null;
+  narration_url: string | null;
+  assembled_video_url: string | null;
   duration_seconds: number | null;
   language: string;
   created_at: string;
@@ -350,8 +374,26 @@ export async function apiGetStories(params?: Record<string, string>): Promise<Pa
   return apiFetch<PaginatedResponse<Story>>(`/stories${query}`);
 }
 
-export async function apiGetStory(id: number): Promise<{ story: Story }> {
-  return apiFetch<{ story: Story }>(`/stories/${id}`);
+export async function apiGetStory(id: number): Promise<{ story: Story; assets: StoryAsset[] }> {
+  return apiFetch<{ story: Story; assets: StoryAsset[] }>(`/stories/${id}`);
+}
+
+export async function apiGetStoryStatus(id: number): Promise<{
+  status: Story['status'];
+  processing_step: string | null;
+  error_message: string | null;
+  assembled_video_url: string | null;
+  narration_url: string | null;
+  assets_count: { images: number; videos: number };
+}> {
+  return apiFetch<{
+    status: Story['status'];
+    processing_step: string | null;
+    error_message: string | null;
+    assembled_video_url: string | null;
+    narration_url: string | null;
+    assets_count: { images: number; videos: number };
+  }>(`/stories/${id}/status`);
 }
 
 export async function apiCreateStory(data: FormData): Promise<{ message: string; story: Story }> {
