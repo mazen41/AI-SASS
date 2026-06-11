@@ -15,7 +15,7 @@ class ElevenLabsService
 
     public function __construct()
     {
-        $this->apiKey    = config('services.elevenlabs.key');
+        $this->apiKey    = (string) config('services.elevenlabs.key', '');
         $this->model     = config('services.elevenlabs.model', 'eleven_multilingual_v2');
         $this->enVoiceId = config('services.elevenlabs.en_voice_id', 'EXAVITQu4vr4xnSDxMaL');
         $this->arVoiceId = config('services.elevenlabs.ar_voice_id', 'ThT5KcBeYPX3keUQqHPh');
@@ -23,6 +23,10 @@ class ElevenLabsService
 
     public function generateNarration(string $text, string $language, int $storyId): string
     {
+        if ($this->apiKey === '') {
+            throw new \RuntimeException('ELEVENLABS_API_KEY is not configured.');
+        }
+
         $voiceId = $language === 'ar' ? $this->arVoiceId : $this->enVoiceId;
 
         $response = Http::withHeaders([
