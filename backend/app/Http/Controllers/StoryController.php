@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Story;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use App\Jobs\GenerateStoryProductsJob;
 use Illuminate\Support\Facades\Storage;
 
 class StoryController extends Controller
@@ -25,8 +26,9 @@ class StoryController extends Controller
         }
 
         return response()->json([
-            'story'  => $story->load('user'),
-            'assets' => $story->assets()->orderBy('scene_number')->get(),
+            'story'   => $story->load(['user', 'outputs']),
+            'assets'  => $story->assets()->orderBy('scene_number')->get(),
+            'outputs' => $story->outputs()->get()->keyBy('output_type'),
         ]);
     }
 
@@ -123,10 +125,30 @@ class StoryController extends Controller
             'error_message'   => $story->error_message,
             'assembled_video_url' => $story->assembled_video_url,
             'narration_url'   => $story->narration_url,
+            'outputs'         => $story->outputs()->get()->keyBy('output_type'),
             'assets_count'    => [
                 'images' => $story->imageAssets()->count(),
                 'videos' => $story->videoAssets()->count(),
+                'coloring_pages' => $story->coloringPageAssets()->count(),
             ],
+        ]);
+    }
+
+    public function generateProducts(Request $request, Story $story)
+    {
+        if ($story->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if (!$story->content || $story->imageAssets()->count() === 0) {
+            return response()->json(['message' => 'Story text and scene images are required before book products can be generated.'], 422);
+        }
+
+        GenerateStoryProductsJob::dispatchSync($story);
+
+        return response()->json([
+            'message' => 'Story products generated',
+            'outputs' => $story->fresh()->outputs()->get()->keyBy('output_type'),
         ]);
     }
 
