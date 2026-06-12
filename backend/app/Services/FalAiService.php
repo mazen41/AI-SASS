@@ -18,9 +18,72 @@ class FalAiService
     {
         $this->apiKey          = (string) config('services.fal.key', '');
         $this->imageModel      = config('services.fal.image_model', 'fal-ai/flux/schnell');
-        $this->videoModel      = config('services.fal.video_model', 'fal-ai/minimax-video/image-to-video');
+        // ✅ UPGRADED: Kling v2.1 — much better cinematic motion than v1.6
+        $this->videoModel      = config('services.fal.video_model', 'fal-ai/kling-video/v2.1/standard/image-to-video');
         $this->pollInterval    = (int) config('services.fal.poll_interval', 5);
         $this->pollMaxAttempts = (int) config('services.fal.poll_max_attempts', 60);
+    }
+
+    // --- File Upload to Fal.ai storage ------------------------------------
+
+    /**
+     * Upload a local file to Fal.ai storage and return a public URL.
+     * Used to make locally-stored photos accessible to Fal.ai workers.
+     */
+    public function uploadFileToFal(string $localPath): string
+    {
+        if (!file_exists($localPath)) {
+            throw new \RuntimeException("File not found for Fal upload: {$localPath}");
+        }
+
+        $mime     = mime_content_type($localPath) ?: 'image/jpeg';
+        $filename = basename($localPath);
+
+        // Step 1: Initiate upload — get presigned upload_url + final file_url
+        $initResponse = Http::withHeaders([
+            'Authorization' => 'Key ' . $this->apiKey,
+            'Content-Type'  => 'application/json',
+        ])->timeout(30)->post('https://rest.fal.ai/storage/upload/initiate', [
+            'content_type' => $mime,
+            'file_name'    => $filename,
+        ]);
+
+        if (!$initResponse->successful()) {
+            throw new \RuntimeException('Fal.ai upload initiate failed: ' . $initResponse->body());
+        }
+
+        $uploadUrl = $initResponse->json('upload_url');
+        $fileUrl   = $initResponse->json('file_url');
+
+        if (!$uploadUrl || !$fileUrl) {
+            throw new \RuntimeException('Fal.ai upload initiate missing URLs: ' . $initResponse->body());
+        }
+
+        // Step 2: PUT the raw file bytes to the presigned URL
+        $putResponse = Http::withHeaders([
+            'Content-Type' => $mime,
+        ])->timeout(60)->withBody(file_get_contents($localPath), $mime)->put($uploadUrl);
+
+        if (!$putResponse->successful()) {
+            throw new \RuntimeException('Fal.ai file PUT failed: ' . $putResponse->body());
+        }
+
+        Log::info('Fal.ai file uploaded', ['file_url' => $fileUrl]);
+
+        return $fileUrl;
+    }
+
+    /**
+     * Check if a URL is publicly accessible (not localhost/private).
+     */
+    private function isPublicUrl(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) return false;
+        return !in_array($host, ['localhost', '127.0.0.1', '::1'])
+            && !str_starts_with($host, '192.168.')
+            && !str_starts_with($host, '10.')
+            && !str_starts_with($host, '172.');
     }
 
     // --- Image Generation ---------------------------------------------------
@@ -30,13 +93,37 @@ class FalAiService
         $this->ensureConfigured();
 
         if ($photoUrl) {
-            $model   = 'fal-ai/flux/dev/image-to-image';
+            // If the photo is on localhost/private network, upload it to Fal storage first
+            if (!$this->isPublicUrl($photoUrl)) {
+                Log::info('Photo URL is local, uploading to Fal storage', ['original_url' => $photoUrl]);
+                $disk      = config('filesystems.default', 'public');
+                $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
+                $relative  = ltrim(substr($photoUrl, strlen($baseUrl)), '/');
+                $localPath = Storage::disk($disk)->path($relative);
+                $photoUrl  = $this->uploadFileToFal($localPath);
+                Log::info('Photo uploaded to Fal storage', ['fal_url' => $photoUrl]);
+            }
+
+            // Use PuLID — face-identity-preserving model.
+            // This keeps the child's actual face consistent across every scene.
+            $model   = 'fal-ai/flux-pulid';
             $payload = [
-                'prompt'                => $prompt . ", children's book illustration style, vibrant colors, safe for kids",
-                'image_url'             => $photoUrl,
-                'strength'              => 0.75,
+                // ✅ FIXED: Removed conflicting "hyperrealistic/8K/film grain" keywords.
+                // PuLID works best with semi-realistic style prompts — mixing
+                // "hyperrealistic photography" with illustration styles caused
+                // the model to default to a generic toddler cartoon look.
+                'prompt'                => $prompt
+                    . ", semi-realistic digital art, consistent face identity, same child,"
+                    . " warm cinematic lighting, detailed facial features, natural skin tone,"
+                    . " expressive eyes, children's story aesthetic, vibrant scene",
+                'reference_image_url'   => $photoUrl,
                 'num_images'            => 1,
                 'image_size'            => 'landscape_16_9',
+                'id_weight'             => 1.0,   // max face adherence
+                'num_inference_steps'   => 35,    // ✅ INCREASED: more steps = sharper likeness
+                // ✅ FIXED: Raised from 5.0 → 7.5 for stronger face + prompt adherence
+                'guidance_scale'        => 7.5,
+                'true_cfg'              => 1.0,
                 'enable_safety_checker' => true,
             ];
         } else {
@@ -69,7 +156,8 @@ class FalAiService
 
         $payload = [
             'image_url' => $imageUrl,
-            'prompt'    => $prompt . ', gentle cinematic motion, smooth camera movement, child-safe storybook animation',
+            // ✅ IMPROVED: More specific cinematic motion keywords for Kling v2.1
+            'prompt'    => $prompt . ', smooth cinematic camera movement, photorealistic motion, lifelike facial expressions, natural body movement, film quality 4K, warm natural lighting, gentle atmosphere',
             'duration'  => '5',
         ];
 
@@ -140,22 +228,59 @@ class FalAiService
         $statusUrl   = $statusUrl   ?? "https://queue.fal.run/{$model}/requests/{$requestId}/status";
         $responseUrl = $responseUrl ?? "https://queue.fal.run/{$model}/requests/{$requestId}";
 
-        for ($i = 0; $i < $this->pollMaxAttempts; $i++) {
-            sleep($this->pollInterval);
+        // How long to wait before the first poll:
+        //   - Video models are very slow → wait 60s before even trying
+        //   - Image models (PuLID included) wait 20s
+        $isVideo     = str_contains($model, 'video');
+        $initialWait = $isVideo ? 60 : 20;
+        Log::info('Fal.ai polling start', [
+            'model'        => $model,
+            'request_id'   => $requestId,
+            'initial_wait' => $initialWait,
+        ]);
+        sleep($initialWait);
 
+        // After the initial wait, poll every $pollInterval seconds.
+        // Max wall-clock budget:
+        //   image: 20s initial + 120 attempts × 5s = 620s (~10 min)
+        //   video: 60s initial + 120 attempts × 5s = 660s (~11 min)
+        $maxAttempts   = max($this->pollMaxAttempts * 2, 120); // at least 120 attempts
+        $networkErrors = 0;
+        $maxNetErrors  = 10; // abort if the network is consistently broken
+
+        for ($i = 0; $i < $maxAttempts; $i++) {
             $response = Http::withHeaders([
                 'Authorization' => 'Key ' . $this->apiKey,
             ])->timeout(30)->get($statusUrl);
 
             if (!$response->successful()) {
-                Log::warning('Fal.ai poll non-200', ['attempt' => $i, 'status' => $response->status()]);
+                $networkErrors++;
+                Log::warning('Fal.ai poll non-200', [
+                    'attempt'        => $i,
+                    'http_status'    => $response->status(),
+                    'body'           => $response->body(),
+                    'network_errors' => $networkErrors,
+                ]);
+                if ($networkErrors >= $maxNetErrors) {
+                    throw new \RuntimeException(
+                        "Fal.ai polling aborted after {$networkErrors} consecutive network errors. request_id={$requestId}"
+                    );
+                }
+                sleep($this->pollInterval);
                 continue;
             }
 
-            $data   = $response->json();
-            $status = $data['status'] ?? '';
+            $networkErrors = 0; // reset on success
+            $data          = $response->json();
+            $status        = strtoupper($data['status'] ?? '');
+            $elapsed       = $initialWait + ($i * $this->pollInterval);
 
-            Log::debug('Fal.ai poll', ['attempt' => $i, 'status' => $status, 'request_id' => $requestId]);
+            Log::info('Fal.ai poll', [
+                'attempt'    => $i,
+                'status'     => $status,
+                'elapsed_s'  => $elapsed,
+                'request_id' => $requestId,
+            ]);
 
             if ($status === 'COMPLETED') {
                 $result = Http::withHeaders([
@@ -163,6 +288,7 @@ class FalAiService
                 ])->timeout(60)->get($responseUrl);
 
                 if ($result->successful()) {
+                    Log::info('Fal.ai job completed', ['elapsed_s' => $elapsed, 'request_id' => $requestId]);
                     return $result->json();
                 }
 
@@ -174,11 +300,17 @@ class FalAiService
                 throw new \RuntimeException('Fal.ai job failed: ' . $error);
             }
 
-            // IN_QUEUE or IN_PROGRESS -- keep polling
+            // IN_QUEUE or IN_PROGRESS — log queue position if available
+            if (isset($data['queue_position'])) {
+                Log::info('Fal.ai queue position', ['position' => $data['queue_position'], 'request_id' => $requestId]);
+            }
+
+            sleep($this->pollInterval);
         }
 
+        $totalBudget = $initialWait + ($maxAttempts * $this->pollInterval);
         throw new \RuntimeException(
-            'Fal.ai polling timed out after ' . ($this->pollMaxAttempts * $this->pollInterval) . 's. request_id=' . $requestId
+            "Fal.ai polling timed out after {$totalBudget}s ({$maxAttempts} attempts). request_id={$requestId}"
         );
     }
 

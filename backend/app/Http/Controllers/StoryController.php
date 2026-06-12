@@ -45,12 +45,16 @@ class StoryController extends Controller
         $user         = $request->user();
         $limitDetails = $user->getStoryLimitDetails();
 
-        if (!$limitDetails['is_unlimited'] && $limitDetails['usage'] >= $limitDetails['total_limit']) {
-            return response()->json(['message' => 'Monthly story limit reached.', 'limit_details' => $limitDetails], 403);
-        }
+        // Only enforce limits when the user has an active subscription;
+        // users without a subscription can create stories freely.
+        if ($user->activeSubscription()) {
+            if (!$limitDetails['is_unlimited'] && $limitDetails['usage'] >= $limitDetails['total_limit']) {
+                return response()->json(['message' => 'Monthly story limit reached.', 'limit_details' => $limitDetails], 403);
+            }
 
-        if (!$limitDetails['is_daily_unlimited'] && $limitDetails['daily_usage'] >= $limitDetails['daily_total_limit']) {
-            return response()->json(['message' => 'Daily story limit reached.', 'limit_details' => $limitDetails], 403);
+            if (!$limitDetails['is_daily_unlimited'] && $limitDetails['daily_usage'] >= $limitDetails['daily_total_limit']) {
+                return response()->json(['message' => 'Daily story limit reached.', 'limit_details' => $limitDetails], 403);
+            }
         }
 
         $data = [

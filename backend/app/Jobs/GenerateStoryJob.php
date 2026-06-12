@@ -6,7 +6,8 @@ use App\Models\Story;
 use App\Models\StoryAsset;
 use App\Models\AiJobLog;
 use App\Models\ActivityLog;
-use App\Services\OpenAIService;
+// use App\Services\OpenAIService; // disabled: quota exceeded
+use App\Services\GeminiService;
 use App\Services\FalAiService;
 use App\Services\ElevenLabsService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,8 +24,12 @@ class GenerateStoryJob implements ShouldQueue
 
     public function __construct(public Story $story) {}
 
-    public function handle(OpenAIService $openAI, FalAiService $fal, ElevenLabsService $elevenLabs): void
+    public function handle(GeminiService $openAI, FalAiService $fal, ElevenLabsService $elevenLabs): void
     {
+        $testMode = (bool) config('app.story_test_mode', false);
+        if ($testMode) {
+            Log::info('GenerateStoryJob: TEST MODE ON — only 2 scenes, 1 image, 1 video, short narration', ['story_id' => $this->story->id]);
+        }
         try {
             // Phase 1: Generate story text and scene breakdown
             $this->runStep('generate_story', function () use ($openAI) {
@@ -46,7 +51,7 @@ class GenerateStoryJob implements ShouldQueue
             });
 
             // Phase 2: Generate scene images
-            $this->runStep('generate_images', function () use ($fal) {
+            $this->runStep('generate_images', function () use ($fal, $testMode) {
                 $this->story->refresh();
                 $scenes = $this->story->scenes ?? [];
 
@@ -54,15 +59,14 @@ class GenerateStoryJob implements ShouldQueue
                     throw new \RuntimeException('No scenes returned from story generation');
                 }
 
-                foreach ($scenes as $scene) {
+                // In test mode only generate 1 image to save credits
+                $scenesToProcess = $testMode ? array_slice($scenes, 0, 1) : $scenes;
+
+                foreach ($scenesToProcess as $scene) {
                     $sceneNum = $scene['scene_number'];
                     $prompt   = $scene['image_prompt'];
 
-                    // Only pass photo_url if it's publicly accessible
                     $photoUrl = $this->story->photo_url;
-                    if ($photoUrl && !str_starts_with($photoUrl, 'http')) {
-                        $photoUrl = null;
-                    }
 
                     Log::info("Generating image for scene {$sceneNum}", ['story_id' => $this->story->id]);
 
@@ -87,7 +91,7 @@ class GenerateStoryJob implements ShouldQueue
             });
 
             // Phase 3: Generate scene videos
-            $this->runStep('generate_videos', function () use ($fal) {
+            $this->runStep('generate_videos', function () use ($fal, $testMode) {
                 $this->story->refresh();
                 $imageAssets = $this->story->imageAssets()->get();
                 $scenes      = collect($this->story->scenes ?? [])->keyBy('scene_number');
@@ -96,14 +100,40 @@ class GenerateStoryJob implements ShouldQueue
                     throw new \RuntimeException('No image assets found -- cannot generate videos');
                 }
 
-                foreach ($imageAssets as $asset) {
+                // In test mode only generate 1 video to save credits
+                $assetsToProcess = $testMode ? $imageAssets->take(1) : $imageAssets;
+
+                foreach ($assetsToProcess as $asset) {
                     $sceneNum = $asset->scene_number;
                     $scene    = $scenes->get($sceneNum);
-                    $prompt   = ($scene['description'] ?? '') . " gentle camera movement, children's story scene, smooth animation";
 
-                    Log::info("Generating video for scene {$sceneNum}", ['story_id' => $this->story->id]);
+                    // ✅ IMPROVED: Scene-specific video prompts instead of a generic suffix.
+                    // The scene description already contains camera motion instructions
+                    // (added by the updated Gemini prompt), so we just enrich with
+                    // Kling v2.1 quality keywords tailored to each scene's mood.
+                    $sceneDescription = $scene['description'] ?? '';
+                    $prompt = $sceneDescription
+                        . ', photorealistic motion, lifelike facial expressions,'
+                        . ' natural body movement, film quality 4K, warm cinematic lighting,'
+                        . ' smooth motion blur, atmospheric depth of field';
 
-                    $videoUrl = $fal->generateVideo($asset->url, $prompt);
+                    Log::info("Generating video for scene {$sceneNum}", [
+                        'story_id' => $this->story->id,
+                        'prompt'   => $prompt,
+                    ]);
+
+                    // Fal.ai workers cannot reach localhost URLs — upload the stored image to Fal storage first
+                    $imageUrlForFal = $asset->url;
+                    if (!str_starts_with($imageUrlForFal, 'https://fal.media') && !str_starts_with($imageUrlForFal, 'https://storage.googleapis.com')) {
+                        $disk      = config('filesystems.default', 'public');
+                        $baseUrl   = rtrim(\Illuminate\Support\Facades\Storage::disk($disk)->url(''), '/');
+                        $relative  = ltrim(substr($imageUrlForFal, strlen($baseUrl)), '/');
+                        $localPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($relative);
+                        Log::info("Uploading scene image to Fal storage for video gen", ['scene' => $sceneNum]);
+                        $imageUrlForFal = $fal->uploadFileToFal($localPath);
+                    }
+
+                    $videoUrl = $fal->generateVideo($imageUrlForFal, $prompt);
 
                     $storedUrl = $fal->downloadAndStore(
                         $videoUrl,
@@ -124,15 +154,24 @@ class GenerateStoryJob implements ShouldQueue
             });
 
             // Phase 4: Generate narration
-            $this->runStep('generate_narration', function () use ($elevenLabs) {
+            $this->runStep('generate_narration', function () use ($elevenLabs, $testMode) {
                 $this->story->refresh();
 
                 if (!$this->story->content) {
                     throw new \RuntimeException('No story content available for narration');
                 }
 
+                $text = $this->story->content;
+
+                // In test mode narrate only the first 2 sentences to save ElevenLabs credits
+                if ($testMode) {
+                    $sentences = preg_split('/(?<=[.!?])\s+/u', trim($text));
+                    $text = implode(' ', array_slice($sentences, 0, 2));
+                    Log::info('Test mode: trimmed narration to 2 sentences', ['story_id' => $this->story->id]);
+                }
+
                 $narrationUrl = $elevenLabs->generateNarration(
-                    $this->story->content,
+                    $text,
                     $this->story->language ?? 'en',
                     $this->story->id
                 );
@@ -180,10 +219,14 @@ class GenerateStoryJob implements ShouldQueue
                 'trace'    => substr($e->getTraceAsString(), 0, 2000),
             ]);
 
-            $this->story->update([
-                'status'        => 'failed',
-                'error_message' => $e->getMessage(),
-            ]);
+            try {
+                $this->story->update([
+                    'status'        => 'failed',
+                    'error_message' => $this->safeError($e->getMessage()),
+                ]);
+            } catch (\Throwable $dbErr) {
+                Log::error('Could not save error_message to story', ['db_error' => $dbErr->getMessage()]);
+            }
 
             try {
                 ActivityLog::log(
@@ -191,7 +234,7 @@ class GenerateStoryJob implements ShouldQueue
                     action: 'story_generation_failed',
                     entityType: 'story',
                     entityId: $this->story->id,
-                    newValues: ['error' => $e->getMessage()]
+                    newValues: ['error' => $this->safeError($e->getMessage())]
                 );
             } catch (\Throwable $ignored) {}
         }
@@ -208,9 +251,21 @@ class GenerateStoryJob implements ShouldQueue
             $fn();
             $log->complete();
         } catch (\Throwable $e) {
-            $log->fail($e->getMessage());
+            try {
+                $log->fail($this->safeError($e->getMessage()));
+            } catch (\Throwable $ignored) {}
             throw $e;
         }
+    }
+
+    /**
+     * Truncate an error message and strip non-BMP characters so it is always
+     * safe to store in a MySQL utf8mb4 column (which supports up to U+FFFF).
+     */
+    private function safeError(string $message): string
+    {
+        $clean = mb_convert_encoding($message, 'UTF-8', 'UTF-8');
+        return mb_substr($clean, 0, 500);
     }
 
     private function assembleVideo($videoAssets, ?string $narrationUrl): string
@@ -328,6 +383,7 @@ class GenerateStoryJob implements ShouldQueue
     {
         $candidates = [
             'ffmpeg',
+            'C:\\Users\\' . get_current_user() . '\\AppData\\Local\\Microsoft\\WinGet\\Links\\ffmpeg.exe',
             'C:\\ffmpeg\\bin\\ffmpeg.exe',
             'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe',
             'C:\\Program Files (x86)\\ffmpeg\\bin\\ffmpeg.exe',
@@ -335,22 +391,23 @@ class GenerateStoryJob implements ShouldQueue
         ];
 
         foreach ($candidates as $candidate) {
+            if (str_contains($candidate, '\\') && !file_exists($candidate)) {
+                continue;
+            }
             exec("\"{$candidate}\" -version 2>&1", $out, $code);
             if ($code === 0) {
                 return $candidate;
             }
         }
 
-        // Try system where
         exec('where ffmpeg 2>&1', $whereOut, $whereCode);
         if ($whereCode === 0 && !empty($whereOut[0])) {
             return trim($whereOut[0]);
         }
 
         throw new \RuntimeException(
-            'FFmpeg not found in PATH or common locations. '
-            . 'Download from https://ffmpeg.org/download.html and add to PATH, '
-            . 'or install via: winget install ffmpeg'
+            'FFmpeg not found. It was just installed via winget — please restart the queue worker so the new PATH is loaded: '
+            . 'php artisan queue:restart && php artisan queue:work'
         );
     }
 }

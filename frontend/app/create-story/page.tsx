@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, FormEvent } from 'react';
+import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { apiCreateStory, apiGenerateStory, Story } from '@/lib/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import { apiCreateStory, apiGenerateStory, apiGetStories, Story } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
@@ -21,6 +21,8 @@ const themes = [
   { id: 'pirate', emoji: '⚓', label: 'Pirate', desc: 'Treasure hunting at sea' },
 ];
 
+const themeEmoji: Record<string, string> = Object.fromEntries(themes.map(t => [t.id, t.emoji]));
+
 export default function CreateStoryPage() {
   const router = useRouter();
   const { isLoggedIn } = useAuth();
@@ -36,8 +38,25 @@ export default function CreateStoryPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingId, setGeneratingId] = useState<number | null>(null);
   const [createdStory, setCreatedStory] = useState<Story | null>(null);
   const [error, setError] = useState('');
+
+  // Resume-able stories (draft or failed)
+  const [resumableStories, setResumableStories] = useState<Story[]>([]);
+  const [showResume, setShowResume] = useState(true);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    apiGetStories()
+      .then(res => {
+        const resumable = res.data.filter(
+          s => s.status === 'draft' || s.status === 'failed'
+        );
+        setResumableStories(resumable);
+      })
+      .catch(() => {});
+  }, [isLoggedIn]);
 
   if (!isLoggedIn) {
     if (typeof window !== 'undefined') router.push('/login');
@@ -78,17 +97,20 @@ export default function CreateStoryPage() {
     }
   };
 
-  const handleGenerate = async () => {
-    if (!createdStory) return;
+  const handleGenerate = async (storyId?: number) => {
+    const id = storyId ?? createdStory?.id;
+    if (!id) return;
     setGenerating(true);
+    setGeneratingId(id);
     setError('');
 
     try {
-      const { story } = await apiGenerateStory(createdStory.id);
+      const { story } = await apiGenerateStory(id);
       router.push(`/stories/${story.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate story');
       setGenerating(false);
+      setGeneratingId(null);
     }
   };
 
@@ -120,7 +142,7 @@ export default function CreateStoryPage() {
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <motion.button
                 className="btn btn-primary btn-lg"
-                onClick={handleGenerate}
+                onClick={() => handleGenerate()}
                 disabled={generating}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
@@ -173,6 +195,93 @@ export default function CreateStoryPage() {
               Upload a photo, choose a theme, and let our AI create a cinematic adventure.
             </p>
           </motion.div>
+
+          {/* Resume Banner */}
+          <AnimatePresence>
+            {showResume && resumableStories.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.4 }}
+                style={{
+                  background: 'var(--surface)',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: 'var(--r-lg)',
+                  padding: '1.25rem 1.5rem',
+                  marginBottom: '1.75rem',
+                  position: 'relative',
+                }}
+              >
+                <button
+                  onClick={() => setShowResume(false)}
+                  style={{
+                    position: 'absolute', top: '0.75rem', right: '0.75rem',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-3)', fontSize: '1.1rem', lineHeight: 1,
+                  }}
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+
+                <p style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.75rem', color: 'var(--text)' }}>
+                  ⚡ Continue a previous story
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {resumableStories.map(s => (
+                    <div
+                      key={s.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '1rem',
+                        background: 'var(--bg)',
+                        borderRadius: 'var(--r-md)',
+                        padding: '0.7rem 1rem',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                        <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>
+                          {themeEmoji[s.theme] ?? '📖'}
+                        </span>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {s.title}
+                          </p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.1rem' }}>
+                            {s.status === 'failed' ? '❌ Failed — click to retry' : '📝 Draft — not yet generated'}
+                            {s.child_name ? ` · ${s.child_name}` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      <motion.button
+                        className={`btn ${s.status === 'failed' ? 'btn-primary' : 'btn-ghost'}`}
+                        onClick={() => handleGenerate(s.id)}
+                        disabled={generating}
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.97 }}
+                        style={{ flexShrink: 0, fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+                      >
+                        {generating && generatingId === s.id ? (
+                          <>
+                            <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', marginRight: 6 }} />
+                            Starting...
+                          </>
+                        ) : (
+                          s.status === 'failed' ? '🔄 Retry' : '▶ Generate'
+                        )}
+                      </motion.button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <motion.form
             onSubmit={handleSubmit}
