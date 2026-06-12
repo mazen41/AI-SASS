@@ -19,9 +19,6 @@ class GeminiService
     // Fallback model list — tried in order if primary is unavailable
     private array $fallbackModels = [
         'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-1.5-flash',
-        'gemini-1.5-flash-8b',
     ];
 
     public function generateStory(array $params): array

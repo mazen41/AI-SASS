@@ -156,7 +156,7 @@ class FalAiService
         $this->ensureConfigured();
 
         $payload = [
-            'start_image_url' => $imageUrl,
+            'image_url' => $imageUrl,
             'prompt'          => $prompt
                 . ', smooth cinematic motion, natural body movement, expressive facial animation,'
                 . ' consistent character identity, realistic camera movement, movie-quality animation,'
