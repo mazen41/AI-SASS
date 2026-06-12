@@ -6,7 +6,7 @@ use App\Models\Story;
 use App\Models\StoryAsset;
 use App\Models\AiJobLog;
 use App\Models\ActivityLog;
-// use App\Services\OpenAIService; // disabled: quota exceeded
+use App\Services\OpenAIService;
 use App\Services\GeminiService;
 use App\Services\FalAiService;
 use App\Services\ElevenLabsService;
@@ -24,24 +24,34 @@ class GenerateStoryJob implements ShouldQueue
 
     public function __construct(public Story $story) {}
 
-    public function handle(GeminiService $openAI, FalAiService $fal, ElevenLabsService $elevenLabs): void
+    public function handle(GeminiService $gemini, OpenAIService $openAI, FalAiService $fal, ElevenLabsService $elevenLabs): void
     {
         $testMode = (bool) config('app.story_test_mode', false);
         if ($testMode) {
-            Log::info('GenerateStoryJob: TEST MODE ON — only 2 scenes, 1 image, 1 video, short narration', ['story_id' => $this->story->id]);
+            Log::info('GenerateStoryJob: TEST MODE ON — 6-scene story, 1 image, 1 video, short narration', ['story_id' => $this->story->id]);
         }
         try {
             // Phase 1: Generate story text and scene breakdown
-            $this->runStep('generate_story', function () use ($openAI) {
+            $this->runStep('generate_story', function () use ($gemini, $openAI) {
                 $this->story->refresh();
 
-                $data = $openAI->generateStory([
+                $storyParams = [
                     'child_name'    => $this->story->child_name,
                     'child_age'     => $this->story->child_age,
                     'theme'         => $this->story->theme,
                     'language'      => $this->story->language,
                     'custom_prompt' => $this->story->custom_prompt,
-                ]);
+                ];
+
+                try {
+                    $data = $gemini->generateStory($storyParams);
+                } catch (\Throwable $geminiError) {
+                    Log::warning('Gemini story generation failed; falling back to OpenAI', [
+                        'story_id' => $this->story->id,
+                        'error'    => $this->safeError($geminiError->getMessage()),
+                    ]);
+                    $data = $openAI->generateStory($storyParams);
+                }
 
                 $this->story->update([
                     'title'   => $data['title'],
@@ -107,15 +117,12 @@ class GenerateStoryJob implements ShouldQueue
                     $sceneNum = $asset->scene_number;
                     $scene    = $scenes->get($sceneNum);
 
-                    // ✅ IMPROVED: Scene-specific video prompts instead of a generic suffix.
-                    // The scene description already contains camera motion instructions
-                    // (added by the updated Gemini prompt), so we just enrich with
-                    // Kling v2.1 quality keywords tailored to each scene's mood.
                     $sceneDescription = $scene['description'] ?? '';
                     $prompt = $sceneDescription
-                        . ', photorealistic motion, lifelike facial expressions,'
-                        . ' natural body movement, film quality 4K, warm cinematic lighting,'
-                        . ' smooth motion blur, atmospheric depth of field';
+                        . ', smooth cinematic motion, natural body movement, expressive facial animation,'
+                        . ' consistent character identity, realistic camera movement, movie-quality animation,'
+                        . ' family-friendly atmosphere, warm storytelling style,'
+                        . ' same exact child protagonist with identical facial features, hairstyle, clothing, eye color, and age appearance';
 
                     Log::info("Generating video for scene {$sceneNum}", [
                         'story_id' => $this->story->id,

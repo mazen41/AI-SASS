@@ -17,9 +17,8 @@ class FalAiService
     public function __construct()
     {
         $this->apiKey          = (string) config('services.fal.key', '');
-        $this->imageModel      = config('services.fal.image_model', 'fal-ai/flux/schnell');
-        // ✅ UPGRADED: Kling v2.1 — much better cinematic motion than v1.6
-        $this->videoModel      = config('services.fal.video_model', 'fal-ai/kling-video/v2.1/standard/image-to-video');
+        $this->imageModel      = config('services.fal.image_model', 'fal-ai/flux-pro/v1.1');
+        $this->videoModel      = config('services.fal.video_model', 'fal-ai/kling-video/v2.6/pro/image-to-video');
         $this->pollInterval    = (int) config('services.fal.poll_interval', 5);
         $this->pollMaxAttempts = (int) config('services.fal.poll_max_attempts', 60);
     }
@@ -108,28 +107,30 @@ class FalAiService
             // This keeps the child's actual face consistent across every scene.
             $model   = 'fal-ai/flux-pulid';
             $payload = [
-                // ✅ FIXED: Removed conflicting "hyperrealistic/8K/film grain" keywords.
-                // PuLID works best with semi-realistic style prompts — mixing
-                // "hyperrealistic photography" with illustration styles caused
-                // the model to default to a generic toddler cartoon look.
                 'prompt'                => $prompt
-                    . ", semi-realistic digital art, consistent face identity, same child,"
-                    . " warm cinematic lighting, detailed facial features, natural skin tone,"
-                    . " expressive eyes, children's story aesthetic, vibrant scene",
+                    . ', same exact child protagonist from the reference photo, identical facial features,'
+                    . ' identical hairstyle, identical clothing, identical eye color, same age appearance,'
+                    . ' strict character consistency across all scenes, consistent face identity, same child,'
+                    . ' cinematic children\'s movie style, movie-quality semi-realistic digital animation,'
+                    . ' warm cinematic lighting, detailed facial features, natural skin tone, expressive eyes,'
+                    . ' vibrant family-friendly storybook world',
                 'reference_image_url'   => $photoUrl,
                 'num_images'            => 1,
                 'image_size'            => 'landscape_16_9',
                 'id_weight'             => 1.0,   // max face adherence
-                'num_inference_steps'   => 35,    // ✅ INCREASED: more steps = sharper likeness
-                // ✅ FIXED: Raised from 5.0 → 7.5 for stronger face + prompt adherence
-                'guidance_scale'        => 7.5,
+                'num_inference_steps'   => 40,
+                'guidance_scale'        => 8.0,
                 'true_cfg'              => 1.0,
                 'enable_safety_checker' => true,
             ];
         } else {
             $model   = $this->imageModel;
             $payload = [
-                'prompt'                => $prompt . ", children's book illustration style, vibrant colors, safe for kids",
+                'prompt'                => $prompt
+                    . ', same exact child protagonist, identical facial features, identical hairstyle,'
+                    . ' identical clothing, identical eye color, same age appearance, strict character consistency across all scenes,'
+                    . ' cinematic children\'s movie style, movie-quality semi-realistic digital animation,'
+                    . ' warm cinematic lighting, vibrant colors, safe for kids',
                 'num_images'            => 1,
                 'image_size'            => 'landscape_16_9',
                 'enable_safety_checker' => true,
@@ -155,10 +156,15 @@ class FalAiService
         $this->ensureConfigured();
 
         $payload = [
-            'image_url' => $imageUrl,
-            // ✅ IMPROVED: More specific cinematic motion keywords for Kling v2.1
-            'prompt'    => $prompt . ', smooth cinematic camera movement, photorealistic motion, lifelike facial expressions, natural body movement, film quality 4K, warm natural lighting, gentle atmosphere',
-            'duration'  => '5',
+            'start_image_url' => $imageUrl,
+            'prompt'          => $prompt
+                . ', smooth cinematic motion, natural body movement, expressive facial animation,'
+                . ' consistent character identity, realistic camera movement, movie-quality animation,'
+                . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
+                . ' polished children\'s movie sequence',
+            'duration'        => '5',
+            'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
+            'generate_audio'  => false,
         ];
 
         [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($this->videoModel, $payload);

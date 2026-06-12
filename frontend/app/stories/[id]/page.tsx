@@ -16,6 +16,8 @@ import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
 
+const EXPECTED_SCENE_COUNT = 6;
+
 const STEP_LABELS: Record<string, string> = {
   queued: 'Queued…',
   generate_story: '✍️ Writing story…',
@@ -158,6 +160,7 @@ export default function StoryViewPage() {
 
   const imageAssets = assets.filter((a) => a.asset_type === 'image').sort((a, b) => a.scene_number - b.scene_number);
   const videoAssets = assets.filter((a) => a.asset_type === 'video').sort((a, b) => a.scene_number - b.scene_number);
+  const expectedSceneCount = story?.scenes?.length || EXPECTED_SCENE_COUNT;
 
   if (loading) {
     return (
@@ -372,8 +375,8 @@ export default function StoryViewPage() {
             {story.child_name && (<div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Child</p><p style={{ fontWeight: 600 }}>{story.child_name}</p></div>)}
             {story.child_age && (<div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Age</p><p style={{ fontWeight: 600 }}>{story.child_age} years</p></div>)}
             <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Language</p><p style={{ fontWeight: 600 }}>{story.language.toUpperCase()}</p></div>
-            <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Images</p><p style={{ fontWeight: 600 }}>{imageAssets.length} / 6</p></div>
-            <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Videos</p><p style={{ fontWeight: 600 }}>{videoAssets.length} / 6</p></div>
+            <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Images</p><p style={{ fontWeight: 600 }}>{imageAssets.length} / {expectedSceneCount}</p></div>
+            <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Videos</p><p style={{ fontWeight: 600 }}>{videoAssets.length} / {expectedSceneCount}</p></div>
           </motion.div>
 
           {/* Actions */}
