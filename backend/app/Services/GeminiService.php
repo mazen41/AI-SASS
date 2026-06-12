@@ -35,11 +35,7 @@ class GeminiService
         $theme        = $params['theme']         ?? 'adventure';
         $language     = $params['language']      ?? 'en';
         $customPrompt = $params['custom_prompt'] ?? null;
-        $testMode     = (bool) config('app.story_test_mode', false);
-
-        // ✅ UPDATED: 18 scenes × 5 seconds each = 90 seconds final video
-        // Test mode keeps 2 scenes to save credits during development
-        $sceneCount = $testMode ? 2 : 18;
+        $sceneCount   = 6;
 
         $langInstruction = $language === 'ar'
             ? 'Write entirely in Arabic.'
@@ -50,30 +46,33 @@ class GeminiService
             : '';
 
         $faceDesc = $childName
-            ? "a child named {$childName} with the exact same face as the reference photo"
-            : 'the main child character';
+            ? "the same exact child protagonist named {$childName}, with identical facial features, identical hairstyle, identical clothing, identical eye color, and the same age appearance in every scene"
+            : 'the same exact child protagonist with identical facial features, hairstyle, clothing, eye color, and age appearance in every scene';
 
         $prompt = <<<PROMPT
-You are a children's story writer. Create a short illustrated story for a {$childAge}-year-old child named {$childName}.
+You are a children's movie story writer. Create a complete short cinematic story for a {$childAge}-year-old child named {$childName}.
 Theme: {$theme}. {$customPart}
 {$langInstruction}
 
 Respond ONLY with valid JSON, no markdown, no code fences, no trailing text after the closing brace:
 {
   "title": "story title",
-  "story_text": "full story 400-500 words to match the longer video duration",
+  "story_text": "full story 220-320 words written as narration for a 6-scene children's movie",
   "scenes": [
     {
       "scene_number": 1,
       "description": "what happens (1 sentence). Include specific camera motion: e.g. slow zoom in, gentle pan left, pull back to wide shot.",
-      "image_prompt": "Describe the scene visually. Always refer to the child as '{$faceDesc}'. Include: what they are doing, the environment, lighting, mood. Semi-realistic cinematic style, warm lighting, vibrant colors, detailed background."
+      "image_prompt": "Describe the scene visually. Always refer to the child as '{$faceDesc}'. Enforce: same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, same age appearance, strict character consistency across all scenes, cinematic children's movie style. Include what the child is doing, the environment, lighting, mood, vibrant colors, detailed background."
     }
   ]
 }
 
-Generate exactly {$sceneCount} scenes. The scenes should flow as a continuous narrative arc with a clear beginning, rising action, climax, and resolution.
-Each scene description MUST include a specific camera movement instruction (zoom in, pan right, pull back, tracking shot, etc.) for cinematic variety.
-Keep story_text under 500 words. Make it magical and age-appropriate.
+Generate exactly {$sceneCount} scenes.
+The 6 scenes MUST form a complete beginning, middle, climax, and ending:
+1. opening setup, 2. invitation or discovery, 3. rising action, 4. challenge, 5. climax, 6. warm resolution.
+Every scene description MUST include a specific realistic camera movement instruction (slow zoom in, pan right, pull back, tracking shot, etc.).
+Every image_prompt MUST explicitly include: same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, character consistency across all scenes, same age appearance, cinematic children's movie style.
+Keep story_text under 320 words. Make it magical, complete, and age-appropriate.
 IMPORTANT: Output ONLY the JSON object. Do not add any text before or after it.
 PROMPT;
 
@@ -87,7 +86,7 @@ PROMPT;
                 if ($model !== $this->model) {
                     Log::info("Gemini: using fallback model {$model}");
                 }
-                return $data;
+                return $this->normalizeSceneArchitecture($data, $sceneCount);
             } catch (\RuntimeException $e) {
                 $lastError = $e;
                 $body = $e->getMessage();
@@ -101,6 +100,25 @@ PROMPT;
         }
 
         throw new \RuntimeException('All Gemini models failed. Last error: ' . $lastError?->getMessage());
+    }
+
+    private function normalizeSceneArchitecture(array $data, int $sceneCount): array
+    {
+        if (!isset($data['scenes']) || !is_array($data['scenes'])) {
+            throw new \RuntimeException('Gemini response missing scenes array');
+        }
+
+        if (count($data['scenes']) < $sceneCount) {
+            throw new \RuntimeException("Gemini returned fewer than {$sceneCount} scenes");
+        }
+
+        $data['scenes'] = array_values(array_slice($data['scenes'], 0, $sceneCount));
+        foreach ($data['scenes'] as $index => &$scene) {
+            $scene['scene_number'] = $index + 1;
+        }
+        unset($scene);
+
+        return $data;
     }
 
     private function callGemini(string $model, string $prompt): array
