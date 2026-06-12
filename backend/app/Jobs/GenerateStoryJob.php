@@ -202,11 +202,15 @@ class GenerateStoryJob implements ShouldQueue
                 $this->story->update([
                     'assembled_video_url' => $finalUrl,
                     'video_url'           => $finalUrl,
-                    'status'              => 'completed',
-                    'processing_step'     => null,
+                    'processing_step'     => 'generate_story_products',
                 ]);
 
-                Log::info('Story completed', ['story_id' => $this->story->id, 'final_url' => $finalUrl]);
+                Log::info('Story video assembled', ['story_id' => $this->story->id, 'final_url' => $finalUrl]);
+            });
+
+            // Phase 6: Build multi-product story outputs (storybook + coloring book PDFs)
+            $this->runStep('generate_story_products', function () {
+                GenerateStoryProductsJob::dispatchSync($this->story);
             });
 
             ActivityLog::log(

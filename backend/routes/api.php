@@ -67,11 +67,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stories', [StoryController::class, 'index']);
     Route::post('/stories', [StoryController::class, 'store']);
     Route::get('/stories/{story}/status', [StoryController::class, 'status']);
+    Route::post('/stories/{story}/generate-products', [StoryController::class, 'generateProducts']);
     Route::get('/stories/{story}', [StoryController::class, 'show']);
     Route::put('/stories/{story}', [StoryController::class, 'update']);
     Route::delete('/stories/{story}', [StoryController::class, 'destroy']);
     Route::post('/stories/{story}/generate', [StoryController::class, 'generate']);
-    Route::get('/stories/{story}/status', [StoryController::class, 'status']);
 
     // Billing
     Route::get('/billing/plans', [BillingController::class, 'plans']);

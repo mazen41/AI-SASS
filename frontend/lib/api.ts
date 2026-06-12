@@ -337,12 +337,27 @@ export interface StoryAsset {
   id: number;
   story_id: number;
   scene_number: number;
-  asset_type: 'image' | 'video';
+  asset_type: 'image' | 'video' | 'coloring_page';
   url: string;
   prompt: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export interface StoryOutput {
+  id: number;
+  story_id: number;
+  output_type: 'story_book_pdf' | 'coloring_book_pdf' | 'activity_book_pdf' | 'final_video' | 'narration_audio';
+  status: 'pending' | 'generating' | 'completed' | 'failed' | 'planned';
+  url: string | null;
+  storage_path: string | null;
+  metadata: Record<string, unknown> | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type StoryOutputs = Partial<Record<StoryOutput['output_type'], StoryOutput>>;
 
 export interface StoryStatus {
   status: string;
@@ -350,7 +365,8 @@ export interface StoryStatus {
   error_message: string | null;
   assembled_video_url: string | null;
   narration_url: string | null;
-  assets_count: { images: number; videos: number };
+  outputs: StoryOutputs;
+  assets_count: { images: number; videos: number; coloring_pages: number };
 }
 
 export interface Story {
@@ -375,6 +391,7 @@ export interface Story {
   created_at: string;
   updated_at: string;
   user?: AuthUser;
+  outputs?: StoryOutput[];
 }
 
 export async function apiGetStories(params?: Record<string, string>): Promise<PaginatedResponse<Story>> {
@@ -382,8 +399,8 @@ export async function apiGetStories(params?: Record<string, string>): Promise<Pa
   return apiFetch<PaginatedResponse<Story>>(`/stories${query}`);
 }
 
-export async function apiGetStory(id: number): Promise<{ story: Story; assets: StoryAsset[] }> {
-  return apiFetch<{ story: Story; assets: StoryAsset[] }>(`/stories/${id}`);
+export async function apiGetStory(id: number): Promise<{ story: Story; assets: StoryAsset[]; outputs: StoryOutputs }> {
+  return apiFetch<{ story: Story; assets: StoryAsset[]; outputs: StoryOutputs }>(`/stories/${id}`);
 }
 
 export async function apiGetStoryStatus(id: number): Promise<StoryStatus> {
@@ -410,6 +427,10 @@ export async function apiDeleteStory(id: number): Promise<{ message: string }> {
 
 export async function apiGenerateStory(id: number): Promise<{ message: string; story: Story }> {
   return apiFetch<{ message: string; story: Story }>(`/stories/${id}/generate`, { method: 'POST' });
+}
+
+export async function apiGenerateStoryProducts(id: number): Promise<{ message: string; outputs: StoryOutputs }> {
+  return apiFetch<{ message: string; outputs: StoryOutputs }>(`/stories/${id}/generate-products`, { method: 'POST' });
 }
 
 // System Health

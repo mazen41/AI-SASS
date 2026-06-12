@@ -31,6 +31,7 @@ class Story extends Model
     public function user(): BelongsTo    { return $this->belongsTo(User::class); }
     public function assets(): HasMany    { return $this->hasMany(StoryAsset::class); }
     public function aiJobLogs(): HasMany { return $this->hasMany(AiJobLog::class); }
+    public function outputs(): HasMany   { return $this->hasMany(StoryOutput::class); }
 
     public function isDraft(): bool      { return $this->status === 'draft'; }
     public function isProcessing(): bool { return $this->status === 'processing'; }
@@ -50,5 +51,10 @@ class Story extends Model
     public function videoAssets(): HasMany
     {
         return $this->assets()->where('asset_type', 'video')->orderBy('scene_number');
+    }
+
+    public function coloringPageAssets(): HasMany
+    {
+        return $this->assets()->where('asset_type', 'coloring_page')->orderBy('scene_number');
     }
 }
