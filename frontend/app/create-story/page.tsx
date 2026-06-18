@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { apiCreateStory, apiGenerateStory, apiGetStories, Story } from '@/lib/api';
+import { apiCreateStory, apiGenerateStory, apiGetStories, apiGetProductBalances, Story } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
@@ -41,6 +41,11 @@ export default function CreateStoryPage() {
   const [generatingId, setGeneratingId] = useState<number | null>(null);
   const [createdStory, setCreatedStory] = useState<Story | null>(null);
   const [error, setError] = useState('');
+  
+  // Generation options
+  const [selectedOutputs, setSelectedOutputs] = useState<string[]>(['story_text']);
+  const [balances, setBalances] = useState<Record<string, any>>({});
+  const [loadingBalances, setLoadingBalances] = useState(false);
 
   // Resume-able stories (draft or failed)
   const [resumableStories, setResumableStories] = useState<Story[]>([]);
@@ -48,6 +53,8 @@ export default function CreateStoryPage() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
+    
+    // Load resumable stories
     apiGetStories()
       .then(res => {
         const resumable = res.data.filter(
@@ -56,6 +63,17 @@ export default function CreateStoryPage() {
         setResumableStories(resumable);
       })
       .catch(() => {});
+
+    // Load product balances
+    setLoadingBalances(true);
+    apiGetProductBalances()
+      .then(res => {
+        setBalances(res.balances || {});
+      })
+      .catch((err) => {
+        console.error('Failed to load balances:', err);
+      })
+      .finally(() => setLoadingBalances(false));
   }, [isLoggedIn]);
 
   if (!isLoggedIn) {
@@ -73,6 +91,25 @@ export default function CreateStoryPage() {
     }
   };
 
+  const handleOutputToggle = (outputId: string) => {
+    setSelectedOutputs(prev => {
+      if (prev.includes(outputId)) {
+        // Unchecking
+        return prev.filter(o => o !== outputId);
+      } else {
+        // Checking - enforce mutual exclusivity
+        if (outputId === 'video') {
+          // Video cannot be combined with story_text or narration_audio
+          return ['video', ...prev.filter(o => o !== 'story_text' && o !== 'narration_audio')];
+        } else if (outputId === 'story_text' || outputId === 'narration_audio') {
+          // story_text and narration_audio cannot be combined with video
+          return [outputId, ...prev.filter(o => o !== 'video')];
+        }
+        return [...prev, outputId];
+      }
+    });
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -87,6 +124,11 @@ export default function CreateStoryPage() {
       formData.append('language', language);
       if (customPrompt) formData.append('custom_prompt', customPrompt);
       if (photo) formData.append('photo', photo);
+      
+      // Add selected outputs
+      selectedOutputs.forEach(output => {
+        formData.append('selected_outputs[]', output);
+      });
 
       const { story } = await apiCreateStory(formData);
       setCreatedStory(story);
@@ -472,6 +514,84 @@ export default function CreateStoryPage() {
                   </motion.button>
                 ))}
               </div>
+            </div>
+
+            {/* Generation Options */}
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.6rem', fontWeight: 600 }}>
+                What to Generate
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                {[
+                  { id: 'story_text', label: 'Story Text', emoji: '📝', desc: 'AI-generated story' },
+                  { id: 'narration_audio', label: 'Narration', emoji: '🎙️', desc: 'Voice narration' },
+                  { id: 'story_book_pdf', label: 'Story Book', emoji: '📖', desc: 'PDF storybook' },
+                  { id: 'coloring_book_pdf', label: 'Coloring Book', emoji: '🎨', desc: 'Printable coloring pages' },
+                  { id: 'video', label: 'Video', emoji: '🎬', desc: 'Animated video' },
+                ].map((option) => {
+                  const balance = balances[option.id === 'story_text' ? 'story' : 
+                                     option.id === 'narration_audio' ? 'narration' :
+                                     option.id === 'story_book_pdf' ? 'story_book' :
+                                     option.id === 'coloring_book_pdf' ? 'coloring_book' : 'video'];
+                  const hasBalance = balance && balance.quantity > 0;
+                  
+                  // Check if this option should be disabled due to mutual exclusivity
+                  const hasVideo = selectedOutputs.includes('video');
+                  const hasStoryText = selectedOutputs.includes('story_text');
+                  const hasNarration = selectedOutputs.includes('narration_audio');
+                  
+                  const isDisabledByExclusivity = 
+                    (option.id === 'video' && (hasStoryText || hasNarration)) ||
+                    ((option.id === 'story_text' || option.id === 'narration_audio') && hasVideo);
+                  
+                  const isDisabled = (!hasBalance && !selectedOutputs.includes(option.id)) || isDisabledByExclusivity;
+                  
+                  return (
+                    <motion.button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleOutputToggle(option.id)}
+                      disabled={isDisabled}
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.97 }}
+                      style={{
+                        padding: '1rem',
+                        borderRadius: 'var(--r-md)',
+                        border: selectedOutputs.includes(option.id) ? '2px solid var(--k-blue)' : '1.5px solid var(--border)',
+                        background: selectedOutputs.includes(option.id) ? 'rgba(84,120,255,0.08)' : (isDisabledByExclusivity ? 'rgba(255,62,155,0.08)' : (!hasBalance ? 'rgba(255,62,155,0.05)' : 'var(--surface)')),
+                        cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        textAlign: 'left',
+                        color: isDisabledByExclusivity ? 'var(--text-3)' : (hasBalance ? 'var(--text)' : 'var(--text-3)'),
+                        opacity: isDisabled ? 0.5 : 1,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
+                        <span style={{ fontSize: '1.4rem' }}>{option.emoji}</span>
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{option.label}</span>
+                        {selectedOutputs.includes(option.id) && (
+                          <span style={{ marginLeft: 'auto', color: 'var(--k-blue)', fontSize: '1.2rem' }}>✓</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{option.desc}</div>
+                      {!loadingBalances && !isDisabledByExclusivity && (
+                        <div style={{ fontSize: '0.7rem', marginTop: '0.3rem', color: hasBalance ? 'var(--k-green)' : 'var(--k-pink)' }}>
+                          {hasBalance ? `${balance.quantity} remaining` : 'No credits'}
+                        </div>
+                      )}
+                      {isDisabledByExclusivity && (
+                        <div style={{ fontSize: '0.7rem', marginTop: '0.3rem', color: 'var(--k-pink)' }}>
+                          Incompatible with current selection
+                        </div>
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+              
+              {/* Help text for product exclusivity */}
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginTop: '0.75rem', lineHeight: '1.4' }}>
+                Video Stories already include the full story and professional narration. Because of this, Video Stories cannot be combined with Story Text or Audio Story products.
+              </p>
             </div>
 
             {error && (

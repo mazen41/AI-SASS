@@ -56,7 +56,8 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
-    // Test mode: keeps the 6-scene story but limits generated media to 1 image + 1 video + 2 narration sentences
+    // Test mode: limits generated media to 1 image + 2 narration sentences (~18s).
+    // NOT compatible with the production 60-90s video pipeline — disable for real video generation.
     'story_test_mode' => (bool) env('STORY_TEST_MODE', false),
 
     /*

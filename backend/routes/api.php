@@ -22,9 +22,12 @@ use App\Http\Controllers\Api\Admin\AuthSettingsController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use App\Http\Controllers\Webhook\PaypalWebhookController;
 use App\Http\Controllers\StoryController;
+use App\Http\Controllers\StorybookViewerController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BlogPostController;
+use App\Http\Controllers\PackageController as PublicPackageController;
+use App\Http\Controllers\ProductBalanceController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -36,6 +39,10 @@ use Illuminate\Support\Facades\Route;
 // Public settings routes
 Route::get('/settings/auth', [AuthSettingsController::class, 'index']);
 Route::get('/settings/landing', [LandingPageSettingsController::class, 'index']);
+
+// Public packages routes
+Route::get('/packages', [PublicPackageController::class, 'index']);
+Route::get('/packages/{id}', [PublicPackageController::class, 'show'])->whereNumber('id');
 
 // Public blog routes
 Route::get('/blog', [BlogPostController::class, 'index']);
@@ -57,6 +64,12 @@ Route::post('/webhooks/paypal', [PaypalWebhookController::class, 'handle']);
 
 // Backup download (uses api_token query param for authentication)
 Route::get('/admin/backup-settings/download', [BackupSettingsController::class, 'downloadBackup']);
+
+// Storybook Viewer (uses auth:sanctum but with JSON response on failure)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/stories/{story}/storybook', [StorybookViewerController::class, 'show'])->name('stories.storybook');
+    Route::get('/stories/{story}/storybook/page/{page}', [StorybookViewerController::class, 'page'])->name('stories.storybook.page');
+});
 
 // Protected routes - require valid Sanctum token
 Route::middleware('auth:sanctum')->group(function () {
@@ -85,6 +98,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/billing/addons/purchase', [BillingController::class, 'purchaseAddon']);
     Route::get('/billing/invoices', [BillingController::class, 'invoices']);
     Route::get('/billing/invoices/{id}', [BillingController::class, 'downloadInvoice']);
+
+    // Package & Product Balances
+    Route::get('/packages/balances', [ProductBalanceController::class, 'index']);
+    Route::post('/packages/purchase', [ProductBalanceController::class, 'purchase']);
 
     // Super Admin routes
     Route::middleware('super_admin')->prefix('admin')->group(function () {

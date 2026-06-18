@@ -32,6 +32,34 @@ class StoryController extends Controller
         ]);
     }
 
+    /**
+     * Validate that selected outputs obey mutual-exclusivity rules.
+     * VIDEO is a superset (includes story + narration), so it cannot be
+     * combined with story_text or narration_audio.
+     *
+     * Returns an error message string on violation, null if valid.
+     */
+    private function validateOutputCombination(array $selectedOutputs): ?string
+    {
+        $hasVideo = in_array('video', $selectedOutputs, true);
+        $hasAudio = in_array('narration_audio', $selectedOutputs, true);
+        $hasText  = in_array('story_text', $selectedOutputs, true);
+
+        // VIDEO already includes story + narration — cannot be combined with them
+        if ($hasVideo && ($hasAudio || $hasText)) {
+            return 'Video Stories already include the full story and professional narration. '
+                . 'You cannot combine Video with Story Text or Audio Story.';
+        }
+
+        // Only one primary mode allowed (story_text | narration_audio | video)
+        $primaryModesCount = ($hasVideo ? 1 : 0) + ($hasAudio ? 1 : 0) + ($hasText ? 1 : 0);
+        if ($primaryModesCount > 1) {
+            return 'You can select only one of Story Text, Audio Story, or Video Story.';
+        }
+
+        return null;
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -42,7 +70,16 @@ class StoryController extends Controller
             'language'      => 'nullable|string|in:en,ar',
             'custom_prompt' => 'nullable|string|max:500',
             'photo'         => 'nullable|image|max:10240',
+            'selected_outputs' => 'nullable|array',
+            'selected_outputs.*' => 'string|in:story_text,narration_audio,story_book_pdf,coloring_book_pdf,video',
         ]);
+
+        $selectedOutputs = $validated['selected_outputs'] ?? ['story_text'];
+
+        $combinationError = $this->validateOutputCombination($selectedOutputs);
+        if ($combinationError) {
+            return response()->json(['message' => $combinationError], 422);
+        }
 
         $user         = $request->user();
         $limitDetails = $user->getStoryLimitDetails();
@@ -68,6 +105,7 @@ class StoryController extends Controller
             'language'      => $validated['language']      ?? 'en',
             'custom_prompt' => $validated['custom_prompt'] ?? null,
             'status'        => 'draft',
+            'selected_outputs' => $selectedOutputs,
         ];
 
         if ($request->hasFile('photo')) {
@@ -93,22 +131,69 @@ class StoryController extends Controller
             return response()->json(['message' => 'Story can only be generated from draft status'], 400);
         }
 
-        $user         = $request->user();
-        $videoDetails = $user->getVideoLimitDetails();
+        $user = $request->user();
+        $selectedOutputs = $story->selected_outputs ?? ['story_text'];
 
-        // Only enforce limits when a subscription exists; allow free use otherwise
-        if ($user->activeSubscription()) {
-            if (!$videoDetails['is_unlimited'] && $videoDetails['usage'] >= $videoDetails['total_limit']) {
-                return response()->json(['message' => 'Monthly video limit reached.', 'limit_details' => $videoDetails], 403);
+        // Backend guard: re-validate output combination even for stored stories
+        // (protects against data inconsistency or direct API calls bypassing UI)
+        $combinationError = $this->validateOutputCombination($selectedOutputs);
+        if ($combinationError) {
+            return response()->json(['message' => $combinationError], 422);
+        }
+
+        // Check product balances for selected outputs
+        $activePackage = $user->activeUserPackage();
+
+        // Map output types to product slugs
+        $productMap = [
+            'story_text'       => 'story',
+            'narration_audio'  => 'narration',
+            'story_book_pdf'   => 'story_book',
+            'coloring_book_pdf' => 'coloring_book',
+            'video'            => 'video',
+        ];
+
+        // Check if user has package and balances
+        if (!$activePackage) {
+            return response()->json(['message' => 'No active package. Please purchase a package to generate stories.'], 403);
+        }
+
+        $balances = $user->getAllProductBalances();
+        $missingProducts = [];
+
+        foreach ($selectedOutputs as $output) {
+            $productSlug = $productMap[$output] ?? null;
+            if ($productSlug) {
+                $balance = $balances[$productSlug] ?? null;
+                if (!$balance || $balance['quantity'] <= 0) {
+                    $missingProducts[] = $output;
+                }
             }
-            if (!$videoDetails['is_daily_unlimited'] && $videoDetails['daily_usage'] >= $videoDetails['daily_total_limit']) {
-                return response()->json(['message' => 'Daily video limit reached.', 'limit_details' => $videoDetails], 403);
+        }
+
+        if (!empty($missingProducts)) {
+            return response()->json([
+                'message' => 'Insufficient product balance. Please purchase more credits.',
+                'missing_outputs' => $missingProducts,
+                'balances' => $balances,
+            ], 403);
+        }
+
+        // Consume products
+        foreach ($selectedOutputs as $output) {
+            $productSlug = $productMap[$output] ?? null;
+            if ($productSlug && isset($balances[$productSlug])) {
+                $productId = $balances[$productSlug]['product_id'];
+                $user->consumeProduct($productId, 1, $story->id, $output);
             }
         }
 
         $story->update(['status' => 'processing', 'processing_step' => 'queued']);
 
-        \App\Jobs\GenerateStoryJob::dispatch($story);
+        // NOTE: Use the new dependency-based pipeline entrypoint.
+        // GenerateStoryTextJob conditionally dispatches GenerateImagesJob,
+        // GenerateNarrationJob, etc. based on $story->selected_outputs.
+        \App\Jobs\GenerateStoryTextJob::dispatch($story);
 
         return response()->json(['message' => 'Story generation started', 'story' => $story->fresh()], 202);
     }

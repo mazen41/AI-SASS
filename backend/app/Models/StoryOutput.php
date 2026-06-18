@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StoryOutput extends Model
 {
     public const TYPE_STORY_BOOK_PDF = 'story_book_pdf';
+    public const TYPE_STORYBOOK_INTERACTIVE = 'storybook_interactive';
     public const TYPE_COLORING_BOOK_PDF = 'coloring_book_pdf';
     public const TYPE_ACTIVITY_BOOK_PDF = 'activity_book_pdf';
     public const TYPE_FINAL_VIDEO = 'final_video';
@@ -37,3 +38,4 @@ class StoryOutput extends Model
         return $this->belongsTo(Story::class);
     }
 }
+

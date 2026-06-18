@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { motion, useInView, Variants } from 'framer-motion';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import AnimatedScene from './AnimatedScene';
 import Navbar from './Navbar';
 import CustomCursor from './CustomCursor';
 import { useLang } from '@/context/LangContext';
+import { apiGetPublicPackages, Package } from '@/lib/api';
 
 /* ── Animation presets ── */
 const fadeUp: Variants = {
@@ -46,6 +47,15 @@ function WaveDivider({ flip = false, color = 'var(--bg-2)' }: { flip?: boolean; 
 export default function LandingPage() {
   const { t, locale } = useLang();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [pkgLoading, setPkgLoading] = useState(true);
+
+  useEffect(() => {
+    apiGetPublicPackages()
+      .then((res) => setPackages(res.packages.filter((p) => p.is_active)))
+      .catch(() => setPackages([]))
+      .finally(() => setPkgLoading(false));
+  }, []);
 
   const features = [
     { icon: '🎭', color: 'feat-icon-blue',   accent: 'kido-card-blue',   title: t('feat1_title'), desc: t('feat1_desc') },
@@ -62,26 +72,6 @@ export default function LandingPage() {
     { icon: '🌟', numClass: 'step-num-4', title: t('step4_title'), desc: t('step4_desc') },
   ];
 
-  const pricingPlans = [
-    {
-      name: t('plan_basic'), price: t('plan_basic_price'), period: t('plan_per_month'),
-      desc: t('plan_basic_desc'),
-      features: ['3 ' + t('feat_stories'), t('feat_hd'), t('feat_voice')],
-      checkClass: 'pricing-check-blue', featured: false,
-    },
-    {
-      name: t('plan_pro'), price: t('plan_pro_price'), period: t('plan_per_month'),
-      desc: t('plan_pro_desc'),
-      features: ['15 ' + t('feat_stories'), t('feat_hd'), t('feat_voice'), t('feat_download')],
-      checkClass: 'pricing-check-pink', featured: true,
-    },
-    {
-      name: t('plan_premium'), price: t('plan_premium_price'), period: t('plan_per_month'),
-      desc: t('plan_premium_desc'),
-      features: [t('feat_unlimited'), t('feat_4k'), t('feat_voice'), t('feat_download'), t('feat_priority')],
-      checkClass: 'pricing-check-yellow', featured: false,
-    },
-  ];
 
   const testimonials = [
     { initial: 'S', avatarClass: 'testi-avatar-blue',   name: 'Sarah M.', stars: 5,
@@ -389,7 +379,7 @@ export default function LandingPage() {
       {/* ════════════════════════════════════════════
           PRICING
       ═══════════════════════════════════════════════ */}
-      <section className="section">
+      <section className="section" id="pricing">
         <Section>
           <motion.div className="section-header" variants={fadeUp}>
             <span className="kido-badge"><span className="kido-badge-star">💎</span>{t('pricing_badge')}</span>
@@ -398,36 +388,56 @@ export default function LandingPage() {
           </motion.div>
 
           <div className="pricing-grid">
-            {pricingPlans.map((plan, i) => (
-              <motion.div
-                key={plan.name}
-                className={`pricing-card ${plan.featured ? 'featured' : ''}`}
-                variants={fadeUp}
-                custom={i}
-                whileHover={{ y: -8 }}
-              >
-                {plan.featured && <div className="pricing-featured-badge">{t('plan_popular')}</div>}
-                <div>
-                  <div className="pricing-name">{plan.name}</div>
-                  <div className="pricing-desc">{plan.desc}</div>
-                </div>
-                <div style={{ marginBottom: '0.25rem' }}>
-                  <span className="pricing-amount">{plan.price}</span>
-                  <span className="pricing-period">{plan.period}</span>
-                </div>
-                <ul className="pricing-features">
-                  {plan.features.map(f => (
-                    <li key={f}>
-                      <span className={`pricing-check ${plan.checkClass}`}>✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/register" className={`btn ${plan.featured ? 'btn-primary' : 'btn-ghost'}`} style={{ width: '100%', justifyContent: 'center' }}>
-                  {t('plan_cta')}
-                </Link>
-              </motion.div>
-            ))}
+            {pkgLoading ? (
+              [0,1,2].map((i) => (
+                <div key={i} className="pricing-card" style={{ opacity: 0.4, minHeight: 320, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              ))
+            ) : packages.length === 0 ? (
+              <p style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-3)' }}>No packages available yet.</p>
+            ) : (
+              packages.map((pkg, i) => {
+                const isFeatured = i === 1;
+                const checkClasses = ['pricing-check-blue', 'pricing-check-pink', 'pricing-check-yellow'];
+                const checkClass = checkClasses[i % checkClasses.length];
+                const price = pkg.total_price === 0 ? (locale === 'ar' ? 'مجاني' : 'Free') : `${Number(pkg.total_price).toFixed(2)}`;
+                return (
+                  <motion.div
+                    key={pkg.id}
+                    className={`pricing-card ${isFeatured ? 'featured' : ''}`}
+                    variants={fadeUp}
+                    custom={i}
+                    whileHover={{ y: -8 }}
+                  >
+                    {isFeatured && <div className="pricing-featured-badge">{t('plan_popular')}</div>}
+                    <div>
+                      <div className="pricing-name">{pkg.name}</div>
+                      <div className="pricing-desc">{pkg.description || ''}</div>
+                    </div>
+                    <div style={{ marginBottom: '0.25rem' }}>
+                      <span className="pricing-amount">{price}</span>
+                      {pkg.total_price > 0 && <span className="pricing-period">{t('plan_per_month')}</span>}
+                    </div>
+                    <ul className="pricing-features">
+                      {pkg.items?.map((item) => (
+                        <li key={item.id}>
+                          <span className={`pricing-check ${checkClass}`}>✓</span>
+                          {item.quantity} {item.product?.name}
+                        </li>
+                      ))}
+                    </ul>
+                    <a
+                      href={`/register?package=${pkg.id}`}
+                      className={`btn ${isFeatured ? 'btn-primary' : 'btn-ghost'}`}
+                      style={{ width: '100%', justifyContent: 'center', display: 'flex', textDecoration: 'none' }}
+                    >
+                      {pkg.total_price === 0
+                        ? (locale === 'ar' ? 'ابدأ مجانًا' : 'Start Free')
+                        : t('plan_cta')}
+                    </a>
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         </Section>
       </section>

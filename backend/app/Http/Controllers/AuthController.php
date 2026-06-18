@@ -31,6 +31,7 @@ class AuthController extends Controller
             'name'                  => ['required', 'string', 'max:255'],
             'email'                 => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password'              => ['required', 'string', 'min:8', 'confirmed'],
+            'package_id'            => ['nullable', 'exists:packages,id'],
         ]);
 
         $user = User::create([
@@ -38,6 +39,21 @@ class AuthController extends Controller
             'email'    => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        // Assign package if provided
+        $assignedPackage = null;
+        if ($request->package_id) {
+            $package = \App\Models\Package::findOrFail($request->package_id);
+            
+            // If package is free, assign immediately
+            if ($package->total_price == 0) {
+                $assignedPackage = $user->assignPackage($request->package_id);
+            } else {
+                // For paid packages, create pending assignment (would go through payment flow)
+                // For now, we'll assign it but mark as requiring payment
+                $assignedPackage = $user->assignPackage($request->package_id);
+            }
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -166,8 +182,12 @@ class AuthController extends Controller
      */
     public function user(Request $request): JsonResponse
     {
+        $user = $request->user();
+        
         return response()->json([
-            'user' => $request->user(),
+            'user' => $user,
+            'active_package' => $user->activeUserPackage?->load('package.items.product'),
+            'balances' => $user->getAllProductBalances(),
         ]);
     }
 }

@@ -65,6 +65,7 @@ export async function apiRegister(payload: {
   email: string;
   password: string;
   password_confirmation: string;
+  package_id?: number;
 }): Promise<AuthResponse> {
   return apiFetch<AuthResponse>('/register', {
     method: 'POST',
@@ -86,8 +87,16 @@ export async function apiLogout(): Promise<void> {
   await apiFetch('/logout', { method: 'POST' });
 }
 
-export async function apiGetUser(): Promise<{ user: AuthUser }> {
-  return apiFetch<{ user: AuthUser }>('/user');
+export async function apiGetUser(): Promise<{
+  user: AuthUser;
+  active_package: UserPackageInfo | null;
+  balances: Record<string, ProductBalance>;
+}> {
+  return apiFetch<{
+    user: AuthUser;
+    active_package: UserPackageInfo | null;
+    balances: Record<string, ProductBalance>;
+  }>('/user');
 }
 
 // â”€â”€ Token helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -712,4 +721,49 @@ export async function apiUpdatePackage(id: number, data: { name: string; descrip
 
 export async function apiDeletePackage(id: number): Promise<{ message: string }> {
   return apiFetch<{ message: string }>(`/admin/packages/${id}`, { method: 'DELETE' });
+}
+
+// -- Public Packages -----------------------------------------------------------
+
+export async function apiGetPublicPackages(): Promise<{ packages: Package[] }> {
+  return apiFetch<{ packages: Package[] }>('/packages');
+}
+
+export async function apiGetPublicPackage(id: number): Promise<{ package: Package }> {
+  return apiFetch<{ package: Package }>(`/packages/${id}`);
+}
+
+// -- Product Balances ---------------------------------------------------------
+
+export interface ProductBalance {
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  initial_quantity: number;
+}
+
+export interface UserPackageInfo {
+  id: number;
+  user_id: number;
+  package_id: number;
+  assigned_at: string;
+  expires_at: string | null;
+  is_active: boolean;
+  package: Package;
+}
+
+export interface ProductBalancesResponse {
+  active_package: UserPackageInfo | null;
+  balances: Record<string, ProductBalance>;
+}
+
+export async function apiGetProductBalances(): Promise<ProductBalancesResponse> {
+  return apiFetch<ProductBalancesResponse>('/packages/balances');
+}
+
+export async function apiPurchaseProduct(data: { product_id: number; quantity: number }): Promise<{ message: string; invoice: unknown; new_balance: number }> {
+  return apiFetch<{ message: string; invoice: unknown; new_balance: number }>('/packages/purchase', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }

@@ -1,0 +1,33 @@
+    public function generateVideo(string $imageUrl, string $prompt, int $durationSeconds = 5): string
+    {
+        $this->ensureConfigured();
+
+        // Kling supports '5' or '10' second clips — clamp to nearest valid value.
+        $falDuration = $durationSeconds >= 8 ? '10' : '5';
+
+        $payload = [
+            'image_url' => $imageUrl,
+            'prompt'          => $prompt
+                . ', smooth cinematic motion, natural body movement, expressive facial animation,'
+                . ' consistent character identity, realistic camera movement, movie-quality animation,'
+                . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
+                . ' polished children\'s movie sequence',
+            'duration'        => $falDuration,
+            'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
+            'generate_audio'  => false,
+        ];
+
+        [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($this->videoModel, $payload);
+        $result = $this->pollForResult($this->videoModel, $requestId, $statusUrl, $responseUrl);
+
+        $videoUrl = $result['video']['url']
+            ?? $result['videos'][0]['url']
+            ?? null;
+
+        if (!$videoUrl) {
+            Log::error('Fal.ai video: no URL in response', ['result' => $result]);
+            throw new \RuntimeException('No video URL in Fal.ai response');
+        }
+
+        return $videoUrl;
+    }

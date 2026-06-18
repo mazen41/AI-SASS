@@ -6,7 +6,7 @@ import { motion, Variants } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
-import { apiGetStories, Story, apiGetActiveSubscription, Subscription } from '@/lib/api';
+import { apiGetStories, Story, apiGetActiveSubscription, Subscription, apiGetProductBalances, ProductBalancesResponse } from '@/lib/api';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
@@ -36,17 +36,20 @@ export default function DashboardPage() {
   }, [isLoggedIn, router]);
 
   const [activeSub, setActiveSub] = useState<Subscription | null>(null);
+  const [packageData, setPackageData] = useState<ProductBalancesResponse | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) return;
     const loadDashboardData = async () => {
       try {
-        const [storiesData, subData] = await Promise.all([
+        const [storiesData, subData, pkgData] = await Promise.all([
           apiGetStories(),
-          apiGetActiveSubscription()
+          apiGetActiveSubscription(),
+          apiGetProductBalances(),
         ]);
         setStories(storiesData.data || []);
         setActiveSub(subData.subscription);
+        setPackageData(pkgData);
       } catch {
         setStories([]);
       }
@@ -226,6 +229,71 @@ export default function DashboardPage() {
                 <span>{locale === 'ar' ? 'لا توجد صور بعد' : 'No images yet'}</span>
               </div>
             </motion.div>
+
+            {/* Widget: Package Balance */}
+            {packageData && (
+              <motion.div
+                className="dash-widget"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                style={{ gridColumn: 'span 2' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <div>
+                    <div className="widget-icon-wrap" style={{ background: 'linear-gradient(135deg, rgba(102,208,188,0.18), rgba(102,208,188,0.06))', display: 'inline-flex', marginBottom: '0.3rem' }}>🎁</div>
+                    <p className="widget-title" style={{ marginBottom: 0 }}>
+                      {locale === 'ar' ? 'رصيد الباقة' : 'Package Balance'}
+                    </p>
+                  </div>
+                  {packageData.active_package && (
+                    <span className="plan-badge" style={{ fontSize: '0.78rem' }}>
+                      {packageData.active_package.package?.name}
+                    </span>
+                  )}
+                </div>
+
+                {!packageData.active_package ? (
+                  <div className="widget-empty-state">
+                    <div className="widget-empty-emoji">📦</div>
+                    <span>{locale === 'ar' ? 'لا توجد باقة نشطة' : 'No active package'}</span>
+                    <a href="/#pricing" style={{ color: 'var(--k-blue)', fontSize: '0.85rem', marginTop: '0.5rem', textDecoration: 'none' }}>
+                      {locale === 'ar' ? 'اختر باقة →' : 'Choose a package →'}
+                    </a>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.75rem' }}>
+                    {Object.values(packageData.balances).map((bal) => {
+                      const pct = bal.initial_quantity > 0 ? Math.round((bal.quantity / bal.initial_quantity) * 100) : 0;
+                      const color = pct > 50 ? 'var(--k-mint)' : pct > 20 ? 'var(--k-yellow)' : 'var(--k-pink)';
+                      return (
+                        <div key={bal.product_id} style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', padding: '0.75rem' }}>
+                          <p style={{ fontWeight: 600, fontSize: '0.82rem', margin: '0 0 0.4rem', color: 'var(--text-2)' }}>{bal.product_name}</p>
+                          <p style={{ fontWeight: 700, fontSize: '1.1rem', margin: '0 0 0.4rem', color: 'var(--text)' }}>
+                            {bal.quantity} <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-3)' }}>/ {bal.initial_quantity}</span>
+                          </p>
+                          <div style={{ height: '5px', borderRadius: '999px', background: 'var(--border)', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '999px', transition: 'width 0.5s ease' }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {packageData.active_package && (
+                  <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <a href="/create-story" style={{ color: 'var(--k-blue)', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none' }}>
+                      {locale === 'ar' ? '+ إنشاء قصة' : '+ Create Story'}
+                    </a>
+                    <span style={{ color: 'var(--border)' }}>|</span>
+                    <a href="/#pricing" style={{ color: 'var(--text-3)', fontSize: '0.8rem', textDecoration: 'none' }}>
+                      {locale === 'ar' ? 'شراء المزيد →' : 'Buy More →'}
+                    </a>
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {/* Widget: Account */}
             <motion.div

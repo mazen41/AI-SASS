@@ -29,8 +29,7 @@ class ElevenLabsService
 
         $voiceId = ($language === 'ar') ? $this->arVoiceId : $this->enVoiceId;
 
-        // ElevenLabs has a ~5000 char limit per request; truncate gracefully
-        $text = mb_substr(trim($text), 0, 4500);
+        $text = trim($text);
 
         if (empty($text)) {
             throw new \RuntimeException('Story text is empty -- cannot generate narration');

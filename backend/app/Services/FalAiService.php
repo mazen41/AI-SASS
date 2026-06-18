@@ -151,18 +151,26 @@ class FalAiService
 
     // --- Video Generation ---------------------------------------------------
 
-    public function generateVideo(string $imageUrl, string $prompt): string
+    /**
+     * Generate a scene video clip from an image.
+     * $durationSeconds: desired clip length. Kling only supports 5 or 10 seconds;
+     * values >= 8 request a 10s clip, anything lower requests 5s.
+     */
+    public function generateVideo(string $imageUrl, string $prompt, int $durationSeconds = 5): string
     {
         $this->ensureConfigured();
 
+        // Kling supports '5' or '10' second clips — clamp to nearest valid value.
+        $falDuration = $durationSeconds >= 8 ? '10' : '5';
+
         $payload = [
-            'image_url' => $imageUrl,
+            'image_url'       => $imageUrl,
             'prompt'          => $prompt
                 . ', smooth cinematic motion, natural body movement, expressive facial animation,'
                 . ' consistent character identity, realistic camera movement, movie-quality animation,'
                 . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
                 . ' polished children\'s movie sequence',
-            'duration'        => '5',
+            'duration'        => $falDuration,
             'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
             'generate_audio'  => false,
         ];
@@ -246,13 +254,9 @@ class FalAiService
         ]);
         sleep($initialWait);
 
-        // After the initial wait, poll every $pollInterval seconds.
-        // Max wall-clock budget:
-        //   image: 20s initial + 120 attempts × 5s = 620s (~10 min)
-        //   video: 60s initial + 120 attempts × 5s = 660s (~11 min)
-        $maxAttempts   = max($this->pollMaxAttempts * 2, 120); // at least 120 attempts
+        $maxAttempts   = max($this->pollMaxAttempts * 2, 120);
         $networkErrors = 0;
-        $maxNetErrors  = 10; // abort if the network is consistently broken
+        $maxNetErrors  = 10;
 
         for ($i = 0; $i < $maxAttempts; $i++) {
             $response = Http::withHeaders([
@@ -276,7 +280,7 @@ class FalAiService
                 continue;
             }
 
-            $networkErrors = 0; // reset on success
+            $networkErrors = 0;
             $data          = $response->json();
             $status        = strtoupper($data['status'] ?? '');
             $elapsed       = $initialWait + ($i * $this->pollInterval);
@@ -306,7 +310,6 @@ class FalAiService
                 throw new \RuntimeException('Fal.ai job failed: ' . $error);
             }
 
-            // IN_QUEUE or IN_PROGRESS — log queue position if available
             if (isset($data['queue_position'])) {
                 Log::info('Fal.ai queue position', ['position' => $data['queue_position'], 'request_id' => $requestId]);
             }

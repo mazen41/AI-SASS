@@ -82,6 +82,170 @@ class User extends Authenticatable
         return $this->hasMany(Invoice::class);
     }
 
+    public function userPackages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(UserPackage::class);
+    }
+
+    public function activeUserPackage(): ?UserPackage
+    {
+        return $this->userPackages()
+            ->where('is_active', true)
+            ->where(function($query) {
+                $query->whereNull('expires_at')
+                      ->orWhere('expires_at', '>', now());
+            })
+            ->with('package.items.product')
+            ->latest()
+            ->first();
+    }
+
+    public function productBalances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(UserProductBalance::class);
+    }
+
+    public function productConsumptions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProductConsumption::class);
+    }
+
+    public function getProductBalance(int $productId): int
+    {
+        $balance = $this->productBalances()->where('product_id', $productId)->first();
+        return $balance ? $balance->quantity : 0;
+    }
+
+    public function hasProductBalance(int $productId, int $required = 1): bool
+    {
+        return $this->getProductBalance($productId) >= $required;
+    }
+
+    public function consumeProduct(int $productId, int $quantity = 1, ?int $storyId = null, ?string $outputType = null): bool
+    {
+        $balance = $this->productBalances()->where('product_id', $productId)->first();
+        
+        if (!$balance || !$balance->hasBalance($quantity)) {
+            return false;
+        }
+
+        $balance->consume($quantity);
+
+        ProductConsumption::create([
+            'user_id' => $this->id,
+            'product_id' => $productId,
+            'story_id' => $storyId,
+            'quantity' => $quantity,
+            'output_type' => $outputType,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Refund a previously-consumed product credit (e.g. when a generation
+     * job permanently fails after the credit was already deducted).
+     * Adds the quantity back to the user's balance and logs a
+     * negative-quantity ProductConsumption row so the net consumption
+     * for that story/output stays accurate in reports.
+     */
+    public function refundProduct(int $productId, int $quantity = 1, ?int $storyId = null, ?string $outputType = null): void
+    {
+        $balance = $this->productBalances()->where('product_id', $productId)->first();
+
+        if ($balance) {
+            $balance->addBalance($quantity);
+        } else {
+            UserProductBalance::create([
+                'user_id' => $this->id,
+                'product_id' => $productId,
+                'quantity' => $quantity,
+                'initial_quantity' => $quantity,
+            ]);
+        }
+
+        ProductConsumption::create([
+            'user_id' => $this->id,
+            'product_id' => $productId,
+            'story_id' => $storyId,
+            'quantity' => -$quantity,
+            'output_type' => $outputType,
+        ]);
+    }
+
+    /**
+     * Refund credits for a given output type on a story, looked up by
+     * product slug (e.g. 'narration_audio' -> 'narration').
+     * Safe no-op if the product can't be resolved.
+     */
+    public function refundProductByOutputType(string $outputType, ?int $storyId = null, int $quantity = 1): void
+    {
+        $productMap = [
+            'story_text' => 'story',
+            'narration_audio' => 'narration',
+            'story_book_pdf' => 'story_book',
+            'coloring_book_pdf' => 'coloring_book',
+            'video' => 'video',
+        ];
+
+        $slug = $productMap[$outputType] ?? null;
+        if (!$slug) {
+            return;
+        }
+
+        $product = Product::where('slug', $slug)->first();
+        if (!$product) {
+            return;
+        }
+
+        $this->refundProduct($product->id, $quantity, $storyId, $outputType);
+    }
+
+    public function assignPackage(int $packageId): UserPackage
+    {
+        $package = Package::findOrFail($packageId);
+        
+        $userPackage = UserPackage::create([
+            'user_id' => $this->id,
+            'package_id' => $packageId,
+            'assigned_at' => now(),
+            'is_active' => true,
+        ]);
+
+        foreach ($package->items as $item) {
+            UserProductBalance::updateOrCreate(
+                [
+                    'user_id' => $this->id,
+                    'product_id' => $item->product_id,
+                ],
+                [
+                    'user_package_id' => $userPackage->id,
+                    'quantity' => $item->quantity,
+                    'initial_quantity' => $item->quantity,
+                ]
+            );
+        }
+
+        return $userPackage;
+    }
+
+    public function getAllProductBalances(): array
+    {
+        $balances = $this->productBalances()->with('product')->get();
+        $result = [];
+        
+        foreach ($balances as $balance) {
+            $result[$balance->product->slug] = [
+                'product_id' => $balance->product_id,
+                'product_name' => $balance->product->name,
+                'quantity' => $balance->quantity,
+                'initial_quantity' => $balance->initial_quantity,
+            ];
+        }
+        
+        return $result;
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role === 'super_admin';

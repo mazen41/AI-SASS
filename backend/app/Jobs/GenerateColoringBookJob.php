@@ -10,6 +10,11 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Terminal job for the 'coloring_book_pdf' output.
+ * Decrements $story->pending_outputs_count on success/failure so the
+ * story's overall status resolves correctly.
+ */
 class GenerateColoringBookJob implements ShouldQueue
 {
     use Queueable;
@@ -41,6 +46,8 @@ class GenerateColoringBookJob implements ShouldQueue
             $output->update(['status' => 'failed', 'error_message' => mb_substr($e->getMessage(), 0, 500)]);
             throw $e;
         }
+
+        $story->decrementPendingOutputs();
     }
 
     public function failed(Throwable $exception): void
@@ -49,7 +56,16 @@ class GenerateColoringBookJob implements ShouldQueue
             ->where('output_type', StoryOutput::TYPE_COLORING_BOOK_PDF)
             ->update(['status' => 'failed', 'error_message' => mb_substr($exception->getMessage(), 0, 500)]);
 
-        Log::error("GenerateColoringBookJob permanently failed for story #{$this->storyId}", [
+        $story = Story::find($this->storyId);
+        if ($story) {
+            $user = $story->user;
+            if ($user) {
+                $user->refundProductByOutputType('coloring_book_pdf', $story->id);
+            }
+            $story->decrementPendingOutputs();
+        }
+
+        Log::error("GenerateColoringBookJob permanently failed for story #{$this->storyId} — refunded coloring_book credit", [
             'error' => $exception->getMessage(),
         ]);
     }

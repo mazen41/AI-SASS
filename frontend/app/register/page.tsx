@@ -1,13 +1,13 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
-import { apiRegister } from '@/lib/api';
+import { apiRegister, apiGetPublicPackage, Package } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
 
 const fadeUp = {
@@ -19,6 +19,10 @@ const fadeUp = {
 };
 
 export default function RegisterPage() {
+  return <Suspense fallback={null}><RegisterForm /></Suspense>;
+}
+
+function RegisterForm() {
   const router = useRouter();
   const { login } = useAuth();
   const { theme } = useTheme();
@@ -32,13 +36,24 @@ export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const searchParams = useSearchParams();
+  const packageId = searchParams.get('package') ? Number(searchParams.get('package')) : undefined;
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
+  useEffect(() => {
+    if (!packageId) return;
+    apiGetPublicPackage(packageId)
+      .then((res) => setSelectedPackage(res.package))
+      .catch(() => {});
+  }, [packageId]);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (password !== confirm) return setError(locale === 'ar' ? 'كلمات المرور غير متطابقة' : 'Passwords do not match');
     setLoading(true);
     setError('');
     try {
-      const res = await apiRegister({ name, email, password, password_confirmation: confirm });
+      const res = await apiRegister({ name, email, password, password_confirmation: confirm, package_id: packageId });
       login(res.token, res.user);
       router.push('/dashboard');
     } catch (err: unknown) {
@@ -101,6 +116,40 @@ export default function RegisterPage() {
               <h1 className="auth-form-title">{t('register_title')}</h1>
               <p className="auth-form-sub">{t('register_sub')}</p>
             </motion.div>
+
+            {/* Selected Package Banner */}
+            {selectedPackage && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(84,120,255,0.12), rgba(84,120,255,0.05))',
+                  border: '1.5px solid rgba(84,120,255,0.25)',
+                  borderRadius: 'var(--r-md)',
+                  padding: '0.85rem 1rem',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                }}
+              >
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: '0.9rem', margin: 0, color: 'var(--text)' }}>
+                    📦 {selectedPackage.name}
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', margin: '0.15rem 0 0' }}>
+                    {selectedPackage.total_price === 0
+                      ? (locale === 'ar' ? 'باقة مجانية — لا يلزم دفع' : 'Free package — no payment required')
+                      : `${Number(selectedPackage.total_price).toFixed(2)} — ${locale === 'ar' ? 'سيتم تفعيلها بعد الدفع' : 'activated after payment'}`
+                    }
+                  </p>
+                </div>
+                <a href="/#pricing" style={{ fontSize: '0.75rem', color: 'var(--text-3)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                  {locale === 'ar' ? 'تغيير →' : 'Change →'}
+                </a>
+              </motion.div>
+            )}
 
             <motion.form onSubmit={onSubmit} style={{ display: 'grid', gap: 0 }} initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } } }}>
 
