@@ -11,6 +11,7 @@ import {
   apiGetActiveSubscription,
   apiSubscribeStripe,
   apiSubscribePaypal,
+  apiSubscribeMoyasar,
   apiUserCancelSubscription,
   Plan,
   Subscription,
@@ -60,7 +61,8 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [activeSub, setActiveSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [gateway, setGateway] = useState<'stripe' | 'paypal'>('stripe');
+  const [availableGateways, setAvailableGateways] = useState<string[]>([]);
+  const [gateway, setGateway] = useState<'stripe' | 'paypal' | 'moyasar'>('stripe');
   const [checkoutPlanId, setCheckoutPlanId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -79,6 +81,10 @@ export default function BillingPage() {
         ]);
         setPlans(plansRes.plans);
         setActiveSub(subRes.subscription);
+        if (plansRes.gateways?.length) {
+          setAvailableGateways(plansRes.gateways);
+          setGateway(plansRes.gateways[0] as 'stripe' | 'paypal' | 'moyasar');
+        }
       } catch (err) {
         console.error('Error loading billing data', err);
       } finally {
@@ -97,8 +103,11 @@ export default function BillingPage() {
       if (gateway === 'stripe') {
         const response = await apiSubscribeStripe(planId);
         url = response.url;
-      } else {
+      } else if (gateway === 'paypal') {
         const response = await apiSubscribePaypal(planId);
+        url = response.url;
+      } else if (gateway === 'moyasar') {
+        const response = await apiSubscribeMoyasar(planId);
         url = response.url;
       }
       
@@ -201,29 +210,46 @@ export default function BillingPage() {
             {/* Payment Method Selector */}
             <div className="flex flex-col items-center gap-3">
               <span className="text-sm font-bold text-gray-600 dark:text-gray-300">{t.selectPayment}</span>
-              <div className="flex items-center gap-3 bg-white dark:bg-gray-800 p-1.5 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm">
-                <button
-                  onClick={() => setGateway('stripe')}
-                  className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    gateway === 'stripe'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-                  }`}
-                >
-                  <CreditCard size={16} />
-                  Stripe
-                </button>
-                <button
-                  onClick={() => setGateway('paypal')}
-                  className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    gateway === 'paypal'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-                  }`}
-                >
-                  <Wallet size={16} />
-                  PayPal
-                </button>
+              <div className="flex items-center gap-3 bg-white dark:bg-gray-800 p-1.5 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm flex-wrap justify-center">
+                {(availableGateways.includes('stripe') || availableGateways.length === 0) && (
+                  <button
+                    onClick={() => setGateway('stripe')}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      gateway === 'stripe'
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <CreditCard size={16} />
+                    Stripe
+                  </button>
+                )}
+                {availableGateways.includes('paypal') && (
+                  <button
+                    onClick={() => setGateway('paypal')}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      gateway === 'paypal'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <Wallet size={16} />
+                    PayPal
+                  </button>
+                )}
+                {availableGateways.includes('moyasar') && (
+                  <button
+                    onClick={() => setGateway('moyasar')}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      gateway === 'moyasar'
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <CreditCard size={16} />
+                    Moyasar
+                  </button>
+                )}
               </div>
             </div>
 

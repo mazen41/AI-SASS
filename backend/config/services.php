@@ -38,6 +38,12 @@ return [
 
     // ── AI Services ──────────────────────────────────────────────────────────
 
+    'claude' => [
+        'key'         => env('ANTHROPIC_API_KEY', ''),
+        'model'       => env('CLAUDE_MODEL', 'claude-sonnet-4-5'),
+        'api_version' => env('CLAUDE_API_VERSION', '2023-06-01'),
+    ],
+
     'gemini' => [
         'key'   => env('GEMINI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),

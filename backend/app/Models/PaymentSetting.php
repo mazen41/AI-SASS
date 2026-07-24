@@ -58,4 +58,9 @@ class PaymentSetting extends Model
     {
         return self::where('gateway', 'paypal')->first();
     }
+
+    public static function getMoyasar(): ?self
+    {
+        return self::where('gateway', 'moyasar')->first();
+    }
 }

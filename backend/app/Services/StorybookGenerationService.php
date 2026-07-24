@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\Log;
 
 class StorybookGenerationService
 {
-    private GeminiService $gemini;
+    private ClaudeService $gemini;
 
-    public function __construct(GeminiService $gemini)
+    public function __construct(ClaudeService $gemini)
     {
         $this->gemini = $gemini;
     }

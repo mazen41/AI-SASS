@@ -24,18 +24,16 @@ class BillingController extends Controller
             return Plan::where('is_active', true)->orderBy('sort_order')->get();
         });
 
-        $stripe = PaymentSetting::getStripe();
-        $paypal = PaymentSetting::getPaypal();
+        $stripe  = PaymentSetting::getStripe();
+        $paypal  = PaymentSetting::getPaypal();
+        $moyasar = PaymentSetting::getMoyasar();
         $gateways = [];
-        if ($stripe && $stripe->is_enabled && $stripe->secret_key) {
-            $gateways[] = 'stripe';
-        }
-        if ($paypal && $paypal->is_enabled && $paypal->secret_key) {
-            $gateways[] = 'paypal';
-        }
+        if ($stripe  && $stripe->is_enabled  && $stripe->secret_key)  $gateways[] = 'stripe';
+        if ($paypal  && $paypal->is_enabled  && $paypal->secret_key)  $gateways[] = 'paypal';
+        if ($moyasar && $moyasar->is_enabled && $moyasar->secret_key) $gateways[] = 'moyasar';
 
         return response()->json([
-            'plans' => $plans,
+            'plans'    => $plans,
             'gateways' => $gateways,
         ]);
     }
@@ -45,15 +43,13 @@ class BillingController extends Controller
         $user = $request->user();
         $subscription = $user->activeSubscription();
 
-        $stripe = PaymentSetting::getStripe();
-        $paypal = PaymentSetting::getPaypal();
+        $stripe  = PaymentSetting::getStripe();
+        $paypal  = PaymentSetting::getPaypal();
+        $moyasar = PaymentSetting::getMoyasar();
         $gateways = [];
-        if ($stripe && $stripe->is_enabled && $stripe->secret_key) {
-            $gateways[] = 'stripe';
-        }
-        if ($paypal && $paypal->is_enabled && $paypal->secret_key) {
-            $gateways[] = 'paypal';
-        }
+        if ($stripe  && $stripe->is_enabled  && $stripe->secret_key)  $gateways[] = 'stripe';
+        if ($paypal  && $paypal->is_enabled  && $paypal->secret_key)  $gateways[] = 'paypal';
+        if ($moyasar && $moyasar->is_enabled && $moyasar->secret_key) $gateways[] = 'moyasar';
 
         return response()->json([
             'subscription' => $subscription ? $subscription->load('plan') : null,
@@ -251,6 +247,106 @@ class BillingController extends Controller
         } catch (\Exception $e) {
             Log::error('PayPal checkout error', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'PayPal integration error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Initiate a Moyasar payment for a subscription plan.
+     * Returns a Moyasar payment URL that the frontend redirects to.
+     * On success, Moyasar calls our webhook which activates the subscription.
+     */
+    public function subscribeMoyasar(Request $request): JsonResponse
+    {
+        $request->validate(['plan_id' => 'required|exists:plans,id']);
+
+        $plan    = Plan::findOrFail($request->plan_id);
+        $user    = $request->user();
+        $setting = PaymentSetting::getMoyasar();
+
+        $frontendUrl = rtrim(config('app.frontend_url', 'http://localhost:3000'), '/');
+
+        // Fallback / mock when Moyasar is not configured
+        if (!$setting || !$setting->is_enabled || !$setting->secret_key || !$setting->public_key) {
+            $user->subscriptions()->where('status', 'active')->update([
+                'status'      => 'canceled',
+                'canceled_at' => now(),
+            ]);
+
+            $subscription = Subscription::create([
+                'user_id'                 => $user->id,
+                'plan_id'                 => $plan->id,
+                'gateway'                 => 'moyasar',
+                'gateway_subscription_id' => 'mock_moyasar_' . uniqid(),
+                'status'                  => 'active',
+                'current_period_start'    => now(),
+                'current_period_end'      => now()->addDays(30),
+            ]);
+
+            $this->createSubscriptionInvoice($user, $subscription, $plan, 'moyasar');
+
+            return response()->json([
+                'url' => $frontendUrl . '/billing/success?gateway=moyasar&mock=true',
+            ]);
+        }
+
+        // Amount in halala (SAR cents): Moyasar expects smallest currency unit
+        $amountHalala = (int) round((float) $plan->price * 100);
+
+        try {
+            $response = Http::withBasicAuth($setting->secret_key, '')
+                ->post('https://api.moyasar.com/v1/payments', [
+                    'amount'      => $amountHalala,
+                    'currency'    => 'SAR',
+                    'description' => $plan->name . ' — Monthly Subscription',
+                    'callback_url' => $frontendUrl . '/billing/success?gateway=moyasar',
+                    'source'       => [
+                        'type'       => 'creditcard',
+                        'company'    => null,
+                        'name'       => null,
+                        'number'     => null,
+                        'cvc'        => null,
+                        'month'      => null,
+                        'year'       => null,
+                    ],
+                    'metadata' => [
+                        'user_id' => (string) $user->id,
+                        'plan_id' => (string) $plan->id,
+                    ],
+                ]);
+
+            if (!$response->successful()) {
+                Log::error('Moyasar payment init failed', ['body' => $response->body()]);
+                throw new \Exception('Moyasar API error: ' . $response->body());
+            }
+
+            $payment     = $response->json();
+            $paymentUrl  = null;
+
+            // Moyasar returns links array — find the payment URL
+            foreach ($payment['source']['transaction_url'] ?? [] as $link) {
+                $paymentUrl = $link;
+                break;
+            }
+
+            // Newer Moyasar API: payment URL is in source.transaction_url directly
+            if (!$paymentUrl && isset($payment['source']['transaction_url'])) {
+                $paymentUrl = $payment['source']['transaction_url'];
+            }
+
+            // Fallback: use Moyasar hosted payment page
+            if (!$paymentUrl && isset($payment['id'])) {
+                $paymentUrl = 'https://api.moyasar.com/v1/payments/' . $payment['id'] . '/pay';
+            }
+
+            if (!$paymentUrl) {
+                throw new \Exception('No payment URL returned from Moyasar.');
+            }
+
+            return response()->json(['url' => $paymentUrl, 'payment_id' => $payment['id'] ?? null]);
+
+        } catch (\Exception $e) {
+            Log::error('Moyasar subscribe error', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Moyasar payment error: ' . $e->getMessage()], 500);
         }
     }
 

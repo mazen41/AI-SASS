@@ -17,8 +17,8 @@ class PaymentSettingsController extends Controller
             return PaymentSetting::all();
         })->keyBy('gateway');
 
-        // Ensure both gateways exist
-        $gateways = ['stripe', 'paypal'];
+        // Ensure all gateways exist
+        $gateways = ['stripe', 'paypal', 'moyasar'];
         foreach ($gateways as $gateway) {
             if (!isset($settings[$gateway])) {
                 $settings[$gateway] = PaymentSetting::create([
@@ -50,7 +50,7 @@ class PaymentSettingsController extends Controller
 
     public function update(Request $request, string $gateway): JsonResponse
     {
-        if (!in_array($gateway, ['stripe', 'paypal'])) {
+        if (!in_array($gateway, ['stripe', 'paypal', 'moyasar'])) {
             return response()->json(['message' => 'Invalid gateway.'], 422);
         }
 
@@ -125,6 +125,8 @@ class PaymentSettingsController extends Controller
                 return $this->testStripeConnection($setting);
             } elseif ($gateway === 'paypal') {
                 return $this->testPaypalConnection($setting);
+            } elseif ($gateway === 'moyasar') {
+                return $this->testMoyasarConnection($setting);
             }
         } catch (\Exception $e) {
             return response()->json([
@@ -185,6 +187,32 @@ class PaymentSettingsController extends Controller
         return response()->json([
             'success' => false,
             'message' => 'PayPal authentication failed.',
+        ]);
+    }
+
+    private function testMoyasarConnection(PaymentSetting $setting): JsonResponse
+    {
+        if (!$setting->secret_key) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Moyasar secret key is not configured.',
+            ]);
+        }
+
+        // Moyasar: list payments with limit=1 to verify the secret key
+        $response = \Illuminate\Support\Facades\Http::withBasicAuth($setting->secret_key, '')
+            ->get('https://api.moyasar.com/v1/payments', ['per_page' => 1]);
+
+        if ($response->successful()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Moyasar connection successful.',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Moyasar authentication failed. Check your secret key.',
         ]);
     }
 }

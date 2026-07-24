@@ -630,8 +630,8 @@ export function apiGetDownloadBackupUrl(): string {
 
 // â”€â”€ User Billing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export async function apiGetBillingPlans(): Promise<{ plans: Plan[] }> {
-  return apiFetch<{ plans: Plan[] }>('/billing/plans');
+export async function apiGetBillingPlans(): Promise<{ plans: Plan[]; gateways: string[] }> {
+  return apiFetch<{ plans: Plan[]; gateways: string[] }>('/billing/plans');
 }
 
 export async function apiGetActiveSubscription(): Promise<{ subscription: Subscription | null }> {
@@ -647,6 +647,13 @@ export async function apiSubscribeStripe(planId: number): Promise<{ url: string 
 
 export async function apiSubscribePaypal(planId: number): Promise<{ url: string }> {
   return apiFetch<{ url: string }>('/billing/subscribe/paypal', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId }),
+  });
+}
+
+export async function apiSubscribeMoyasar(planId: number): Promise<{ url: string; payment_id?: string }> {
+  return apiFetch<{ url: string; payment_id?: string }>('/billing/subscribe/moyasar', {
     method: 'POST',
     body: JSON.stringify({ plan_id: planId }),
   });
