@@ -1,4 +1,4 @@
-﻿const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -399,6 +399,8 @@ export interface Story {
   language: string;
   created_at: string;
   updated_at: string;
+  storybook_url?: string | null;
+  storybook_data?: any;
   user?: AuthUser;
   outputs?: StoryOutput[];
 }
