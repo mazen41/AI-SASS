@@ -537,7 +537,7 @@ export default function StoryViewPage() {
 
               {storyBook?.status === 'completed' ? (
                 <StorybookViewer
-                  storyId={parseInt(id!)}
+                  storyId={parseInt(Array.isArray(id) ? id[0] : id || '')}
                   storybookUrl={story.storybook_url || ''}
                   narrationUrl={story.narration_url}
                   language={story.language || 'en'}
