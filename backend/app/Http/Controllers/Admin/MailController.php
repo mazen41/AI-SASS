@@ -238,9 +238,8 @@ class MailController extends Controller
 
     public function getLogs(Request $request): JsonResponse
     {
-        $cacheKey = 'mail_logs:' . md5($request->getQueryString() ?: 'all');
-        $logs = Cache::remember($cacheKey, 60, function () use ($request) {
-            $query = MailLog::query()->orderBy('created_at', 'desc');
+        // Remove caching to show real-time status updates
+        $query = MailLog::query()->orderBy('created_at', 'desc');
 
         if ($request->has('status')) {
             $query->where('status', $request->input('status'));
@@ -256,8 +255,7 @@ class MailController extends Controller
             });
         }
 
-            return $query->paginate(20);
-        });
+        $logs = $query->paginate(20);
         return response()->json($logs);
     }
 

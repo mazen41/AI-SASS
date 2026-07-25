@@ -4,13 +4,14 @@ namespace App\Services;
 
 use App\Models\Story;
 use App\Models\StorybookPage;
+use App\Services\Contracts\StoryTextGeneratorInterface;
 use Illuminate\Support\Facades\Log;
 
 class StorybookGenerationService
 {
-    private ClaudeService $gemini;
+    private StoryTextGeneratorInterface $gemini;
 
-    public function __construct(ClaudeService $gemini)
+    public function __construct(StoryTextGeneratorInterface $gemini)
     {
         $this->gemini = $gemini;
     }

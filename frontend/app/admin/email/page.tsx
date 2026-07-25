@@ -780,6 +780,14 @@ function LogsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
     void load();
   }, [load]);
 
+  // Auto-refresh logs every 10 seconds to show real-time status updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void load();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [load]);
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       sent: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400',

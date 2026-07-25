@@ -55,6 +55,20 @@ class MailService
         $subject = $template->renderSubject($data);
         $htmlBody = $template->renderHtml($data);
         $textBody = $template->renderText($data);
+        
+        // Validate that subject is not empty
+        if (empty($subject)) {
+            $log = MailLog::create([
+                'template_key' => $templateKey,
+                'to_email' => $toEmail,
+                'subject' => 'Empty Subject',
+                'body' => $htmlBody,
+                'status' => 'failed',
+                'error_message' => 'Email subject cannot be empty',
+                'metadata' => $metadata,
+            ]);
+            return $log;
+        }
 
         $log = MailLog::create([
             'template_key' => $templateKey,
@@ -75,6 +89,12 @@ class MailService
                 $message->to($toEmail)->subject($subject);
                 if ($textBody) {
                     $message->text($textBody);
+                }
+                // Ensure from address is set
+                $fromAddress = config('mail.from.address');
+                $fromName = config('mail.from.name');
+                if ($fromAddress) {
+                    $message->from($fromAddress, $fromName);
                 }
             });
 
@@ -99,6 +119,18 @@ class MailService
         string $htmlBody,
         ?string $textBody = null
     ): MailLog {
+        // Validate that subject is not empty
+        if (empty($subject)) {
+            $log = MailLog::create([
+                'to_email' => $toEmail,
+                'subject' => 'Empty Subject',
+                'body' => $htmlBody,
+                'status' => 'failed',
+                'error_message' => 'Email subject cannot be empty',
+            ]);
+            return $log;
+        }
+        
         $log = MailLog::create([
             'to_email' => $toEmail,
             'subject' => $subject,
@@ -116,6 +148,12 @@ class MailService
                 $message->to($toEmail)->subject($subject);
                 if ($textBody) {
                     $message->text($textBody);
+                }
+                // Ensure from address is set
+                $fromAddress = config('mail.from.address');
+                $fromName = config('mail.from.name');
+                if ($fromAddress) {
+                    $message->from($fromAddress, $fromName);
                 }
             });
 

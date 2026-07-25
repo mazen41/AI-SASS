@@ -2,19 +2,21 @@
 
 namespace App\Services;
 
+use App\Services\Contracts\StoryTextGeneratorInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * ClaudeService — replaces GeminiService for all story/text generation.
+ * ClaudeService — alternative provider for story/text generation.
  *
- * Identical public method signatures as GeminiService so no other code
- * needs to change except GenerateStoryTextJob's injected dependency.
+ * Implements the same StoryTextGeneratorInterface as GeminiService, so the
+ * active provider can be switched via AI_TEXT_PROVIDER in .env without any
+ * code changes. See AppServiceProvider::register().
  *
  * Image and video generation (FalAiService) are NOT touched.
  * Narration audio (ElevenLabsService) is NOT touched.
  */
-class ClaudeService
+class ClaudeService implements StoryTextGeneratorInterface
 {
     private string $apiKey;
     private string $model;

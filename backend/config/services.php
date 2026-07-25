@@ -38,6 +38,13 @@ return [
 
     // ── AI Services ──────────────────────────────────────────────────────────
 
+    // Which provider generates story text + storybook pages.
+    // Set AI_TEXT_PROVIDER=gemini or AI_TEXT_PROVIDER=claude in .env, then
+    // run `php artisan config:clear`. No code changes needed to switch.
+    'ai' => [
+        'text_provider' => env('AI_TEXT_PROVIDER', 'gemini'),
+    ],
+
     'claude' => [
         'key'         => env('ANTHROPIC_API_KEY', ''),
         'model'       => env('CLAUDE_MODEL', 'claude-sonnet-4-5'),

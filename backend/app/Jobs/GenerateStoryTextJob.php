@@ -7,7 +7,7 @@ use App\Models\StoryAsset;
 use App\Models\AiJobLog;
 use App\Models\ActivityLog;
 use App\Models\StoryOutput;
-use App\Services\ClaudeService;
+use App\Services\Contracts\StoryTextGeneratorInterface;
 use App\Services\VideoTimelinePlanner;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -53,7 +53,7 @@ class GenerateStoryTextJob implements ShouldQueue
 
     public function __construct(public Story $story) {}
 
-    public function handle(ClaudeService $gemini): void
+    public function handle(StoryTextGeneratorInterface $gemini): void
     {
         $story = $this->story->fresh();
         $log   = AiJobLog::start($story->id, 'generate_story');

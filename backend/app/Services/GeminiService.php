@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use App\Services\Contracts\StoryTextGeneratorInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class GeminiService
+class GeminiService implements StoryTextGeneratorInterface
 {
     private string $apiKey;
     private string $model;
