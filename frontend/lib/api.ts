@@ -356,7 +356,7 @@ export interface StoryAsset {
 export interface StoryOutput {
   id: number;
   story_id: number;
-  output_type: 'story_book_pdf' | 'coloring_book_pdf' | 'activity_book_pdf' | 'final_video' | 'narration_audio';
+  output_type: 'story_book_pdf' | 'storybook_interactive' | 'coloring_book_pdf' | 'activity_book_pdf' | 'final_video' | 'narration_audio';
   status: 'pending' | 'generating' | 'completed' | 'failed' | 'planned';
   url: string | null;
   storage_path: string | null;

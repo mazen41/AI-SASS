@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  * and incorrect "completed" StoryOutput rows for unselected products.
  *
  * The primary pipeline (GenerateStoryTextJob -> GenerateImagesJob) already
- * dispatches GenerateInteractiveStorybookJob / GenerateColoringBookJob
+ * dispatches GenerateStoryBookJob + GenerateInteractiveStorybookJob / GenerateColoringBookJob
  * conditionally and does NOT use this job.
  */
 class GenerateStoryProductsJob implements ShouldQueue
@@ -45,6 +45,7 @@ class GenerateStoryProductsJob implements ShouldQueue
                 ['story_id' => $this->story->id, 'output_type' => StoryOutput::TYPE_STORY_BOOK_PDF],
                 ['status' => 'pending', 'error_message' => null]
             );
+            GenerateStoryBookJob::dispatch($this->story->id);
             GenerateInteractiveStorybookJob::dispatch($this->story->id);
         }
 

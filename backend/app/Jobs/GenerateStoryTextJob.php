@@ -25,7 +25,8 @@ use Throwable;
  *   GenerateStoryTextJob          (always)
  *       ↓
  *   GenerateImagesJob             (if: story_book | coloring_book | video)
- *       ├── GenerateInteractiveStorybookJob (if: story_book_pdf selected)
+ *       ├── GenerateStoryBookJob            (if: story_book_pdf selected — downloadable PDF, terminal/credited)
+ *       ├── GenerateInteractiveStorybookJob (if: story_book_pdf selected — companion flipbook viewer, best-effort)
  *       ├── GenerateColoringBookJob    (if: coloring_book_pdf selected)
  *       └── GenerateSceneVideosJob     (if: video selected)
  *               ↓

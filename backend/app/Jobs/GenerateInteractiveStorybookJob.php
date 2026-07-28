@@ -30,8 +30,12 @@ class GenerateInteractiveStorybookJob implements ShouldQueue
         $story = Story::with('assets')->findOrFail($this->storyId);
         Log::info('STEP 1 COMPLETE: Story lookup', ['story_id' => $this->storyId]);
 
+        // Note: this tracks the interactive flipbook viewer, a companion to the
+        // downloadable PDF. It intentionally uses TYPE_STORYBOOK_INTERACTIVE, not
+        // TYPE_STORY_BOOK_PDF — that record belongs to GenerateStoryBookJob, which
+        // is the terminal/credited job for the 'story_book_pdf' selection.
         $output = StoryOutput::updateOrCreate(
-            ['story_id' => $this->storyId, 'output_type' => StoryOutput::TYPE_STORY_BOOK_PDF],
+            ['story_id' => $this->storyId, 'output_type' => StoryOutput::TYPE_STORYBOOK_INTERACTIVE],
             ['status' => 'generating', 'error_message' => null]
         );
         Log::info('STEP 2 COMPLETE: StoryOutput created/updated', ['story_id' => $this->storyId]);
@@ -110,22 +114,16 @@ class GenerateInteractiveStorybookJob implements ShouldQueue
                 'error_message' => mb_substr($e->getMessage(), 0, 500),
             ]);
 
-            throw $e;
+            // Not rethrown: this is a companion viewer, not the credited/terminal
+            // output for 'story_book_pdf'. The downloadable PDF (GenerateStoryBookJob)
+            // must not be blocked, refunded, or have its pending-output slot touched
+            // just because the interactive flipbook failed to build.
         }
     }
 
     public function failed(Throwable $exception): void
     {
-        $story = Story::find($this->storyId);
-        if ($story) {
-            $user = $story->user;
-            if ($user) {
-                $user->refundProductByOutputType('story_book_pdf', $story->id);
-            }
-            $story->decrementPendingOutputs();
-        }
-
-        Log::error("GenerateInteractiveStorybookJob permanently failed for story #{$this->storyId} — refunded story_book credit", [
+        Log::error("GenerateInteractiveStorybookJob permanently failed for story #{$this->storyId} (interactive viewer only — story_book_pdf credit unaffected)", [
             'error' => $exception->getMessage(),
         ]);
     }

@@ -414,6 +414,12 @@ export default function StoryViewPage() {
 
   const storyBook = outputs.story_book_pdf;
 
+  const interactiveBook = outputs.storybook_interactive;
+
+  // Backward-compat: stories generated before the story_book_pdf /
+  // storybook_interactive split may only have status on storyBook.
+  const flipbookStatus = interactiveBook?.status ?? storyBook?.status;
+
   const coloringBook = outputs.coloring_book_pdf;
 
   const isRtl = story.language === 'ar';
@@ -635,25 +641,61 @@ export default function StoryViewPage() {
 
                   <div><h3><span className="gradient-text">📚 Interactive Story Book</span></h3><p style={{ color: 'var(--text-3)', marginTop: '0.35rem' }}>Interactive flipbook with page animations, narration sync, and {isRtl ? 'Arabic RTL' : 'English'} layout.</p></div>
 
-                  {storyBook?.status === 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7, fontSize: '0.85rem' }}>📖 Interactive Viewer</span>}
-                  {storyBook?.status !== 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7 }}>{storyBook?.status === 'failed' ? 'Generation failed' : 'Generating…'}</span>}
+                  {flipbookStatus === 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7, fontSize: '0.85rem' }}>📖 Interactive Viewer</span>}
+                  {flipbookStatus !== 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7 }}>{flipbookStatus === 'failed' ? 'Generation failed' : 'Generating…'}</span>}
 
                 </div>
 
               </section>
 
-              {storyBook?.status === 'completed' ? (
+              {/* Page preview section for story book */}
+              {storyBook?.metadata?.page_urls && storyBook.metadata.page_urls.length > 0 && (
+                <section style={{ padding: '1.5rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
+                  <h4 style={{ marginBottom: '1rem' }}>📖 Page Preview</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+                    {storyBook.metadata.page_urls.map((page: any) => (
+                      <div key={page.page} style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        <div style={{ position: 'relative', aspectRatio: '1240/1754', background: '#f5f5f5' }}>
+                          <Image
+                            src={page.url}
+                            alt={`Page ${page.page} - ${page.label}`}
+                            fill
+                            sizes="(max-width: 300px) 100vw"
+                            style={{ objectFit: 'contain' }}
+                          />
+                        </div>
+                        <div style={{ padding: '0.75rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>{page.label}</div>
+                          <a href={page.url} download={`story_page_${page.page}.jpg`} style={{ 
+                            display: 'block', 
+                            textAlign: 'center', 
+                            fontSize: '0.75rem', 
+                            color: 'var(--primary)', 
+                            textDecoration: 'none',
+                            padding: '0.5rem 0',
+                            borderRadius: 'var(--r-sm)'
+                          }}>
+                            ⬇️ Download Page
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {flipbookStatus === 'completed' ? (
                 <StorybookViewer
                   storyId={parseInt(Array.isArray(id) ? id[0] : id || '')}
                   storybookUrl={story.storybook_url || ''}
                   narrationUrl={story.narration_url}
                   language={story.language || 'en'}
                 />
-              ) : storyBook?.status === 'failed' ? (
+              ) : flipbookStatus === 'failed' ? (
                 <div style={{ padding: '2rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)', textAlign: 'center' }}>
                   <p style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>⚠️</p>
                   <p style={{ color: 'var(--k-pink)', fontWeight: 600, marginBottom: '0.5rem' }}>Storybook generation failed</p>
-                  <p style={{ color: 'var(--text-3)', fontSize: '0.9rem' }}>{storyBook.error_message || 'An error occurred during generation.'}</p>
+                  <p style={{ color: 'var(--text-3)', fontSize: '0.9rem' }}>{interactiveBook?.error_message || storyBook?.error_message || 'An error occurred during generation.'}</p>
                 </div>
               ) : (
                 <div style={{ padding: '2rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)', textAlign: 'center' }}>
@@ -684,6 +726,42 @@ export default function StoryViewPage() {
                 </div>
 
               </section>
+
+              {/* Page preview section */}
+              {coloringBook?.metadata?.page_urls && coloringBook.metadata.page_urls.length > 0 && (
+                <section style={{ padding: '1.5rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
+                  <h4 style={{ marginBottom: '1rem' }}>📖 Page Preview</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+                    {coloringBook.metadata.page_urls.map((page: any) => (
+                      <div key={page.page} style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        <div style={{ position: 'relative', aspectRatio: '1240/1754', background: '#f5f5f5' }}>
+                          <Image
+                            src={page.url}
+                            alt={`Page ${page.page} - ${page.label}`}
+                            fill
+                            sizes="(max-width: 300px) 100vw"
+                            style={{ objectFit: 'contain' }}
+                          />
+                        </div>
+                        <div style={{ padding: '0.75rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>{page.label}</div>
+                          <a href={page.url} download={`coloring_page_${page.page}.png`} style={{ 
+                            display: 'block', 
+                            textAlign: 'center', 
+                            fontSize: '0.75rem', 
+                            color: 'var(--primary)', 
+                            textDecoration: 'none',
+                            padding: '0.5rem 0',
+                            borderRadius: 'var(--r-sm)'
+                          }}>
+                            ⬇️ Download Page
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {coloringAssets.length > 0 ? <AssetGrid title="Coloring Pages" assets={coloringAssets} contain /> : <AssetGrid title="Preview Source Scenes" assets={imageAssets} />}
 

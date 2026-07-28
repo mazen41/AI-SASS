@@ -66,6 +66,7 @@ return [
     'fal' => [
         'key'               => env('FAL_API_KEY'),
         'image_model'       => env('FAL_IMAGE_MODEL', 'fal-ai/flux-pro/v1.1'),
+        'img2img_model'     => env('FAL_IMG2IMG_MODEL', 'fal-ai/flux/dev/image-to-image'),
         'video_model'       => env('FAL_VIDEO_MODEL', 'fal-ai/kling-video/v2.6/pro/image-to-video'),
         'poll_interval'     => env('FAL_POLL_INTERVAL', 5),
         'poll_max_attempts' => env('FAL_POLL_MAX_ATTEMPTS', 60),

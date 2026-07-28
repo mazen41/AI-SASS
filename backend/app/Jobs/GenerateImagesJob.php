@@ -53,13 +53,24 @@ class GenerateImagesJob implements ShouldQueue
             }
 
             $scenesToProcess = $testMode ? array_slice($scenes, 0, 1) : $scenes;
+            $selected        = $this->selectedOutputs;
 
             foreach ($scenesToProcess as $scene) {
                 $sceneNum = $scene['scene_number'];
                 $prompt   = $scene['image_prompt'];
                 $photoUrl = $story->photo_url;
 
-                $imageUrl  = $fal->generateImage($prompt, $photoUrl);
+                // Add style prefix based on selected outputs
+                $stylePrefix = '';
+                if (in_array('story_book_pdf', $selected, true)) {
+                    $stylePrefix = 'Manga/comic style illustration, bold outlines, vibrant colors, dynamic composition, professional children\'s book art style. ';
+                } elseif (in_array('coloring_book_pdf', $selected, true)) {
+                    $stylePrefix = 'Children\'s illustration with clean lines and shapes, coloring book friendly, clear boundaries, no shading or gradients. ';
+                }
+                
+                $enhancedPrompt = $stylePrefix . $prompt;
+
+                $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl);
                 $storedUrl = $fal->downloadAndStore(
                     $imageUrl,
                     "stories/{$story->id}/scene_{$sceneNum}.jpg"
@@ -81,10 +92,11 @@ class GenerateImagesJob implements ShouldQueue
         }
 
         // ── Dispatch downstream based on what was selected ─────────────────
-        $selected = $this->selectedOutputs;
-
         // Story Book and Coloring Book can run in parallel after images
-        if (in_array('story_book_pdf', $selected)) {
+        if (in_array('story_book_pdf', $selected, true)) {
+            GenerateStoryBookJob::dispatch($story->id);
+            // Companion interactive flipbook viewer — best-effort, does not
+            // affect the story_book_pdf credit/slot (see GenerateInteractiveStorybookJob).
             GenerateInteractiveStorybookJob::dispatch($story->id);
         }
 
