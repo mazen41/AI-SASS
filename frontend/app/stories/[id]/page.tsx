@@ -648,7 +648,7 @@ export default function StoryViewPage() {
 
               </section>
 
-              {storyBook?.metadata?.page_urls && storyBook.metadata.page_urls.length > 0 && (
+              {storyBook?.metadata?.page_urls && Array.isArray(storyBook.metadata.page_urls) && storyBook.metadata.page_urls.length > 0 ? (
                 <section style={{ padding: '1.5rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
                   <h4 style={{ marginBottom: '1rem' }}>📖 Page Preview</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
@@ -681,7 +681,7 @@ export default function StoryViewPage() {
                     ))}
                   </div>
                 </section>
-              )}
+              ) : null}
 
               {flipbookStatus === 'completed' ? (
                 <StorybookViewer
@@ -726,7 +726,7 @@ export default function StoryViewPage() {
 
               </section>
 
-              {coloringBook?.metadata?.page_urls && coloringBook.metadata.page_urls.length > 0 && (
+              {coloringBook?.metadata?.page_urls && Array.isArray(coloringBook.metadata.page_urls) && coloringBook.metadata.page_urls.length > 0 ? (
                 <section style={{ padding: '1.5rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
                   <h4 style={{ marginBottom: '1rem' }}>📖 Page Preview</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
@@ -759,7 +759,7 @@ export default function StoryViewPage() {
                     ))}
                   </div>
                 </section>
-              )}
+              ) : null}
 
               {coloringAssets.length > 0 ? <AssetGrid title="Coloring Pages" assets={coloringAssets} contain /> : <AssetGrid title="Preview Source Scenes" assets={imageAssets} />}
 
