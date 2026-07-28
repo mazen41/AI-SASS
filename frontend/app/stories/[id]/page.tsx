@@ -18,6 +18,8 @@ import {
 
   apiGetStoryStatus,
 
+  apiGenerateStory,
+
   apiDeleteStory,
 
   Story,
@@ -463,29 +465,134 @@ export default function StoryViewPage() {
 
 
           {(story.status === 'processing' || story.status === 'failed' || story.status === 'completed') && (
-
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }} style={{ marginTop: '1.5rem', padding: '1.25rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-
-                <strong>{getStepLabel(story.processing_step)}</strong>
-
-                <span style={{ color: 'var(--text-3)' }}>{getProgress()}%</span>
-
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              style={{
+                marginTop: '1.5rem',
+                padding: '1.5rem',
+                borderRadius: 'var(--r-lg)',
+                background: 'rgba(30, 41, 59, 0.7)',
+                backdropFilter: 'blur(16px)',
+                border: '1.5px solid var(--border)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  {story.status === 'processing' && (
+                    <span style={{ display: 'inline-block', width: 18, height: 18, border: '2.5px solid var(--k-blue)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
+                  )}
+                  <strong style={{ fontSize: '1.1rem', color: 'var(--text)' }}>
+                    {getStepLabel(story.processing_step)}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontWeight: 700, color: story.status === 'completed' ? 'var(--k-green)' : 'var(--k-blue)', fontSize: '1rem' }}>
+                    {getProgress()}%
+                  </span>
+                  <button
+                    onClick={() => pollStatus(Number(id))}
+                    className="btn btn-ghost"
+                    style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', borderRadius: '999px' }}
+                  >
+                    🔄 Refresh
+                  </button>
+                </div>
               </div>
 
-              <div style={{ height: 10, borderRadius: 999, background: 'rgba(148,163,184,0.18)', overflow: 'hidden' }}>
-
-                <div style={{ width: `${getProgress()}%`, height: '100%', background: story.status === 'failed' ? 'var(--k-pink)' : 'linear-gradient(90deg, var(--k-blue), var(--k-pink))', transition: 'width 0.4s ease' }} />
-
+              {/* Enhanced Progress Bar */}
+              <div style={{ height: 12, borderRadius: 999, background: 'rgba(148,163,184,0.18)', overflow: 'hidden', position: 'relative' }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${getProgress()}%` }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  style={{
+                    height: '100%',
+                    background: story.status === 'failed'
+                      ? 'linear-gradient(90deg, #f87171, #ef4444)'
+                      : 'linear-gradient(90deg, #6366f1, #a855f7, #ec4899)',
+                    boxShadow: '0 0 15px rgba(168, 85, 247, 0.5)',
+                  }}
+                />
               </div>
 
-              {story.status === 'processing' && <p style={{ color: 'var(--text-3)', fontSize: '0.9rem', marginTop: '0.75rem' }}>This page updates automatically while AI creates the video, narration, story book PDF, and coloring book PDF.</p>}
+              {/* Pipeline Steps Tracker */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', marginTop: '1.25rem' }}>
+                {[
+                  { stepKey: 'generate_story', label: '1. Gemini Story', emoji: '✍️' },
+                  { stepKey: 'generate_images', label: '2. Scenes Art', emoji: '🎨' },
+                  { stepKey: 'generate_narration', label: '3. Voice Narration', emoji: '🎙️' },
+                  { stepKey: 'generate_story_products', label: '4. Flipbook PDF', emoji: '📚' },
+                ].map((s) => {
+                  const currentProg = getProgress();
+                  let stepDone = false;
+                  if (s.stepKey === 'generate_story' && currentProg >= 15) stepDone = true;
+                  if (s.stepKey === 'generate_images' && currentProg >= 35) stepDone = true;
+                  if (s.stepKey === 'generate_narration' && currentProg >= 82) stepDone = true;
+                  if (s.stepKey === 'generate_story_products' && currentProg >= 97) stepDone = true;
 
-              {story.error_message && <p style={{ color: 'var(--k-pink)', marginTop: '0.75rem' }}>{story.error_message}</p>}
+                  const isCurrent = story.processing_step === s.stepKey;
 
+                  return (
+                    <div
+                      key={s.stepKey}
+                      style={{
+                        padding: '0.6rem 0.8rem',
+                        borderRadius: 'var(--r-md)',
+                        background: isCurrent ? 'rgba(99,102,241,0.15)' : 'rgba(15,23,42,0.4)',
+                        border: isCurrent ? '1.5px solid var(--k-blue)' : '1px solid rgba(255,255,255,0.06)',
+                        textAlign: 'center',
+                        fontSize: '0.8rem',
+                        color: stepDone ? 'var(--text)' : 'var(--text-3)',
+                        transition: 'all 0.3s',
+                      }}
+                    >
+                      <div style={{ fontSize: '1.1rem', marginBottom: '0.2rem' }}>{s.emoji}</div>
+                      <div style={{ fontWeight: isCurrent ? 700 : 500 }}>{s.label}</div>
+                      <div style={{ fontSize: '0.7rem', marginTop: '0.15rem', color: stepDone ? 'var(--k-green)' : (isCurrent ? 'var(--k-blue)' : 'var(--text-3)') }}>
+                        {stepDone ? '✓ Completed' : (isCurrent ? '● Processing…' : 'Waiting')}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {story.status === 'processing' && (
+                <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', marginTop: '1rem', textAlign: 'center' }}>
+                  ✨ AI magic in progress! Gemini is generating your story content and assets in real time.
+                </p>
+              )}
+
+              {story.error_message && (
+                <div style={{ marginTop: '1rem', padding: '0.85rem 1rem', borderRadius: 'var(--r-md)', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  <p style={{ color: '#f87171', fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                    ⚠️ {story.error_message}
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        setError('');
+                        setLoading(true);
+                        await apiGenerateStory(Number(id));
+                        const { story: freshStory } = await apiGetStory(Number(id));
+                        setStory(freshStory);
+                        pollingRef.current = setTimeout(() => pollStatus(Number(id)), 3000);
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : 'Retry failed');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
+                  >
+                    🔄 Retry Generation
+                  </button>
+                </div>
+              )}
             </motion.div>
-
           )}
 
 

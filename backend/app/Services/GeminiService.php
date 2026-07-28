@@ -15,9 +15,9 @@ class GeminiService implements StoryTextGeneratorInterface
     public function __construct()
     {
         $this->apiKey = (string) config('services.gemini.key', '');
-        $this->model  = config('services.gemini.model', 'gemini-2.5-flash');
+        $this->model  = config('services.gemini.model', 'gemini-2.0-flash');
         $this->fallbackModels = array_values(array_diff(
-            (array) config('services.gemini.fallback_models', ['gemini-2.5-flash', 'gemini-2.0-flash']),
+            (array) config('services.gemini.fallback_models', ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash']),
             [$this->model]
         ));
     }
@@ -133,14 +133,13 @@ class GeminiService implements StoryTextGeneratorInterface
                     $data['target_duration_s']   = $targetDuration;
 
                     return $this->normalizeSceneArchitecture($data, $sceneCount);
-                } catch (\RuntimeException $e) {
+                } catch (\Throwable $e) {
                     $lastError = $e;
                     $body = $e->getMessage();
-                    if (!str_contains($body, '503') && !str_contains($body, 'UNAVAILABLE')
-                        && !str_contains($body, '429') && !str_contains($body, 'RESOURCE_EXHAUSTED')) {
-                        throw $e;
-                    }
-                    Log::warning("Gemini model {$model} unavailable, trying next", ['error' => substr($body, 0, 200)]);
+                    Log::warning("Gemini model {$model} attempt failed, trying fallback model if available", [
+                        'model' => $model,
+                        'error' => substr($body, 0, 300)
+                    ]);
                     break;
                 }
             }
@@ -426,14 +425,13 @@ PROMPT;
             try {
                 $data = $this->requestJson($model, $prompt);
                 return $this->normalizePageArchitecture($data, $pageCount);
-            } catch (\RuntimeException $e) {
+            } catch (\Throwable $e) {
                 $lastError = $e;
                 $body = $e->getMessage();
-                if (!str_contains($body, '503') && !str_contains($body, 'UNAVAILABLE')
-                    && !str_contains($body, '429') && !str_contains($body, 'RESOURCE_EXHAUSTED')) {
-                    throw $e;
-                }
-                Log::warning("Gemini model {$model} unavailable for storybook pages, trying next", ['error' => substr($body, 0, 200)]);
+                Log::warning("Gemini model {$model} unavailable for storybook pages, trying fallback model", [
+                    'model' => $model,
+                    'error' => substr($body, 0, 300)
+                ]);
             }
         }
 

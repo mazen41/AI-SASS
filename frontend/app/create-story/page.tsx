@@ -217,24 +217,41 @@ export default function CreateStoryPage() {
   }
 
   return (
-    <div className="site-shell" style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div className="site-shell" style={{ minHeight: '100vh', background: 'radial-gradient(ellipse at top, #1e1b4b 0%, #0f172a 60%, #090d16 100%)' }}>
       <CustomCursor />
       <Navbar />
-      <div className="section" style={{ paddingTop: '7rem', paddingBottom: '4rem' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div className="section" style={{ paddingTop: '7.5rem', paddingBottom: '5rem' }}>
+        <div style={{ maxWidth: 780, margin: '0 auto' }}>
+          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
+            style={{ textAlign: 'center', marginBottom: '2.5rem' }}
           >
-            <span className="kido-badge" style={{ marginBottom: '1rem', display: 'inline-block' }}>
-              <span className="kido-badge-star">✦</span> Story Studio
+            <span
+              className="kido-badge"
+              style={{
+                marginBottom: '1rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.4rem 1rem',
+                background: 'rgba(99, 102, 241, 0.15)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                borderRadius: '999px',
+                color: '#a5b4fc',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+              }}
+            >
+              <span style={{ color: '#ec4899' }}>✦</span> AI Gemini Powered Story Studio
             </span>
-            <h1 style={{ fontSize: '2.4rem', marginBottom: '0.5rem' }}>
-              Create a <span className="gradient-text">Magical Story</span>
+            <h1 style={{ fontSize: '2.8rem', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '0.6rem', color: '#fff' }}>
+              Create a <span className="gradient-text" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #3b82f6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Magical Adventure</span>
             </h1>
-            <p style={{ color: 'var(--text-2)', marginBottom: '2.5rem' }}>
-              Upload a photo, choose a theme, and let our AI create a cinematic adventure.
+            <p style={{ color: '#94a3b8', fontSize: '1.05rem', maxWidth: 540, margin: '0 auto' }}>
+              Upload your child&apos;s photo, pick a theme, and let Google Gemini weave a personalized storybook experience.
             </p>
           </motion.div>
 
@@ -247,28 +264,30 @@ export default function CreateStoryPage() {
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.4 }}
                 style={{
-                  background: 'var(--surface)',
-                  border: '1.5px solid var(--border)',
+                  background: 'rgba(30, 41, 59, 0.7)',
+                  backdropFilter: 'blur(16px)',
+                  border: '1.5px solid rgba(99, 102, 241, 0.25)',
                   borderRadius: 'var(--r-lg)',
                   padding: '1.25rem 1.5rem',
-                  marginBottom: '1.75rem',
+                  marginBottom: '2rem',
                   position: 'relative',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
                 }}
               >
                 <button
                   onClick={() => setShowResume(false)}
                   style={{
-                    position: 'absolute', top: '0.75rem', right: '0.75rem',
+                    position: 'absolute', top: '0.85rem', right: '0.85rem',
                     background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-3)', fontSize: '1.1rem', lineHeight: 1,
+                    color: '#94a3b8', fontSize: '1.1rem', lineHeight: 1,
                   }}
                   aria-label="Dismiss"
                 >
                   ✕
                 </button>
 
-                <p style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.75rem', color: 'var(--text)' }}>
-                  ⚡ Continue a previous story
+                <p style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.75rem', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  ⚡ Continue a draft or retriable story
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -280,22 +299,23 @@ export default function CreateStoryPage() {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: '1rem',
-                        background: 'var(--bg)',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
                         borderRadius: 'var(--r-md)',
-                        padding: '0.7rem 1rem',
+                        padding: '0.75rem 1.1rem',
                         flexWrap: 'wrap',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
-                        <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                        <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>
                           {themeEmoji[s.theme] ?? '📖'}
                         </span>
                         <div style={{ minWidth: 0 }}>
-                          <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <p style={{ fontWeight: 600, fontSize: '0.95rem', color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {s.title}
                           </p>
-                          <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.1rem' }}>
-                            {s.status === 'failed' ? '❌ Failed — click to retry' : '📝 Draft — not yet generated'}
+                          <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.1rem' }}>
+                            {s.status === 'failed' ? '❌ Failed — click to retry generation' : '📝 Saved draft — ready for AI'}
                             {s.child_name ? ` · ${s.child_name}` : ''}
                           </p>
                         </div>
@@ -307,12 +327,12 @@ export default function CreateStoryPage() {
                         disabled={generating}
                         whileHover={{ scale: 1.04 }}
                         whileTap={{ scale: 0.97 }}
-                        style={{ flexShrink: 0, fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+                        style={{ flexShrink: 0, fontSize: '0.85rem', padding: '0.5rem 1.1rem' }}
                       >
                         {generating && generatingId === s.id ? (
                           <>
                             <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', marginRight: 6 }} />
-                            Starting...
+                            Launching Gemini...
                           </>
                         ) : (
                           s.status === 'failed' ? '🔄 Retry' : '▶ Generate'
@@ -325,110 +345,132 @@ export default function CreateStoryPage() {
             )}
           </AnimatePresence>
 
+          {/* Creation Form */}
           <motion.form
             onSubmit={handleSubmit}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.75rem',
+              background: 'rgba(30, 41, 59, 0.55)',
+              backdropFilter: 'blur(20px)',
+              border: '1.5px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '24px',
+              padding: '2.25rem',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            }}
           >
-            {/* Photo Upload */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                border: '2px dashed var(--border)',
-                borderRadius: 'var(--r-lg)',
-                padding: '2rem',
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: photoPreview ? 'transparent' : 'var(--surface)',
-                transition: 'all 0.3s',
-                position: 'relative',
-              }}
-            >
-              {photoPreview ? (
-                <Image src={photoPreview} alt="Preview" width={720} height={300} style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: "var(--r-md)" }} />
-              ) : (
-                <>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📸</div>
-                  <p style={{ color: 'var(--text)', fontWeight: 600 }}>Click to upload a photo</p>
-                  <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>Clear photo of your child works best</p>
-                </>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                style={{ display: 'none' }}
-              />
+            {/* Photo Upload Zone */}
+            <div>
+              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.92rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+                Child&apos;s Photo <span style={{ color: '#94a3b8', fontWeight: 400 }}>(for character consistency)</span>
+              </label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: photoPreview ? '2px solid var(--k-blue)' : '2px dashed rgba(255, 255, 255, 0.18)',
+                  borderRadius: '16px',
+                  padding: photoPreview ? '0.75rem' : '2rem 1.5rem',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: photoPreview ? 'rgba(15, 23, 42, 0.6)' : 'rgba(15, 23, 42, 0.4)',
+                  transition: 'all 0.3s ease',
+                  position: 'relative',
+                }}
+              >
+                {photoPreview ? (
+                  <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxHeight: 240, overflow: 'hidden', borderRadius: '12px' }}>
+                    <Image src={photoPreview} alt="Child Preview" width={720} height={240} style={{ width: '100%', maxHeight: 240, objectFit: 'cover', borderRadius: '12px' }} />
+                    <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '0.3rem 0.75rem', borderRadius: 999, fontSize: '0.75rem', backdropFilter: 'blur(6px)' }}>
+                      📸 Change Photo
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '0.4rem' }}>📸</div>
+                    <p style={{ color: '#f1f5f9', fontWeight: 600, fontSize: '1rem', marginBottom: '0.2rem' }}>Click or drag a clear photo of your child</p>
+                    <p style={{ color: '#94a3b8', fontSize: '0.82rem' }}>Helps Gemini and image models match character face & appearance</p>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  style={{ display: 'none' }}
+                />
+              </div>
             </div>
 
             {/* Title */}
             <div>
-              <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
-                Story Title
+              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.92rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                Story Title <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. My Little Hero's Adventure"
+                placeholder="e.g. Maya and the Secret Crystal Cave"
                 required
                 style={{
                   width: '100%',
-                  padding: '0.85rem 1rem',
-                  borderRadius: 'var(--r-md)',
-                  border: '1.5px solid var(--border)',
-                  background: 'var(--surface)',
-                  color: 'var(--text)',
+                  padding: '0.9rem 1.1rem',
+                  borderRadius: '14px',
+                  border: '1.5px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  color: '#fff',
                   fontSize: '1rem',
                   outline: 'none',
+                  transition: 'border-color 0.2s',
                 }}
               />
             </div>
 
             {/* Child Name & Age */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.92rem', marginBottom: '0.4rem', fontWeight: 600 }}>
                   Child&apos;s Name
                 </label>
                 <input
                   type="text"
                   value={childName}
                   onChange={(e) => setChildName(e.target.value)}
-                  placeholder="e.g. Emma"
+                  placeholder="e.g. Leo"
                   style={{
                     width: '100%',
-                    padding: '0.85rem 1rem',
-                    borderRadius: 'var(--r-md)',
-                    border: '1.5px solid var(--border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text)',
+                    padding: '0.9rem 1.1rem',
+                    borderRadius: '14px',
+                    border: '1.5px solid rgba(255, 255, 255, 0.12)',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#fff',
                     fontSize: '1rem',
                     outline: 'none',
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.92rem', marginBottom: '0.4rem', fontWeight: 600 }}>
                   Age
                 </label>
                 <input
                   type="number"
                   value={childAge}
                   onChange={(e) => setChildAge(e.target.value)}
-                  placeholder="5"
+                  placeholder="6"
                   min={1}
                   max={18}
                   style={{
                     width: '100%',
-                    padding: '0.85rem 1rem',
-                    borderRadius: 'var(--r-md)',
-                    border: '1.5px solid var(--border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text)',
+                    padding: '0.9rem 1.1rem',
+                    borderRadius: '14px',
+                    border: '1.5px solid rgba(255, 255, 255, 0.12)',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#fff',
                     fontSize: '1rem',
                     outline: 'none',
                   }}
@@ -436,11 +478,10 @@ export default function CreateStoryPage() {
               </div>
             </div>
 
-
             {/* Language + Custom Prompt */}
             <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.92rem', marginBottom: '0.4rem', fontWeight: 600 }}>
                   Language
                 </label>
                 <select
@@ -448,36 +489,36 @@ export default function CreateStoryPage() {
                   onChange={(e) => setLanguage(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '0.85rem 1rem',
-                    borderRadius: 'var(--r-md)',
-                    border: '1.5px solid var(--border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text)',
+                    padding: '0.9rem 1.1rem',
+                    borderRadius: '14px',
+                    border: '1.5px solid rgba(255, 255, 255, 0.12)',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    color: '#fff',
                     fontSize: '1rem',
                     outline: 'none',
                   }}
                 >
-                  <option value="en">English</option>
-                  <option value="ar">Arabic</option>
+                  <option value="en">🇺🇸 English</option>
+                  <option value="ar">🇸🇦 Arabic (العربية)</option>
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.4rem', fontWeight: 600 }}>
-                  Custom story idea <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(optional)</span>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.92rem', marginBottom: '0.4rem', fontWeight: 600 }}>
+                  Custom Special Idea <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span>
                 </label>
                 <input
                   type="text"
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="e.g. Make it about kindness, space robots, or learning bravery"
+                  placeholder="e.g. Include a friendly friendly dragon and a lesson about kindness"
                   maxLength={500}
                   style={{
                     width: '100%',
-                    padding: '0.85rem 1rem',
-                    borderRadius: 'var(--r-md)',
-                    border: '1.5px solid var(--border)',
-                    background: 'var(--surface)',
-                    color: 'var(--text)',
+                    padding: '0.9rem 1.1rem',
+                    borderRadius: '14px',
+                    border: '1.5px solid rgba(255, 255, 255, 0.12)',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#fff',
                     fontSize: '1rem',
                     outline: 'none',
                   }}
@@ -487,55 +528,60 @@ export default function CreateStoryPage() {
 
             {/* Theme Selection */}
             <div>
-              <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.6rem', fontWeight: 600 }}>
-                Choose a Theme
+              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.92rem', marginBottom: '0.75rem', fontWeight: 600 }}>
+                Select Adventure Theme
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.75rem' }}>
-                {themes.map((theme) => (
-                  <motion.button
-                    key={theme.id}
-                    type="button"
-                    onClick={() => setSelectedTheme(theme.id)}
-                    whileHover={{ y: -3 }}
-                    whileTap={{ scale: 0.97 }}
-                    style={{
-                      padding: '1rem',
-                      borderRadius: 'var(--r-md)',
-                      border: selectedTheme === theme.id ? '2px solid var(--k-blue)' : '1.5px solid var(--border)',
-                      background: selectedTheme === theme.id ? 'rgba(84,120,255,0.08)' : 'var(--surface)',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      color: 'var(--text)',
-                    }}
-                  >
-                    <div style={{ fontSize: '1.8rem', marginBottom: '0.3rem' }}>{theme.emoji}</div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{theme.label}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', marginTop: '0.15rem' }}>{theme.desc}</div>
-                  </motion.button>
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '0.8rem' }}>
+                {themes.map((theme) => {
+                  const isSelected = selectedTheme === theme.id;
+                  return (
+                    <motion.button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => setSelectedTheme(theme.id)}
+                      whileHover={{ y: -3, scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      style={{
+                        padding: '1rem 0.8rem',
+                        borderRadius: '16px',
+                        border: isSelected ? '2px solid #a855f7' : '1.5px solid rgba(255, 255, 255, 0.08)',
+                        background: isSelected ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(99, 102, 241, 0.15) 100%)' : 'rgba(15, 23, 42, 0.5)',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        color: '#fff',
+                        boxShadow: isSelected ? '0 0 20px rgba(168, 85, 247, 0.3)' : 'none',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <div style={{ fontSize: '2rem', marginBottom: '0.3rem' }}>{theme.emoji}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{theme.label}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.15rem' }}>{theme.desc}</div>
+                    </motion.button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Generation Options */}
+            {/* What to Generate */}
             <div>
-              <label style={{ display: 'block', color: 'var(--text-2)', fontSize: '0.9rem', marginBottom: '0.6rem', fontWeight: 600 }}>
+              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.92rem', marginBottom: '0.75rem', fontWeight: 600 }}>
                 What to Generate
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '0.85rem' }}>
                 {[
-                  { id: 'story_text', label: 'Story Text', emoji: '📝', desc: 'AI-generated story' },
-                  { id: 'narration_audio', label: 'Narration', emoji: '🎙️', desc: 'Voice narration' },
-                  { id: 'story_book_pdf', label: 'Story Book', emoji: '📖', desc: 'PDF storybook' },
-                  { id: 'coloring_book_pdf', label: 'Coloring Book', emoji: '🎨', desc: 'Printable coloring pages' },
-                  { id: 'video', label: 'Video', emoji: '🎬', desc: 'Animated video' },
+                  { id: 'story_text', label: 'Story Text', emoji: '📝', desc: 'AI Gemini narrative & scenes' },
+                  { id: 'narration_audio', label: 'Voice Narration', emoji: '🎙️', desc: 'Read-aloud voice audio' },
+                  { id: 'story_book_pdf', label: 'Storybook', emoji: '📖', desc: 'Interactive flipbook' },
+                  { id: 'coloring_book_pdf', label: 'Coloring Book', emoji: '🎨', desc: 'Printable line-art pages' },
+                  { id: 'video', label: 'Cinematic Video', emoji: '🎬', desc: 'Full animated video' },
                 ].map((option) => {
-                  const balance = balances[option.id === 'story_text' ? 'story' : 
+                  const balanceKey = option.id === 'story_text' ? 'story' : 
                                      option.id === 'narration_audio' ? 'narration' :
                                      option.id === 'story_book_pdf' ? 'story_book' :
-                                     option.id === 'coloring_book_pdf' ? 'coloring_book' : 'video'];
+                                     option.id === 'coloring_book_pdf' ? 'coloring_book' : 'video';
+                  const balance = balances[balanceKey];
                   const hasBalance = balance && balance.quantity > 0;
                   
-                  // Check if this option should be disabled due to mutual exclusivity
                   const hasVideo = selectedOutputs.includes('video');
                   const hasStoryText = selectedOutputs.includes('story_text');
                   const hasNarration = selectedOutputs.includes('narration_audio');
@@ -544,7 +590,8 @@ export default function CreateStoryPage() {
                     (option.id === 'video' && (hasStoryText || hasNarration)) ||
                     ((option.id === 'story_text' || option.id === 'narration_audio') && hasVideo);
                   
-                  const isDisabled = (!hasBalance && !selectedOutputs.includes(option.id)) || isDisabledByExclusivity;
+                  const isChecked = selectedOutputs.includes(option.id);
+                  const isDisabled = (!hasBalance && !isChecked) || isDisabledByExclusivity;
                   
                   return (
                     <motion.button
@@ -555,64 +602,78 @@ export default function CreateStoryPage() {
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.97 }}
                       style={{
-                        padding: '1rem',
-                        borderRadius: 'var(--r-md)',
-                        border: selectedOutputs.includes(option.id) ? '2px solid var(--k-blue)' : '1.5px solid var(--border)',
-                        background: selectedOutputs.includes(option.id) ? 'rgba(84,120,255,0.08)' : (isDisabledByExclusivity ? 'rgba(255,62,155,0.08)' : (!hasBalance ? 'rgba(255,62,155,0.05)' : 'var(--surface)')),
+                        padding: '1.1rem',
+                        borderRadius: '16px',
+                        border: isChecked ? '2px solid #6366f1' : '1.5px solid rgba(255, 255, 255, 0.08)',
+                        background: isChecked
+                          ? 'rgba(99, 102, 241, 0.2)'
+                          : isDisabledByExclusivity
+                            ? 'rgba(239, 68, 68, 0.08)'
+                            : 'rgba(15, 23, 42, 0.5)',
                         cursor: isDisabled ? 'not-allowed' : 'pointer',
                         textAlign: 'left',
-                        color: isDisabledByExclusivity ? 'var(--text-3)' : (hasBalance ? 'var(--text)' : 'var(--text-3)'),
-                        opacity: isDisabled ? 0.5 : 1,
+                        opacity: isDisabled ? 0.45 : 1,
+                        transition: 'all 0.2s ease',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
                         <span style={{ fontSize: '1.4rem' }}>{option.emoji}</span>
-                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{option.label}</span>
-                        {selectedOutputs.includes(option.id) && (
-                          <span style={{ marginLeft: 'auto', color: 'var(--k-blue)', fontSize: '1.2rem' }}>✓</span>
+                        <span style={{ fontWeight: 700, fontSize: '0.92rem', color: '#fff' }}>{option.label}</span>
+                        {isChecked && (
+                          <span style={{ marginLeft: 'auto', color: '#6366f1', fontWeight: 800, fontSize: '1.1rem' }}>✓</span>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{option.desc}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{option.desc}</div>
                       {!loadingBalances && !isDisabledByExclusivity && (
-                        <div style={{ fontSize: '0.7rem', marginTop: '0.3rem', color: hasBalance ? 'var(--k-green)' : 'var(--k-pink)' }}>
-                          {hasBalance ? `${balance.quantity} remaining` : 'No credits'}
+                        <div style={{ fontSize: '0.72rem', marginTop: '0.4rem', fontWeight: 600, color: hasBalance ? '#34d399' : '#f87171' }}>
+                          {hasBalance ? `${balance.quantity} credits available` : 'No credits available'}
                         </div>
                       )}
                       {isDisabledByExclusivity && (
-                        <div style={{ fontSize: '0.7rem', marginTop: '0.3rem', color: 'var(--k-pink)' }}>
-                          Incompatible with current selection
+                        <div style={{ fontSize: '0.72rem', marginTop: '0.4rem', color: '#f87171' }}>
+                          Incompatible selection
                         </div>
                       )}
                     </motion.button>
                   );
                 })}
               </div>
-              
-              {/* Help text for product exclusivity */}
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginTop: '0.75rem', lineHeight: '1.4' }}>
-                Video Stories already include the full story and professional narration. Because of this, Video Stories cannot be combined with Story Text or Audio Story products.
-              </p>
             </div>
 
             {error && (
-              <p style={{ color: 'var(--k-pink)', fontSize: '0.9rem' }}>{error}</p>
+              <div style={{ padding: '0.9rem 1.1rem', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '0.9rem' }}>
+                ⚠️ {error}
+              </div>
             )}
 
             <motion.button
               type="submit"
               className="btn btn-primary btn-lg"
               disabled={loading || !title}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              style={{ width: '100%', marginTop: '0.5rem' }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              style={{
+                width: '100%',
+                marginTop: '0.5rem',
+                padding: '1.1rem',
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
+                boxShadow: '0 10px 25px rgba(168, 85, 247, 0.4)',
+                border: 'none',
+                color: '#fff',
+                cursor: loading || !title ? 'not-allowed' : 'pointer',
+                opacity: loading || !title ? 0.6 : 1,
+              }}
             >
               {loading ? (
                 <>
-                  <span className="spinner" style={{ display: 'inline-block', width: 18, height: 18, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', marginRight: 8 }} />
-                  Creating...
+                  <span className="spinner" style={{ display: 'inline-block', width: 20, height: 20, border: '2.5px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: 10 }} />
+                  Creating Story...
                 </>
               ) : (
-                <>✨ Create Story</>
+                <>✨ Create Story & Generate</>
               )}
             </motion.button>
           </motion.form>
