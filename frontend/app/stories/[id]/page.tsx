@@ -648,7 +648,6 @@ export default function StoryViewPage() {
 
               </section>
 
-              {/* Page preview section for story book */}
               {storyBook?.metadata?.page_urls && storyBook.metadata.page_urls.length > 0 && (
                 <section style={{ padding: '1.5rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
                   <h4 style={{ marginBottom: '1rem' }}>📖 Page Preview</h4>
@@ -727,7 +726,6 @@ export default function StoryViewPage() {
 
               </section>
 
-              {/* Page preview section */}
               {coloringBook?.metadata?.page_urls && coloringBook.metadata.page_urls.length > 0 && (
                 <section style={{ padding: '1.5rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
                   <h4 style={{ marginBottom: '1rem' }}>📖 Page Preview</h4>
