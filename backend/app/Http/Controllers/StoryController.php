@@ -127,8 +127,8 @@ class StoryController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if (!$story->isDraft()) {
-            return response()->json(['message' => 'Story can only be generated from draft status'], 400);
+        if ($story->isProcessing() || $story->isCompleted()) {
+            return response()->json(['message' => 'Story is already processing or completed', 'story' => $story], 200);
         }
 
         $user = $request->user();

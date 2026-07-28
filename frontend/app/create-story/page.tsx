@@ -112,6 +112,7 @@ export default function CreateStoryPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading || generating) return;
     setError('');
     setLoading(true);
 
@@ -130,12 +131,19 @@ export default function CreateStoryPage() {
         formData.append('selected_outputs[]', output);
       });
 
+      // 1. Create draft story
       const { story } = await apiCreateStory(formData);
-      setCreatedStory(story);
+
+      // 2. Immediately trigger Gemini AI generation pipeline
+      setGenerating(true);
+      const { story: genStory } = await apiGenerateStory(story.id);
+
+      // 3. Route directly to live progress page
+      router.push(`/stories/${genStory.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create story');
-    } finally {
       setLoading(false);
+      setGenerating(false);
     }
   };
 
