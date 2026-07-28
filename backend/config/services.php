@@ -53,8 +53,8 @@ return [
 
     'gemini' => [
         'key'   => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
-        'fallback_models' => array_filter(array_map('trim', explode(',', env('GEMINI_FALLBACK_MODELS', 'gemini-2.0-flash,gemini-2.0-flash-lite,gemini-1.5-flash')))),
+        'model' => env('GEMINI_MODEL', 'gemini-3.5-flash-lite'),
+        'fallback_models' => array_filter(array_map('trim', explode(',', env('GEMINI_FALLBACK_MODELS', 'gemini-3.5-flash,gemini-3.5-flash-lite')))),
     ],
 
     'openai' => [

@@ -96,16 +96,32 @@ class GeminiService implements StoryTextGeneratorInterface
                             continue;
                         }
 
-                        $data['story_text'] = $this->expandStoryText(
-                            $model,
-                            $data['story_text'],
-                            $minWords,
-                            $maxWords,
-                            $minDuration,
-                            $maxDuration,
-                            $langInstruction
-                        );
-                        $wordCount = VideoTimelinePlanner::countWords($data['story_text']);
+                        try {
+                            $data['story_text'] = $this->expandStoryText(
+                                $model,
+                                $data['story_text'],
+                                $minWords,
+                                $maxWords,
+                                $minDuration,
+                                $maxDuration,
+                                $langInstruction
+                            );
+                            $wordCount = VideoTimelinePlanner::countWords($data['story_text']);
+                        } catch (\RuntimeException $e) {
+                            // If expandStoryText fails due to quota/rate limit, trigger model fallback
+                            if (str_contains($e->getMessage(), 'quota/rate limit')) {
+                                Log::warning('Gemini expandStoryText hit quota limit, triggering model fallback', [
+                                    'model' => $model,
+                                    'error' => substr($e->getMessage(), 0, 300)
+                                ]);
+                                throw $e; // This will be caught by the outer model fallback loop
+                            }
+                            // For other errors, continue with the short text
+                            Log::warning('Gemini expandStoryText failed (non-quota error), using short text', [
+                                'model' => $model,
+                                'error' => substr($e->getMessage(), 0, 300)
+                            ]);
+                        }
                     }
 
                     if ($wordCount < $minWords) {
@@ -136,10 +152,28 @@ class GeminiService implements StoryTextGeneratorInterface
                 } catch (\Throwable $e) {
                     $lastError = $e;
                     $body = $e->getMessage();
+                    
+                    // Check if this is a quota/rate limit error - should definitely trigger fallback
+                    $isQuotaError = str_contains($body, 'quota') || str_contains($body, '429') || str_contains($body, 'RESOURCE_EXHAUSTED');
+                    
                     Log::warning("Gemini model {$model} attempt failed, trying fallback model if available", [
                         'model' => $model,
+                        'attempt' => $attempt,
+                        'is_quota_error' => $isQuotaError,
                         'error' => substr($body, 0, 300)
                     ]);
+                    
+                    // If it's a quota error, don't retry the same model - move to next model immediately
+                    if ($isQuotaError) {
+                        break;
+                    }
+                    
+                    // For other errors, continue retrying within the same model
+                    if ($attempt < 3) {
+                        continue;
+                    }
+                    
+                    // After all attempts, move to next model
                     break;
                 }
             }
@@ -209,6 +243,7 @@ PROMPT;
         string $langInstruction
     ): string {
         $currentWords = VideoTimelinePlanner::countWords($shortText);
+        $currentWords = VideoTimelinePlanner::countWords($shortText);
         $prompt = <<<PROMPT
 You are a children's story editor. Expand the following narration script into a LONG-FORM read-aloud story.
 {$langInstruction}
@@ -241,7 +276,20 @@ PROMPT;
         ]);
 
         if (!$response->successful()) {
-            throw new \RuntimeException('Gemini story expansion failed: ' . $response->body());
+            $status = $response->status();
+            $body = $response->body();
+            
+            // Check for quota/rate limit errors that should trigger fallback
+            if ($status === 429 || $status === 403) {
+                Log::error('Gemini quota/rate limit error in expandStoryText, should trigger fallback', [
+                    'model' => $model, 
+                    'status' => $status, 
+                    'body' => substr($body, 0, 500)
+                ]);
+                throw new \RuntimeException('Gemini quota/rate limit exceeded: ' . $body);
+            }
+            
+            throw new \RuntimeException('Gemini story expansion failed: ' . $body);
         }
 
         $expanded = trim((string) $response->json('candidates.0.content.parts.0.text'));
@@ -295,8 +343,21 @@ PROMPT;
         ]);
 
         if (!$response->successful()) {
-            Log::error('Gemini API error', ['model' => $model, 'status' => $response->status(), 'body' => $response->body()]);
-            throw new \RuntimeException('Gemini API request failed: ' . $response->body());
+            $status = $response->status();
+            $body = $response->body();
+            
+            // Check for quota/rate limit errors that should trigger fallback
+            if ($status === 429 || $status === 403) {
+                Log::error('Gemini quota/rate limit error, should trigger fallback', [
+                    'model' => $model, 
+                    'status' => $status, 
+                    'body' => substr($body, 0, 500)
+                ]);
+                throw new \RuntimeException('Gemini quota/rate limit exceeded: ' . $body);
+            }
+            
+            Log::error('Gemini API error', ['model' => $model, 'status' => $status, 'body' => $body]);
+            throw new \RuntimeException('Gemini API request failed: ' . $body);
         }
 
         $text = $response->json('candidates.0.content.parts.0.text');
@@ -486,8 +547,21 @@ PROMPT;
         ]);
 
         if (!$response->successful()) {
-            Log::error('Gemini API error', ['model' => $model, 'status' => $response->status(), 'body' => $response->body()]);
-            throw new \RuntimeException('Gemini API request failed: ' . $response->body());
+            $status = $response->status();
+            $body = $response->body();
+            
+            // Check for quota/rate limit errors that should trigger fallback
+            if ($status === 429 || $status === 403) {
+                Log::error('Gemini quota/rate limit error in requestJson, should trigger fallback', [
+                    'model' => $model, 
+                    'status' => $status, 
+                    'body' => substr($body, 0, 500)
+                ]);
+                throw new \RuntimeException('Gemini quota/rate limit exceeded: ' . $body);
+            }
+            
+            Log::error('Gemini API error', ['model' => $model, 'status' => $status, 'body' => $body]);
+            throw new \RuntimeException('Gemini API request failed: ' . $body);
         }
 
         $text = $response->json('candidates.0.content.parts.0.text');
