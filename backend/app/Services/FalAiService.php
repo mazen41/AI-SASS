@@ -92,16 +92,15 @@ class FalAiService
         $this->ensureConfigured();
 
         if ($photoUrl) {
-            // If the photo is on localhost/private network, upload it to Fal storage first
-            if (!$this->isPublicUrl($photoUrl)) {
-                Log::info('Photo URL is local, uploading to Fal storage', ['original_url' => $photoUrl]);
-                $disk      = config('filesystems.default', 'public');
-                $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
-                $relative  = ltrim(substr($photoUrl, strlen($baseUrl)), '/');
-                $localPath = Storage::disk($disk)->path($relative);
-                $photoUrl  = $this->uploadFileToFal($localPath);
-                Log::info('Photo uploaded to Fal storage', ['fal_url' => $photoUrl]);
-            }
+            // Always upload photos to Fal storage to avoid accessibility issues
+            // This ensures fal.ai can always access the reference image regardless of network/firewall
+            Log::info('Uploading photo to Fal storage for reliable access', ['original_url' => $photoUrl]);
+            $disk      = config('filesystems.default', 'public');
+            $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
+            $relative  = ltrim(substr($photoUrl, strlen($baseUrl)), '/');
+            $localPath = Storage::disk($disk)->path($relative);
+            $photoUrl  = $this->uploadFileToFal($localPath);
+            Log::info('Photo uploaded to Fal storage', ['fal_url' => $photoUrl]);
 
             // Use PuLID — face-identity-preserving model.
             // This keeps the child's actual face consistent across every scene.
