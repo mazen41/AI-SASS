@@ -7,7 +7,7 @@ use App\Models\StoryAsset;
 use App\Models\StoryOutput;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Baidouabdellah\ArPDF\Facades\ArPDF;
+use Baidouabdellah\LaravelArpdf\ArPDF;
 use Intervention\Image\ImageManager;
 
 class StoryProductService
@@ -62,27 +62,31 @@ class StoryProductService
             $font = $isRtl ? 'Cairo' : 'DejaVu Sans';
             
             // Setup ArPDF with proper direction and font
-            $pdf = ArPDF::direction($isRtl ? 'rtl' : 'ltr')
-                ->title($story->title ?? 'Story Book')
-                ->author('StoryHero')
-                ->defaultFont($font);
+            $config = [
+                'directionality' => $isRtl ? 'rtl' : 'ltr',
+                'default_font' => $font,
+                'tempDir' => storage_path('app/laravel-arpdf')
+            ];
+            $pdf = new ArPDF($config);
+            $pdf->direction($isRtl ? 'rtl' : 'ltr');
             
-            // Generate cover page
+            // Generate cover page HTML
             $coverImage = $images->first();
-            $pdf->view('pdf.storybook-cover', [
+            $coverHtml = view('pdf.storybook-cover', [
                 'title' => $story->title ?? 'Story Book',
                 'childName' => $story->child_name,
                 'imageUrl' => $coverImage?->url,
                 'rtl' => $isRtl,
                 'language' => $language,
                 'font' => $font
-            ]);
+            ])->render();
+            $pdf->loadHTML($coverHtml);
             
-            // Generate scene pages
+            // Generate scene pages HTML
             $pageNum = 1;
             foreach ($scenes->sortKeys() as $sceneNumber => $scene) {
                 $asset = $images->get($sceneNumber);
-                $pdf->view('pdf.storybook-page', [
+                $pageHtml = view('pdf.storybook-page', [
                     'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
                     'text' => $scene['text'] ?? $scene['description'] ?? '',
                     'imageUrl' => $asset?->url,
@@ -90,12 +94,13 @@ class StoryProductService
                     'rtl' => $isRtl,
                     'language' => $language,
                     'font' => $font
-                ]);
+                ])->render();
+                $pdf->loadHTML($pageHtml);
                 $pageNum++;
             }
             
-            // Generate ending page
-            $pdf->view('pdf.storybook-page', [
+            // Generate ending page HTML
+            $endingHtml = view('pdf.storybook-page', [
                 'title' => $isRtl ? 'النهاية' : 'The End',
                 'text' => $isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!',
                 'imageUrl' => null,
@@ -103,11 +108,24 @@ class StoryProductService
                 'rtl' => $isRtl,
                 'language' => $language,
                 'font' => $font
-            ]);
+            ])->render();
+            $pdf->loadHTML($endingHtml);
             
-            // Save PDF
+            // Save PDF to temp file first
+            $tempPath = storage_path('app/temp_storybook_' . $story->id . '.pdf');
+            $pdf->save($tempPath);
+            
+            // Read the PDF content
+            $pdfContent = file_get_contents($tempPath);
+            
+            // Save to storage
             $path = "stories/{$story->id}/books/story_book.pdf";
-            Storage::disk($this->disk)->put($path, $pdf->output(), ['visibility' => 'public']);
+            Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
+            
+            // Clean up temp file
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
+            }
             
             return $this->markCompleted($output, $path, [
                 'page_count' => $pageNum,
@@ -143,28 +161,32 @@ class StoryProductService
             $font = $isRtl ? 'Cairo' : 'DejaVu Sans';
             
             // Setup ArPDF with proper direction and font
-            $pdf = ArPDF::direction($isRtl ? 'rtl' : 'ltr')
-                ->title($story->title ?? 'Coloring Book')
-                ->author('StoryHero')
-                ->defaultFont($font);
+            $config = [
+                'directionality' => $isRtl ? 'rtl' : 'ltr',
+                'default_font' => $font,
+                'tempDir' => storage_path('app/laravel-arpdf')
+            ];
+            $pdf = new ArPDF($config);
+            $pdf->direction($isRtl ? 'rtl' : 'ltr');
             
-            // Generate cover page
-            $pdf->view('pdf.coloring-page', [
+            // Generate cover page HTML
+            $coverHtml = view('pdf.coloring-page', [
                 'title' => $story->title ?? 'Coloring Book',
                 'childName' => $story->child_name,
                 'rtl' => $isRtl,
                 'language' => $language,
                 'font' => $font,
                 'isCover' => true
-            ]);
+            ])->render();
+            $pdf->loadHTML($coverHtml);
             
-            // Generate coloring pages (line art images)
+            // Generate coloring pages HTML (line art images)
             $pageNum = 1;
             foreach ($images as $asset) {
                 $scene = $scenes->get($asset->scene_number);
                 $sceneCaption = $scene['title'] ?? ($isRtl ? 'صفحة تلوين ' . $pageNum : 'Coloring Page ' . $pageNum);
                 
-                $pdf->view('pdf.coloring-page', [
+                $pageHtml = view('pdf.coloring-page', [
                     'title' => $sceneCaption,
                     'imageUrl' => $asset->url,
                     'pageNumber' => $pageNum,
@@ -172,14 +194,27 @@ class StoryProductService
                     'language' => $language,
                     'font' => $font,
                     'isCover' => false
-                ]);
+                ])->render();
+                $pdf->loadHTML($pageHtml);
                 
                 $pageNum++;
             }
             
-            // Save PDF
+            // Save PDF to temp file first
+            $tempPath = storage_path('app/temp_coloringbook_' . $story->id . '.pdf');
+            $pdf->save($tempPath);
+            
+            // Read the PDF content
+            $pdfContent = file_get_contents($tempPath);
+            
+            // Save to storage
             $path = "stories/{$story->id}/coloring/coloring_book.pdf";
-            Storage::disk($this->disk)->put($path, $pdf->output(), ['visibility' => 'public']);
+            Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
+            
+            // Clean up temp file
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
+            }
             
             return $this->markCompleted($output, $path, [
                 'page_count' => $pageNum,
