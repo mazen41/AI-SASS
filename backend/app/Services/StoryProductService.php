@@ -882,31 +882,31 @@ class StoryProductService
         $work = imagecreatetruecolor($workW, $workH);
         imagecopyresampled($work, $source, 0, 0, 0, 0, $workW, $workH, $srcW, $srcH);
 
-        // Improved line art conversion with better threshold
-        imagefilter($work, IMG_FILTER_GRAYSCALE);
-        imagefilter($work, IMG_FILTER_CONTRAST, -50); // Increase contrast more
-        imagefilter($work, IMG_FILTER_BRIGHTNESS, 20); // Brighten to reduce dark areas
+        // Simple black and white conversion using GD filters
+        imagefilter($work, IMG_FILTER_GRAYSCALE);     // Convert to grayscale
+        imagefilter($work, IMG_FILTER_CONTRAST, -100); // Maximum contrast for B&W
+        imagefilter($work, IMG_FILTER_BRIGHTNESS, 30);  // Slight brightness to reduce noise
 
-        // Hard threshold with more conservative value
+        // Simple threshold for pure black/white
         $binary = imagecreatetruecolor($workW, $workH);
         $black  = imagecolorallocate($binary, 0, 0, 0);
         $white  = imagecolorallocate($binary, 255, 255, 255);
         imagefilledrectangle($binary, 0, 0, $workW, $workH, $white);
 
-        $threshold = 180; // Lower threshold to catch more detail
+        // Simple threshold: dark = black, light = white
         for ($y = 0; $y < $workH; $y++) {
             for ($x = 0; $x < $workW; $x++) {
                 $color = imagecolorat($work, $x, $y);
-                $gray = ($color >> 16) & 0xFF; // Get red channel as grayscale value
-                if ($gray < $threshold) {
+                $gray = ($color >> 8) & 0xFF; // Get green channel (grayscale)
+                if ($gray < 128) { // Middle threshold
                     imagesetpixel($binary, $x, $y, $black);
                 }
             }
         }
         imagedestroy($work);
 
-        // Dilate lines for better coloring
-        $thickness = max(2, (int)round($workW / 400));
+        // Light dilation for better coloring lines
+        $thickness = 2;
         $bold = imagecreatetruecolor($workW, $workH);
         imagefilledrectangle($bold, 0, 0, $workW, $workH, $white);
         $boldBlack = imagecolorallocate($bold, 0, 0, 0);
