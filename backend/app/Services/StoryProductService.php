@@ -142,7 +142,7 @@ class StoryProductService
             $pages    = [];
             $pageUrls = [];
             $falAi    = app(FalAiService::class);
-            $useFal   = false; // Force GD method for better line art control
+            $useFal   = true; // Use fal.ai for high-quality line art generation
 
             // Coloring book cover
             $coverPath = $this->renderAtLogicalSize(fn () => $this->createColoringBookCover($tmpDir, $story));
@@ -549,24 +549,30 @@ class StoryProductService
     private function createLineArtPageViaFal(string $tmpDir, StoryAsset $asset, FalAiService $falAi, string $caption): string
     {
         try {
-            $imageUrl = $asset->url;
-            if (!$this->isPublicFalUrl($imageUrl)) {
-                $localPath = $this->resolveLocalPath($imageUrl);
-                if ($localPath && file_exists($localPath)) {
-                    $imageUrl = $falAi->uploadFileToFal($localPath);
-                }
-            }
-
-            $resultUrl = $this->submitFalImg2Img($falAi, $imageUrl);
-            $response  = \Illuminate\Support\Facades\Http::timeout(60)->get($resultUrl);
+            // Generate a new line art image directly from fal.ai instead of converting existing image
+            $story = $asset->story;
+            $sceneNumber = $asset->scene_number;
+            
+            // Build the scene-specific prompt
+            $scene = collect($story->scenes ?? [])->firstWhere('scene_number', $sceneNumber);
+            $scenePrompt = $scene['text'] ?? $scene['description'] ?? $caption;
+            
+            // Get the child's photo if available for character consistency
+            $photoUrl = $story->child_photo_url ?? null;
+            
+            // Generate line art image specifically for coloring book
+            $lineArtUrl = $falAi->generateLineArtImage($scenePrompt, $photoUrl);
+            
+            // Download the line art image
+            $response = \Illuminate\Support\Facades\Http::timeout(60)->get($lineArtUrl);
             if (!$response->successful()) {
-                throw new \RuntimeException("Failed to download Fal.ai coloring result for scene {$asset->scene_number}");
+                throw new \RuntimeException("Failed to download Fal.ai line art result for scene {$sceneNumber}");
             }
 
-            $path = "{$tmpDir}/coloring_fal_{$asset->scene_number}.jpg";
-            return $this->buildColoringPageCanvas($response->body(), $tmpDir, $asset->scene_number, $caption, $path);
+            $path = "{$tmpDir}/coloring_fal_{$sceneNumber}.jpg";
+            return $this->buildColoringPageCanvas($response->body(), $tmpDir, $sceneNumber, $caption, $path);
         } catch (\Throwable $e) {
-            Log::warning("Fal.ai coloring transform failed for scene {$asset->scene_number}, falling back to GD", ['error' => $e->getMessage()]);
+            Log::warning("Fal.ai line art generation failed for scene {$asset->scene_number}, falling back to GD", ['error' => $e->getMessage()]);
             return $this->createLineArtPageViaGd($tmpDir, $asset, $caption, $asset->scene_number, null);
         }
     }
