@@ -1,3 +1,13 @@
+# Fix Authentication Logout Issue
+
+## Problem Found
+The issue is that Sanctum is configured with guard 'web' (cookie-based) but your frontend uses token-based auth (Bearer tokens). This causes authentication to fail on page reload.
+
+## Server Commands to Fix
+
+```bash
+# Update Sanctum configuration
+cat > /var/www/ai-sass/backend/config/sanctum.php << 'EOF'
 <?php
 
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -22,7 +32,6 @@ return [
         '%s%s',
         'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
         Sanctum::currentApplicationUrlWithPort(),
-        // Sanctum::currentRequestHost(),
     ))),
 
     /*
@@ -85,3 +94,26 @@ return [
     ],
 
 ];
+EOF
+
+# Update stateful domains in .env
+sed -i 's/SANCTUM_STATEFUL_DOMAINS=.*/SANCTUM_STATEFUL_DOMAINS=nazstudio.art,www.nazstudio.art,nazstudio.art:3000,www.nazstudio.art:3000,localhost,localhost:3000,localhost:5173/g' /var/www/ai-sass/backend/.env
+
+# Clear all caches
+php artisan config:clear
+php artisan cache:clear
+php artisan view:clear
+
+# Restart queue worker
+systemctl restart storyhero-worker
+systemctl status storyhero-worker
+```
+
+## What This Fixes
+
+1. **Sanctum Guard**: Changed from 'web' to 'sanctum' to support token-based authentication
+2. **Stateful Domains**: Added localhost domains for local development
+3. **CORS**: Already fixed to include your production domain
+4. **AuthController**: Already fixed to remove problematic relationship loading
+
+This should resolve the logout issue by properly configuring Sanctum for token-based authentication.
