@@ -7,6 +7,8 @@ use App\Models\StoryAsset;
 use App\Models\StoryOutput;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Baidouabdellah\ArPDF\Facades\ArPDF;
+use Intervention\Image\ImageManager;
 
 class StoryProductService
 {
@@ -42,96 +44,80 @@ class StoryProductService
     }
 
     // -------------------------------------------------------------------------
-    // Story Book
+    // Story Book (using ArPDF for Arabic/English support)
     // -------------------------------------------------------------------------
 
     public function generateStoryBook(Story $story): StoryOutput
     {
         $output = $this->markGenerating($story, StoryOutput::TYPE_STORY_BOOK_PDF);
-        $tmpDir = storage_path('app/tmp/story_book_' . $story->id . '_' . uniqid());
-        @mkdir($tmpDir, 0755, true);
-
+        
         try {
             $story->loadMissing('assets');
             $scenes   = collect($story->scenes ?? [])->keyBy('scene_number');
             $images   = $story->imageAssets()->get()->keyBy('scene_number');
             $isRtl    = ($story->language ?? 'en') === 'ar';
-            $pages    = [];
-            $pageUrls = [];
-
-            // Cover page
+            $language = $story->language ?? 'en';
+            
+            // Determine font based on language
+            $font = $isRtl ? 'Cairo' : 'DejaVu Sans';
+            
+            // Setup ArPDF with proper direction and font
+            $pdf = ArPDF::direction($isRtl ? 'rtl' : 'ltr')
+                ->title($story->title ?? 'Story Book')
+                ->author('StoryHero')
+                ->defaultFont($font);
+            
+            // Generate cover page
             $coverImage = $images->first();
-            $coverPath  = $this->renderAtLogicalSize(fn () => $this->createStoryBookCover($tmpDir, $story, $coverImage?->url, $isRtl));
-            $pages[]    = $coverPath;
-            $coverStoragePath = "stories/{$story->id}/books/pages/story_cover.jpg";
-            Storage::disk($this->disk)->put($coverStoragePath, file_get_contents($coverPath), ['visibility' => 'public']);
-            $pageUrls[] = ['page' => 0, 'label' => 'Cover', 'url' => Storage::disk($this->disk)->url($coverStoragePath)];
-
-            // Table of Contents
-            $tocPath = $this->renderAtLogicalSize(fn () => $this->createTableOfContents($tmpDir, $story, $scenes, $isRtl));
-            $pages[] = $tocPath;
-            $tocStoragePath = "stories/{$story->id}/books/pages/story_toc.jpg";
-            Storage::disk($this->disk)->put($tocStoragePath, file_get_contents($tocPath), ['visibility' => 'public']);
-            $pageUrls[] = ['page' => 1, 'label' => 'Contents', 'url' => Storage::disk($this->disk)->url($tocStoragePath)];
-
-            // Scene pages — every scene continues the story, in order (no artificial cap)
-            $pageNum = 2;
+            $pdf->view('pdf.storybook-cover', [
+                'title' => $story->title ?? 'Story Book',
+                'childName' => $story->child_name,
+                'imageUrl' => $coverImage?->url,
+                'rtl' => $isRtl,
+                'language' => $language,
+                'font' => $font
+            ]);
+            
+            // Generate scene pages
+            $pageNum = 1;
             foreach ($scenes->sortKeys() as $sceneNumber => $scene) {
-                $asset     = $images->get($sceneNumber);
-                $layoutVariant = $sceneNumber % 2 === 0 ? 'diagonal' : 'classic';
-                $scenePath = $this->renderAtLogicalSize(fn () => $this->createMangaScenePage(
-                    $tmpDir,
-                    'scene_' . $sceneNumber,
-                    $scene['title'] ?? (($isRtl ? 'الصفحة ' : 'Page ') . $sceneNumber),
-                    $scene['text']  ?? $scene['description'] ?? '',
-                    $asset?->url,
-                    $sceneNumber,
-                    $pageNum + 1,
-                    $isRtl,
-                    $layoutVariant
-                ));
-                $pages[] = $scenePath;
-                $sceneStoragePath = "stories/{$story->id}/books/pages/story_scene_{$sceneNumber}.jpg";
-                Storage::disk($this->disk)->put($sceneStoragePath, file_get_contents($scenePath), ['visibility' => 'public']);
-                $pageUrls[] = [
-                    'page'  => $pageNum,
-                    'label' => ($isRtl ? 'الصفحة ' : 'Page ') . $sceneNumber,
-                    'url'   => Storage::disk($this->disk)->url($sceneStoragePath),
-                ];
+                $asset = $images->get($sceneNumber);
+                $pdf->view('pdf.storybook-page', [
+                    'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
+                    'text' => $scene['text'] ?? $scene['description'] ?? '',
+                    'imageUrl' => $asset?->url,
+                    'pageNumber' => $pageNum,
+                    'rtl' => $isRtl,
+                    'language' => $language,
+                    'font' => $font
+                ]);
                 $pageNum++;
             }
-
-            // Ending page
-            $endPath = $this->renderAtLogicalSize(fn () => $this->createStoryBookEnding($tmpDir, $story, $isRtl, $pageNum + 1));
-            $pages[] = $endPath;
-            $endStoragePath = "stories/{$story->id}/books/pages/story_ending.jpg";
-            Storage::disk($this->disk)->put($endStoragePath, file_get_contents($endPath), ['visibility' => 'public']);
-            $pageUrls[] = ['page' => $pageNum, 'label' => $isRtl ? 'النهاية' : 'The End', 'url' => Storage::disk($this->disk)->url($endStoragePath)];
-
-            // Per-page single-page PDFs, so any one page can be downloaded/printed alone.
-            $pageUrls = $this->attachPerPagePdfs($pageUrls, $pages, "stories/{$story->id}/books/pages", $story->title ?? 'Story Book');
-
-            $pdfBytes = $this->buildImagePdf($pages, $story->title ?? 'Story Book', 'StoryHero', 'a4');
-            $path     = "stories/{$story->id}/books/story_book.pdf";
-            Storage::disk($this->disk)->put($path, $pdfBytes, ['visibility' => 'public']);
-
-            $letterBytes = $this->buildImagePdf($pages, $story->title ?? 'Story Book', 'StoryHero', 'letter');
-            $letterPath  = "stories/{$story->id}/books/story_book_letter.pdf";
-            Storage::disk($this->disk)->put($letterPath, $letterBytes, ['visibility' => 'public']);
-
+            
+            // Generate ending page
+            $pdf->view('pdf.storybook-page', [
+                'title' => $isRtl ? 'النهاية' : 'The End',
+                'text' => $isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!',
+                'imageUrl' => null,
+                'pageNumber' => $pageNum,
+                'rtl' => $isRtl,
+                'language' => $language,
+                'font' => $font
+            ]);
+            
+            // Save PDF
+            $path = "stories/{$story->id}/books/story_book.pdf";
+            Storage::disk($this->disk)->put($path, $pdf->output(), ['visibility' => 'public']);
+            
             return $this->markCompleted($output, $path, [
-                'page_count'  => count($pages),
-                'format'      => '300 DPI print-ready PDF — manga/comic style — A4 (default) & US Letter',
-                'viewer'      => 'web_story_book',
-                'rtl'         => $isRtl,
-                'page_urls'   => $pageUrls,
-                'letter_url'  => Storage::disk($this->disk)->url($letterPath),
-                'a4_url'      => Storage::disk($this->disk)->url($path),
+                'page_count' => $pageNum,
+                'format' => 'Professional PDF with Arabic/English support using ArPDF',
+                'viewer' => 'web_story_book',
+                'rtl' => $isRtl,
+                'url' => Storage::disk($this->disk)->url($path),
             ]);
         } catch (\Throwable $e) {
             return $this->markFailed($output, $e);
-        } finally {
-            $this->cleanupDirectory($tmpDir);
         }
     }
 
@@ -874,99 +860,33 @@ class StoryProductService
      */
     private function convertToPureLineArt(\GdImage $source, int $workingWidth = 800): \GdImage
     {
-        $srcW  = imagesx($source);
-        $srcH  = imagesy($source);
-        $workW = min($workingWidth, $srcW);
-        $workH = max(1, (int)round($srcH * ($workW / $srcW)));
-
-        $work = imagecreatetruecolor($workW, $workH);
-        imagecopyresampled($work, $source, 0, 0, 0, 0, $workW, $workH, $srcW, $srcH);
-
-        // Pre-smooth BEFORE edge detection. Without this, every shading
-        // gradient / texture speckle in the source illustration gets picked
-        // up as a spurious "edge", which is what makes edge-detect line art
-        // look noisy/scratchy instead of clean like a hand-drawn coloring
-        // page. Two passes of Gaussian blur remove that high-frequency
-        // texture while leaving real shape boundaries intact.
-        imagefilter($work, IMG_FILTER_GAUSSIAN_BLUR);
-        imagefilter($work, IMG_FILTER_GAUSSIAN_BLUR);
-
-        // Better line art conversion with edge detection
-        imagefilter($work, IMG_FILTER_GRAYSCALE);
-        imagefilter($work, IMG_FILTER_EDGEDETECT);  // Detect edges/lines
-        imagefilter($work, IMG_FILTER_NEGATE);      // Make edges black on white
-        imagefilter($work, IMG_FILTER_CONTRAST, -50); // Boost contrast
-        imagefilter($work, IMG_FILTER_SMOOTH, 2);   // Smooth to join broken lines
-
-        // Threshold for better detail preservation (flat cutoff, not truly
-        // locally-adaptive, but works well after the pre-blur above).
-        $binary = imagecreatetruecolor($workW, $workH);
-        $black  = imagecolorallocate($binary, 0, 0, 0);
-        $white  = imagecolorallocate($binary, 255, 255, 255);
-        imagefilledrectangle($binary, 0, 0, $workW, $workH, $white);
-
-        for ($y = 0; $y < $workH; $y++) {
-            for ($x = 0; $x < $workW; $x++) {
-                $color = imagecolorat($work, $x, $y);
-                $gray = ($color >> 8) & 0xFF;
-
-                // More conservative threshold to preserve detail
-                if ($gray < 200) {
-                    imagesetpixel($binary, $x, $y, $black);
-                }
-            }
-        }
-        imagedestroy($work);
-
-        // Speckle removal — a single stray black pixel (or a pair) with no
-        // real neighbors is threshold noise, not a line. Dropping these
-        // before dilation stops noise from getting thickened into visible
-        // dots, which is what made earlier output look stippled instead of
-        // clean like a hand-drawn coloring page.
-        $denoised = imagecreatetruecolor($workW, $workH);
-        imagefilledrectangle($denoised, 0, 0, $workW, $workH, $white);
-        for ($y = 0; $y < $workH; $y++) {
-            for ($x = 0; $x < $workW; $x++) {
-                if ((imagecolorat($binary, $x, $y) & 0xFF) !== 0) {
-                    continue;
-                }
-                $blackNeighbors = 0;
-                for ($dy = -1; $dy <= 1; $dy++) {
-                    for ($dx = -1; $dx <= 1; $dx++) {
-                        if ($dx === 0 && $dy === 0) continue;
-                        $nx = $x + $dx;
-                        $ny = $y + $dy;
-                        if ($nx < 0 || $ny < 0 || $nx >= $workW || $ny >= $workH) continue;
-                        if ((imagecolorat($binary, $nx, $ny) & 0xFF) === 0) $blackNeighbors++;
-                    }
-                }
-                if ($blackNeighbors >= 2) {
-                    imagesetpixel($denoised, $x, $y, $black);
-                }
-            }
-        }
-        imagedestroy($binary);
-
-        // Dilation for bold, coloring-friendly lines. A thickness of 1 draws
-        // a 1x1 "ellipse" per black pixel — i.e. no real expansion at all.
-        // Overlapping circles only actually widen the line once the
-        // diameter is > 1, so this needs to be 3 (not 1) to have any visible
-        // effect.
-        $thickness = 3;
-        $bold = imagecreatetruecolor($workW, $workH);
-        imagefilledrectangle($bold, 0, 0, $workW, $workH, $white);
-        $boldBlack = imagecolorallocate($bold, 0, 0, 0);
-
-        for ($y = 0; $y < $workH; $y++) {
-            for ($x = 0; $x < $workW; $x++) {
-                if ((imagecolorat($denoised, $x, $y) & 0xFF) === 0) {
-                    imagefilledellipse($bold, $x, $y, $thickness, $thickness, $boldBlack);
-                }
-            }
-        }
-        imagedestroy($denoised);
-
-        return $bold;
+        // Use Intervention Image for better line art conversion
+        $manager = ImageManager::gd();
+        
+        // Convert GD image to Intervention Image
+        ob_start();
+        imagejpeg($source);
+        $imageData = ob_get_clean();
+        $image = $manager->read($imageData);
+        
+        // Resize to working resolution
+        $image = $image->resize($workingWidth, null, function ($constraint) {
+            $constraint->aspectRatio();
+        });
+        
+        // Apply line art filters using Intervention Image
+        $image = $image->greyscale()          // Convert to grayscale
+            ->contrast(50)                   // High contrast for clean lines
+            ->brightness(20)                 // Brighten to reduce noise
+            ->sharpen(5)                     // Sharpen edges
+            ->pixelate(1)                    // Remove noise
+            ->limitColors(2);                // Force pure black/white
+        
+        // Convert back to GD image
+        $imageData = $image->toJpeg();
+        $lineArt = imagecreatefromstring($imageData);
+        
+        return $lineArt;
     }
 
     private function drawWrappedText(\GdImage $canvas, string $text, string $font, int $size, int $x, int $y, int $color, bool $rtl, int $maxWidth, float $lineHeight): void
