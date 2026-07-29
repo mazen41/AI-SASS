@@ -5,6 +5,18 @@ function getToken(): string | null {
   return localStorage.getItem('auth_token');
 }
 
+// Error type that preserves the HTTP status code (or null for network-level
+// failures) so callers can distinguish "server said the token is invalid"
+// from "the request never made it / server errored".
+export class ApiError extends Error {
+  status: number | null;
+  constructor(message: string, status: number | null) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -12,15 +24,22 @@ async function apiFetch<T>(
 ): Promise<T> {
   const token = getToken();
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(!isFormData ? options.headers ?? {} : {}),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(!isFormData ? options.headers ?? {} : {}),
+      },
+    });
+  } catch {
+    // Network-level failure (offline, DNS, CORS block before a response, etc).
+    // status=null tells callers this was NOT an auth rejection.
+    throw new ApiError('Network error. Please check your connection.', null);
+  }
 
   let data: unknown;
   try {
@@ -37,7 +56,7 @@ async function apiFetch<T>(
             .flat()
             .join(' ')
         : 'An error occurred');
-    throw new Error(String(message));
+    throw new ApiError(String(message), res.status);
   }
 
   return data as T;

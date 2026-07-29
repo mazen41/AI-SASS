@@ -9,6 +9,7 @@ import React, {
   useCallback,
 } from 'react';
 import {
+  ApiError,
   AuthUser,
   apiGetUser,
   apiLogout,
@@ -38,7 +39,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     apiGetUser()
       .then(({ user }) => setUser(user))
-      .catch(() => clearToken())
+      .catch((err: unknown) => {
+        // Only treat this as "logged out" if the server explicitly rejected
+        // the token (401). Network errors, CORS issues, 5xx, etc. should NOT
+        // wipe a valid token — that's what was causing users to get logged
+        // out on reload for reasons unrelated to their auth status.
+        if (err instanceof ApiError && err.status === 401) {
+          clearToken();
+          setUser(null);
+        }
+        // Otherwise: leave the token in place. `user` stays null for this
+        // render, so protected UI won't show, but the next successful
+        // request (or reload) can still pick the session back up.
+      })
       .finally(() => setLoading(false));
   }, []);
 
