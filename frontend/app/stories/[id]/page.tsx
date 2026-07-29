@@ -52,42 +52,6 @@ type StoryTab = 'story' | 'storybook' | 'coloring' | 'audio' | 'video';
 
 
 
-const STEP_LABELS: Record<string, string> = {
-
-  queued: 'Queued…',
-
-  generate_story: '✍️ Writing story…',
-
-  generate_images: '🎨 Generating scene images…',
-
-  generate_videos: '🎬 Generating scene videos…',
-
-  generate_narration: '🎙️ Recording narration…',
-
-  assemble_video: '🎞️ Assembling final video…',
-
-  generate_story_products: '📚 Building story and coloring books…',
-
-};
-
-
-
-const TAB_LABELS: Array<{ key: StoryTab; label: string }> = [
-
-  { key: 'story', label: 'Story' },
-
-  { key: 'storybook', label: 'Story Book' },
-
-  { key: 'coloring', label: 'Coloring Book' },
-
-  { key: 'audio', label: 'Audio' },
-
-  { key: 'video', label: 'Video' },
-
-];
-
-
-
 export default function StoryViewPage() {
 
   const { id } = useParams();
@@ -426,17 +390,32 @@ export default function StoryViewPage() {
 
   const isRtl = story.language === 'ar';
 
+  // Parse selected outputs to determine which tabs to show
+  const selectedOutputs = story.selected_outputs ? JSON.parse(story.selected_outputs) : [];
+  
+  // Determine which tabs should be visible based on user selection
+  const availableTabs = [
+    { key: 'story' as StoryTab, label: 'Story', alwaysShow: true }, // Story tab always shows
+    { key: 'storybook' as StoryTab, label: 'Story Book', condition: selectedOutputs.includes('story_book_pdf') },
+    { key: 'coloring' as StoryTab, label: 'Coloring Book', condition: selectedOutputs.includes('coloring_book_pdf') },
+    { key: 'audio' as StoryTab, label: 'Audio', condition: selectedOutputs.includes('audio') },
+    { key: 'video' as StoryTab, label: 'Video', condition: selectedOutputs.includes('video') },
+  ].filter(tab => tab.alwaysShow || tab.condition);
 
 
-  const DownloadButton = ({ output, label }: { output?: StoryOutput; label: string }) => (
 
-    output?.url && output.status === 'completed'
-
-      ? <a className="btn btn-primary" href={output.url} download style={{ display: 'inline-block' }}>⬇️ {label}</a>
-
-      : <span className="btn btn-ghost" style={{ display: 'inline-block', opacity: 0.7 }}>{output?.status === 'failed' ? 'Generation failed' : 'Generating…'}</span>
-
-  );
+  const DownloadButton = ({ output, label }: { output?: StoryOutput; label: string }) => {
+    if (output?.url && output.status === 'completed') {
+      return <a className="btn btn-primary" href={output.url} download style={{ display: 'inline-block' }}>⬇️ {label}</a>;
+    }
+    if (output?.status === 'failed') {
+      return <span className="btn btn-ghost" style={{ display: 'inline-block', opacity: 0.7, color: 'var(--k-pink)' }}>⚠️ PDF failed</span>;
+    }
+    if (output?.status === 'generating' || output?.status === 'planned') {
+      return <span className="btn btn-ghost" style={{ display: 'inline-block', opacity: 0.7 }}>⏳ PDF generating…</span>;
+    }
+    return null;
+  };
 
 
 
@@ -619,7 +598,7 @@ export default function StoryViewPage() {
 
           <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', position: 'sticky', top: 82, zIndex: 5, padding: '0.75rem', borderRadius: 'var(--r-lg)', background: 'rgba(15, 23, 42, 0.72)', backdropFilter: 'blur(12px)', border: '1px solid var(--border)' }}>
 
-            {TAB_LABELS.map((tab) => (
+            {availableTabs.map((tab) => (
 
               <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={activeTab === tab.key ? 'btn btn-primary' : 'btn btn-ghost'} style={{ padding: '0.65rem 0.95rem' }}>{tab.label}</button>
 
@@ -657,8 +636,17 @@ export default function StoryViewPage() {
 
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
 
-                    {flipbookStatus === 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7, fontSize: '0.85rem' }}>📖 Interactive Viewer</span>}
-                    {flipbookStatus !== 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7 }}>{flipbookStatus === 'failed' ? 'Generation failed' : 'Generating…'}</span>}
+                    {/* Interactive viewer badge — independent of PDF status */}
+                    {flipbookStatus === 'completed' && (
+                      <span className="btn btn-ghost" style={{ opacity: 0.7, fontSize: '0.85rem' }}>📖 Interactive Viewer ✓</span>
+                    )}
+                    {(flipbookStatus === 'generating' || flipbookStatus === 'planned') && (
+                      <span className="btn btn-ghost" style={{ opacity: 0.7, fontSize: '0.85rem' }}>⏳ Viewer generating…</span>
+                    )}
+                    {flipbookStatus === 'failed' && (
+                      <span className="btn btn-ghost" style={{ opacity: 0.7, fontSize: '0.85rem', color: 'var(--k-pink)' }}>⚠️ Viewer failed</span>
+                    )}
+                    {/* PDF download — independent of flipbook/viewer status */}
                     <DownloadButton output={storyBook} label="Download PDF (A4)" />
                     <LetterDownloadLink output={storyBook} />
 
@@ -754,7 +742,7 @@ export default function StoryViewPage() {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
 
-                  <div><h3><span className="gradient-text">🖍️ Printable Coloring Book</span></h3><p style={{ color: 'var(--text-3)', marginTop: '0.35rem' }}>Print-ready 300 DPI pages with pure black-and-white bold outlines for each scene.</p></div>
+                  <div><h3><span className="gradient-text">🖍️ Printable Coloring Book</span></h3><p style={{ color: 'var(--text-3)', marginTop: '0.35rem' }}>Clean black-and-white line art pages perfect for coloring.</p></div>
 
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
 
@@ -768,58 +756,50 @@ export default function StoryViewPage() {
 
               </section>
 
-              {coloringBook?.metadata?.page_urls && Array.isArray(coloringBook.metadata.page_urls) && coloringBook.metadata.page_urls.length > 0 ? (
+              {/* Only show coloring book line art pages - no source scenes */}
+              {coloringAssets.length > 0 ? (
                 <section style={{ padding: '1.5rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
-                  <h4 style={{ marginBottom: '1rem' }}>📖 Page Preview</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-                    {coloringBook.metadata.page_urls.map((page: any) => (
-                      <div key={page.page} style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                        <div style={{ position: 'relative', aspectRatio: '1240/1754', background: '#f5f5f5' }}>
+                  <h4 style={{ marginBottom: '1rem' }}>�️ Coloring Pages</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                    {coloringAssets.map((asset) => (
+                      <div key={asset.id} style={{ borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--border)', background: 'white' }}>
+                        <div style={{ position: 'relative', aspectRatio: '4/3', background: '#f5f5f5' }}>
                           <Image
-                            src={page.url}
-                            alt={`Page ${page.page} - ${page.label}`}
+                            src={asset.url}
+                            alt={`Coloring Page ${asset.scene_number}`}
                             fill
                             sizes="(max-width: 300px) 100vw"
                             style={{ objectFit: 'contain' }}
                           />
                         </div>
-                        <div style={{ padding: '0.75rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
-                          <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>{page.label}</div>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <a href={page.url} download={`coloring_page_${page.page}.jpg`} style={{
-                              flex: 1,
-                              textAlign: 'center',
-                              fontSize: '0.75rem',
-                              color: 'var(--primary)',
-                              textDecoration: 'none',
-                              padding: '0.5rem 0',
-                              borderRadius: 'var(--r-sm)'
-                            }}>
-                              ⬇️ Image
-                            </a>
-                            {page.pdf_url && (
-                              <a href={page.pdf_url} download={`coloring_page_${page.page}.pdf`} style={{
-                                flex: 1,
-                                textAlign: 'center',
-                                fontSize: '0.75rem',
-                                color: 'var(--primary)',
-                                textDecoration: 'none',
-                                padding: '0.5rem 0',
-                                borderRadius: 'var(--r-sm)',
-                                border: '1px solid var(--border)'
-                              }}>
-                                ⬇️ PDF
-                              </a>
-                            )}
-                          </div>
+                        <div style={{ padding: '1rem', background: 'white', borderTop: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text)' }}>Page {asset.scene_number}</div>
+                          <a href={asset.url} download={`coloring_page_${asset.scene_number}.jpg`} style={{
+                            display: 'block',
+                            textAlign: 'center',
+                            fontSize: '0.8rem',
+                            color: 'var(--primary)',
+                            textDecoration: 'none',
+                            padding: '0.5rem',
+                            borderRadius: 'var(--r-sm)',
+                            background: 'var(--bg)',
+                            border: '1px solid var(--border)',
+                            marginTop: '0.5rem'
+                          }}>
+                            ⬇️ Download
+                          </a>
                         </div>
                       </div>
                     ))}
                   </div>
                 </section>
-              ) : null}
-
-              {coloringAssets.length > 0 ? <AssetGrid title="Coloring Pages" assets={coloringAssets} contain /> : <AssetGrid title="Preview Source Scenes" assets={imageAssets} />}
+              ) : (
+                <section style={{ padding: '2rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)', textAlign: 'center' }}>
+                  <div style={{ width: 36, height: 36, border: '3px solid var(--border)', borderTopColor: 'var(--k-blue)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }} />
+                  <p style={{ color: 'var(--text-2)', fontWeight: 600 }}>Generating coloring pages…</p>
+                  <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginTop: '0.5rem' }}>Creating clean black-and-white line art for you to color.</p>
+                </section>
+              )}
 
             </motion.div>
 
@@ -828,35 +808,20 @@ export default function StoryViewPage() {
 
 
           {activeTab === 'audio' && (
-
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '2rem', padding: '1.5rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
-
               <h3 style={{ marginBottom: '1rem' }}><span className="gradient-text">🎙️ Narration Audio</span></h3>
-
               {story.narration_url ? <><audio controls src={story.narration_url} style={{ width: '100%' }} /><a className="btn btn-primary" href={story.narration_url} download style={{ display: 'inline-block', marginTop: '1rem' }}>⬇️ Download Audio</a></> : <p style={{ color: 'var(--text-3)' }}>Narration has not been generated yet.</p>}
-
             </motion.div>
-
           )}
 
-
-
           {activeTab === 'video' && (
-
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '2rem', display: 'grid', gap: '1.25rem' }}>
-
               <section style={{ padding: '1rem', borderRadius: 'var(--r-lg)', background: 'var(--surface)', border: '1.5px solid var(--border)' }}>
-
                 <h3 style={{ marginBottom: '1rem' }}><span className="gradient-text">🎞️ Final Story Video</span></h3>
-
                 {finalVideoUrl ? <><video src={finalVideoUrl} controls style={{ width: '100%', borderRadius: 'var(--r-md)', background: '#000' }} /><a className="btn btn-primary" href={finalVideoUrl} download style={{ display: 'inline-block', marginTop: '1rem' }}>⬇️ Download Video</a></> : <p style={{ color: 'var(--text-3)' }}>Final MP4 has not been generated yet.</p>}
-
               </section>
-
               {videoAssets.length > 0 && !finalVideoUrl && <VideoGrid assets={videoAssets} />}
-
             </motion.div>
-
           )}
 
 
@@ -869,11 +834,8 @@ export default function StoryViewPage() {
 
             <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Language</p><p style={{ fontWeight: 600 }}>{story.language.toUpperCase()}</p></div>
 
-            <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Images</p><p style={{ fontWeight: 600 }}>{imageAssets.length} / {expectedSceneCount}</p></div>
-
-            <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Videos</p><p style={{ fontWeight: 600 }}>{videoAssets.length} / {expectedSceneCount}</p></div>
-
-            <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Book PDFs</p><p style={{ fontWeight: 600 }}>{[storyBook, coloringBook].filter((o) => o?.status === 'completed').length} / 2</p></div>
+            {selectedOutputs.includes('story_book_pdf') && <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Story Book</p><p style={{ fontWeight: 600 }}>{storyBook?.status === 'completed' ? '✓ Ready' : 'Processing'}</p></div>}
+            {selectedOutputs.includes('coloring_book_pdf') && <div><p style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>Coloring Book</p><p style={{ fontWeight: 600 }}>{coloringBook?.status === 'completed' ? '✓ Ready' : 'Processing'}</p></div>}
 
           </motion.div>
 
