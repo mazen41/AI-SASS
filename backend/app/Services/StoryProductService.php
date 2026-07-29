@@ -122,34 +122,76 @@ class StoryProductService
     }
 
     // -------------------------------------------------------------------------
-    // Coloring Book
+    // Coloring Book (using ArPDF for Arabic/English support)
     // -------------------------------------------------------------------------
 
     public function generateColoringBook(Story $story): StoryOutput
     {
         $output = $this->markGenerating($story, StoryOutput::TYPE_COLORING_BOOK_PDF);
-        $tmpDir = storage_path('app/tmp/coloring_book_' . $story->id . '_' . uniqid());
-        @mkdir($tmpDir, 0755, true);
-
+        
         try {
             $images = $story->imageAssets()->get()->sortBy('scene_number');
             $scenes = collect($story->scenes ?? [])->keyBy('scene_number');
-
+            $isRtl  = ($story->language ?? 'en') === 'ar';
+            $language = $story->language ?? 'en';
+            
             if ($images->isEmpty()) {
                 throw new \RuntimeException('No scene images are available for coloring book generation.');
             }
-
-            $pages    = [];
-            $pageUrls = [];
-            $falAi    = app(FalAiService::class);
-            $useFal   = true; // Use fal.ai for high-quality line art generation
-
-            // Coloring book cover
-            $coverPath = $this->renderAtLogicalSize(fn () => $this->createColoringBookCover($tmpDir, $story));
-            $pages[]   = $coverPath;
-            $coverStoragePath = "stories/{$story->id}/coloring/pages/cover.jpg";
-            Storage::disk($this->disk)->put($coverStoragePath, file_get_contents($coverPath), ['visibility' => 'public']);
-            $pageUrls[] = ['page' => 0, 'label' => 'Cover', 'url' => Storage::disk($this->disk)->url($coverStoragePath)];
+            
+            // Determine font based on language
+            $font = $isRtl ? 'Cairo' : 'DejaVu Sans';
+            
+            // Setup ArPDF with proper direction and font
+            $pdf = ArPDF::direction($isRtl ? 'rtl' : 'ltr')
+                ->title($story->title ?? 'Coloring Book')
+                ->author('StoryHero')
+                ->defaultFont($font);
+            
+            // Generate cover page
+            $pdf->view('pdf.coloring-page', [
+                'title' => $story->title ?? 'Coloring Book',
+                'childName' => $story->child_name,
+                'rtl' => $isRtl,
+                'language' => $language,
+                'font' => $font,
+                'isCover' => true
+            ]);
+            
+            // Generate coloring pages (line art images)
+            $pageNum = 1;
+            foreach ($images as $asset) {
+                $scene = $scenes->get($asset->scene_number);
+                $sceneCaption = $scene['title'] ?? ($isRtl ? 'صفحة تلوين ' . $pageNum : 'Coloring Page ' . $pageNum);
+                
+                $pdf->view('pdf.coloring-page', [
+                    'title' => $sceneCaption,
+                    'imageUrl' => $asset->url,
+                    'pageNumber' => $pageNum,
+                    'rtl' => $isRtl,
+                    'language' => $language,
+                    'font' => $font,
+                    'isCover' => false
+                ]);
+                
+                $pageNum++;
+            }
+            
+            // Save PDF
+            $path = "stories/{$story->id}/coloring/coloring_book.pdf";
+            Storage::disk($this->disk)->put($path, $pdf->output(), ['visibility' => 'public']);
+            
+            return $this->markCompleted($output, $path, [
+                'page_count' => $pageNum,
+                'format' => 'Professional coloring book PDF with Arabic/English support using ArPDF',
+                'viewer' => 'web_coloring_book',
+                'rtl' => $isRtl,
+                'url' => Storage::disk($this->disk)->url($path),
+            ]);
+        } catch (\Throwable $e) {
+            return $this->markFailed($output, $e);
+        }
+    }
 
             // Scene coloring pages — process in batches for better performance
             $chunkSize = 4; // Process 4 scenes at a time

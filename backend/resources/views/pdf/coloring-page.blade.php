@@ -103,22 +103,33 @@
         <div class="border"></div>
         <div class="inner-border"></div>
         
-        <div class="header">
-            <div class="title">COLOR THIS PAGE!</div>
-            <div class="line"></div>
-            <div class="caption">{{ $caption }}</div>
-        </div>
-        
-        <div class="image-area">
-            @if($lineArtUrl)
-                <img src="{{ $lineArtUrl }}" class="line-art" alt="Coloring Page">
-            @endif
-        </div>
-        
-        <div class="page-number">{{ $pageNumber }}</div>
+        @if($isCover)
+            <div class="header">
+                <div class="title">{{ $rtl ? 'كتاب التلوين' : 'COLORING BOOK' }}</div>
+                <div class="line"></div>
+                <div class="caption">{{ $title }}</div>
+                @if($childName)
+                    <div class="caption">{{ $rtl ? 'بطولة ' . $childName : 'Starring ' . $childName }}</div>
+                @endif
+            </div>
+        @else
+            <div class="header">
+                <div class="title">{{ $rtl ? 'لون هذه الصفحة!' : 'COLOR THIS PAGE!' }}</div>
+                <div class="line"></div>
+                <div class="caption">{{ $title }}</div>
+            </div>
+            
+            <div class="image-area">
+                @if($imageUrl)
+                    <img src="{{ $imageUrl }}" class="line-art" alt="Coloring Page">
+                @endif
+            </div>
+            
+            <div class="page-number">{{ $rtl ? 'صفحة ' . $pageNumber : 'Page ' . $pageNumber }}</div>
+        @endif
         
         <div class="footer">
-            <div class="footer-text">StoryHero Coloring Book</div>
+            <div class="footer-text">{{ $rtl ? 'كتاب التلوين StoryHero' : 'StoryHero Coloring Book' }}</div>
         </div>
     </div>
 </body>
