@@ -15,7 +15,9 @@ class StorybookIllustrationService
     public function __construct(FalAiService $falAi)
     {
         $this->falAi = $falAi;
-        $this->disk = config('filesystems.default', 'public');
+        // Hardcoded 'public' — see FalAiService::downloadAndStore() for why
+        // config('filesystems.default') must never be used for this.
+        $this->disk = 'public';
     }
 
     /**

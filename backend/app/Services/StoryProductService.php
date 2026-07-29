@@ -10,9 +10,17 @@ use Illuminate\Support\Facades\Storage;
 
 class StoryProductService
 {
-    // A4 at 150 DPI
-    private int $pageWidth  = 1240;
-    private int $pageHeight = 1754;
+    // A4 @ 300 DPI (print-ready master resolution). All pages are rendered
+    // at this resolution; the PDF assembler fits them into either an A4 or
+    // US Letter MediaBox at export time (see buildImagePdf()).
+    private int $pageWidth  = 2480;
+    private int $pageHeight = 3508;
+    private const SOURCE_DPI = 300;
+
+    // PDF page boxes, in points (1/72 inch).
+    private const MEDIABOX_A4     = [595.28, 841.89];
+    private const MEDIABOX_LETTER = [612.0, 792.0];
+
     private string $disk;
 
     private const FAL_IMG2IMG_MODEL = 'fal-ai/flux/dev/image-to-image'; // Will be overridden by config
@@ -21,7 +29,16 @@ class StoryProductService
 
     public function __construct()
     {
-        $this->disk = config('filesystems.default', 'public');
+        // IMPORTANT: scene images (FalAiService::downloadAndStore) and every
+        // page/PDF built here are only ever retrievable via the 'public' disk
+        // (storage/app/public + the public/storage symlink), which is the
+        // only disk with a configured `url` resolver. Historically this used
+        // config('filesystems.default', 'public'), which silently picked up
+        // FILESYSTEM_DISK=local from .env. The 'local' disk has no `url`
+        // resolver, so every Storage::disk($this->disk)->url(...) call below
+        // threw RuntimeException and aborted book generation on the very
+        // first page. Hardcode 'public' so this can't regress via .env.
+        $this->disk = 'public';
     }
 
     // -------------------------------------------------------------------------
@@ -44,24 +61,25 @@ class StoryProductService
 
             // Cover page
             $coverImage = $images->first();
-            $coverPath  = $this->createStoryBookCover($tmpDir, $story, $coverImage?->url, $isRtl);
+            $coverPath  = $this->renderAtLogicalSize(fn () => $this->createStoryBookCover($tmpDir, $story, $coverImage?->url, $isRtl));
             $pages[]    = $coverPath;
             $coverStoragePath = "stories/{$story->id}/books/pages/story_cover.jpg";
             Storage::disk($this->disk)->put($coverStoragePath, file_get_contents($coverPath), ['visibility' => 'public']);
             $pageUrls[] = ['page' => 0, 'label' => 'Cover', 'url' => Storage::disk($this->disk)->url($coverStoragePath)];
 
             // Table of Contents
-            $tocPath = $this->createTableOfContents($tmpDir, $story, $scenes, $isRtl);
+            $tocPath = $this->renderAtLogicalSize(fn () => $this->createTableOfContents($tmpDir, $story, $scenes, $isRtl));
             $pages[] = $tocPath;
             $tocStoragePath = "stories/{$story->id}/books/pages/story_toc.jpg";
             Storage::disk($this->disk)->put($tocStoragePath, file_get_contents($tocPath), ['visibility' => 'public']);
             $pageUrls[] = ['page' => 1, 'label' => 'Contents', 'url' => Storage::disk($this->disk)->url($tocStoragePath)];
 
-            // Scene pages (up to 6)
+            // Scene pages — every scene continues the story, in order (no artificial cap)
             $pageNum = 2;
-            foreach ($scenes->sortKeys()->take(6) as $sceneNumber => $scene) {
+            foreach ($scenes->sortKeys() as $sceneNumber => $scene) {
                 $asset     = $images->get($sceneNumber);
-                $scenePath = $this->createMangaScenePage(
+                $layoutVariant = $sceneNumber % 2 === 0 ? 'diagonal' : 'classic';
+                $scenePath = $this->renderAtLogicalSize(fn () => $this->createMangaScenePage(
                     $tmpDir,
                     'scene_' . $sceneNumber,
                     $scene['title'] ?? (($isRtl ? 'الصفحة ' : 'Page ') . $sceneNumber),
@@ -69,8 +87,9 @@ class StoryProductService
                     $asset?->url,
                     $sceneNumber,
                     $pageNum + 1,
-                    $isRtl
-                );
+                    $isRtl,
+                    $layoutVariant
+                ));
                 $pages[] = $scenePath;
                 $sceneStoragePath = "stories/{$story->id}/books/pages/story_scene_{$sceneNumber}.jpg";
                 Storage::disk($this->disk)->put($sceneStoragePath, file_get_contents($scenePath), ['visibility' => 'public']);
@@ -83,22 +102,31 @@ class StoryProductService
             }
 
             // Ending page
-            $endPath = $this->createStoryBookEnding($tmpDir, $story, $isRtl, $pageNum + 1);
+            $endPath = $this->renderAtLogicalSize(fn () => $this->createStoryBookEnding($tmpDir, $story, $isRtl, $pageNum + 1));
             $pages[] = $endPath;
             $endStoragePath = "stories/{$story->id}/books/pages/story_ending.jpg";
             Storage::disk($this->disk)->put($endStoragePath, file_get_contents($endPath), ['visibility' => 'public']);
             $pageUrls[] = ['page' => $pageNum, 'label' => $isRtl ? 'النهاية' : 'The End', 'url' => Storage::disk($this->disk)->url($endStoragePath)];
 
-            $pdfBytes = $this->buildImagePdf($pages, $story->title ?? 'Story Book', 'StoryHero');
+            // Per-page single-page PDFs, so any one page can be downloaded/printed alone.
+            $pageUrls = $this->attachPerPagePdfs($pageUrls, $pages, "stories/{$story->id}/books/pages", $story->title ?? 'Story Book');
+
+            $pdfBytes = $this->buildImagePdf($pages, $story->title ?? 'Story Book', 'StoryHero', 'a4');
             $path     = "stories/{$story->id}/books/story_book.pdf";
             Storage::disk($this->disk)->put($path, $pdfBytes, ['visibility' => 'public']);
 
+            $letterBytes = $this->buildImagePdf($pages, $story->title ?? 'Story Book', 'StoryHero', 'letter');
+            $letterPath  = "stories/{$story->id}/books/story_book_letter.pdf";
+            Storage::disk($this->disk)->put($letterPath, $letterBytes, ['visibility' => 'public']);
+
             return $this->markCompleted($output, $path, [
-                'page_count' => count($pages),
-                'format'     => 'A4 portrait PDF — manga/comic style',
-                'viewer'     => 'web_story_book',
-                'rtl'        => $isRtl,
-                'page_urls'  => $pageUrls,
+                'page_count'  => count($pages),
+                'format'      => '300 DPI print-ready PDF — manga/comic style — A4 (default) & US Letter',
+                'viewer'      => 'web_story_book',
+                'rtl'         => $isRtl,
+                'page_urls'   => $pageUrls,
+                'letter_url'  => Storage::disk($this->disk)->url($letterPath),
+                'a4_url'      => Storage::disk($this->disk)->url($path),
             ]);
         } catch (\Throwable $e) {
             return $this->markFailed($output, $e);
@@ -131,14 +159,14 @@ class StoryProductService
             $useFal   = $this->falColoringEnabled();
 
             // Coloring book cover
-            $coverPath = $this->createColoringBookCover($tmpDir, $story);
+            $coverPath = $this->renderAtLogicalSize(fn () => $this->createColoringBookCover($tmpDir, $story));
             $pages[]   = $coverPath;
-            $coverStoragePath = "stories/{$story->id}/coloring/pages/cover.png";
+            $coverStoragePath = "stories/{$story->id}/coloring/pages/cover.jpg";
             Storage::disk($this->disk)->put($coverStoragePath, file_get_contents($coverPath), ['visibility' => 'public']);
             $pageUrls[] = ['page' => 0, 'label' => 'Cover', 'url' => Storage::disk($this->disk)->url($coverStoragePath)];
 
-            // Scene coloring pages
-            foreach ($images->take(6) as $asset) {
+            // Scene coloring pages — every scene gets its own page (no artificial cap)
+            foreach ($images as $asset) {
                 $scene        = $scenes->get($asset->scene_number);
                 $sceneCaption = $scene['title'] ?? ('Scene ' . $asset->scene_number);
 
@@ -146,12 +174,12 @@ class StoryProductService
                     ? $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption)
                     : $this->createLineArtPageViaGd($tmpDir, $asset, $sceneCaption, count($pages));
 
-                $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.png";
+                $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
                 Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
 
                 StoryAsset::updateOrCreate(
                     ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
-                    ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => $useFal ? self::COLORING_PROMPT : 'GD edge-detect line art.']
+                    ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => $useFal ? self::COLORING_PROMPT : 'Thresholded pure black/white line-art transform.']
                 );
 
                 $pageUrls[] = [
@@ -162,16 +190,25 @@ class StoryProductService
                 $pages[] = $lineArtPath;
             }
 
-            $pdfBytes = $this->buildImagePdf($pages, ($story->title ?? 'Coloring Book') . ' — Coloring Book', 'StoryHero');
+            // Per-page single-page PDFs, so any one page can be downloaded/printed alone.
+            $pageUrls = $this->attachPerPagePdfs($pageUrls, $pages, "stories/{$story->id}/coloring/pages", ($story->title ?? 'Coloring Book') . ' — Page');
+
+            $pdfBytes = $this->buildImagePdf($pages, ($story->title ?? 'Coloring Book') . ' — Coloring Book', 'StoryHero', 'a4');
             $path     = "stories/{$story->id}/books/coloring_book.pdf";
             Storage::disk($this->disk)->put($path, $pdfBytes, ['visibility' => 'public']);
 
+            $letterBytes = $this->buildImagePdf($pages, ($story->title ?? 'Coloring Book') . ' — Coloring Book', 'StoryHero', 'letter');
+            $letterPath  = "stories/{$story->id}/books/coloring_book_letter.pdf";
+            Storage::disk($this->disk)->put($letterPath, $letterBytes, ['visibility' => 'public']);
+
             return $this->markCompleted($output, $path, [
                 'page_count' => count($pages),
-                'format'     => 'Print-ready A4 portrait PDF — black & white coloring book',
-                'source'     => $useFal ? 'fal_ai_img2img' : 'gd_line_art_transform',
+                'format'     => '300 DPI print-ready PDF — pure black & white coloring book — A4 (default) & US Letter',
+                'source'     => $useFal ? 'fal_ai_img2img+threshold' : 'gd_threshold_line_art',
                 'child_safe' => true,
                 'page_urls'  => $pageUrls,
+                'letter_url' => Storage::disk($this->disk)->url($letterPath),
+                'a4_url'     => Storage::disk($this->disk)->url($path),
             ]);
         } catch (\Throwable $e) {
             return $this->markFailed($output, $e);
@@ -304,7 +341,7 @@ class StoryProductService
         $y += 75;
 
         $pageNum = 3;
-        foreach ($scenes->sortKeys()->take(6) as $sceneNumber => $scene) {
+        foreach ($scenes->sortKeys() as $sceneNumber => $scene) {
             $sceneTitle = $scene['title'] ?? (($rtl ? 'الصفحة ' : 'Scene ') . $sceneNumber);
             $this->drawText($canvas, $sceneTitle, $font, 30, 110, $y, $dark, $rtl, $this->pageWidth - 220);
             $this->drawText($canvas, (string)$pageNum, $font, 30, $this->pageWidth - 130, $y, $muted, false, 80);
@@ -325,7 +362,8 @@ class StoryProductService
 
     private function createMangaScenePage(
         string $tmpDir, string $name, string $sceneTitle, string $storyText,
-        ?string $imageUrl, int $sceneNumber, int $pageNumber, bool $rtl
+        ?string $imageUrl, int $sceneNumber, int $pageNumber, bool $rtl,
+        string $layoutVariant = 'classic'
     ): string {
         $canvas    = $this->blankPage([18, 12, 35]);
         $font      = $this->fontPath();
@@ -338,6 +376,7 @@ class StoryProductService
 
         $imageZoneH = (int)($this->pageHeight * 0.60);
         $textZoneY  = $imageZoneH + 1;
+        $isDiagonal = $layoutVariant === 'diagonal';
 
         // Full-bleed illustration (top 60%)
         if ($imageUrl) {
@@ -348,14 +387,35 @@ class StoryProductService
             }
         }
 
+        if ($isDiagonal) {
+            // Dynamic cinematic panel cut: a diagonal speed-line wedge slicing
+            // across the bottom of the illustration zone, comic-book style.
+            $wedgeColor = imagecolorallocatealpha($canvas, 15, 10, 30, 25);
+            imagefilledpolygon($canvas, [
+                0, $imageZoneH,
+                $this->pageWidth, (int)($imageZoneH * 0.82),
+                $this->pageWidth, $imageZoneH,
+            ], $wedgeColor);
+            imagecolordeallocate($canvas, $wedgeColor);
+            for ($i = 0; $i < 6; $i++) {
+                $lineY = (int)($imageZoneH * 0.86) + ($i * 14);
+                $lineColor = imagecolorallocatealpha($canvas, 255, 200, 60, 60 + $i * 6);
+                imageline($canvas, 0, $lineY, $this->pageWidth, (int)($lineY - $this->pageWidth * 0.03), $lineColor);
+                imagecolordeallocate($canvas, $lineColor);
+            }
+        }
+
         // Comic-style border around image zone
         imagesetthickness($canvas, 6);
         imagerectangle($canvas, 0, 0, $this->pageWidth - 1, $imageZoneH, $nearBlack);
         imagesetthickness($canvas, 1);
 
-        // Scene number badge
-        imagefilledellipse($canvas, 52, 52, 82, 82, $accent);
-        $this->drawText($canvas, (string)$sceneNumber, $font, 30, 30, 66, $white, false, 44);
+        // Scene number badge — alternates corners across the two layout variants
+        // for a less repetitive, more dynamic page-to-page rhythm.
+        $badgeX = $isDiagonal ? $this->pageWidth - 52 : 52;
+        imagefilledellipse($canvas, $badgeX, 52, 82, 82, $accent);
+        $badgeTextX = $isDiagonal ? $this->pageWidth - 74 : 30;
+        $this->drawText($canvas, (string)$sceneNumber, $font, 30, $badgeTextX, 66, $white, false, 44);
 
         // Text panel (bottom 40%)
         imagefilledrectangle($canvas, 0, $textZoneY, $this->pageWidth, $this->pageHeight, $textBg);
@@ -485,10 +545,10 @@ class StoryProductService
         // Footer with branding
         imagefilledrectangle($canvas, 0, $this->pageHeight - 80, $this->pageWidth, $this->pageHeight, $accent);
         $this->drawText($canvas, 'StoryHero Coloring Collection', $font, 28, 90, $this->pageHeight - 48, $white, false, $this->pageWidth - 180);
-        $this->drawText($canvas, 'Printable PDF • A4 Size', $font, 22, $this->pageWidth - 90, $this->pageHeight - 48, $white, false, 300);
+        $this->drawText($canvas, 'Printable PDF • A4 & US Letter • 300 DPI', $font, 22, $this->pageWidth - 90, $this->pageHeight - 48, $white, false, 300);
 
-        $path = "{$tmpDir}/coloring_cover.png";
-        imagepng($canvas, $path, 0);
+        $path = "{$tmpDir}/coloring_cover.jpg";
+        imagejpeg($canvas, $path, 95);
         imagedestroy($canvas);
         return $path;
     }
@@ -510,7 +570,7 @@ class StoryProductService
                 throw new \RuntimeException("Failed to download Fal.ai coloring result for scene {$asset->scene_number}");
             }
 
-            $path = "{$tmpDir}/coloring_fal_{$asset->scene_number}.png";
+            $path = "{$tmpDir}/coloring_fal_{$asset->scene_number}.jpg";
             return $this->buildColoringPageCanvas($response->body(), $tmpDir, $asset->scene_number, $caption, $path);
         } catch (\Throwable $e) {
             Log::warning("Fal.ai coloring transform failed for scene {$asset->scene_number}, falling back to GD", ['error' => $e->getMessage()]);
@@ -601,44 +661,42 @@ class StoryProductService
         $gray  = imagecolorallocate($page, 140, 140, 140);
         imagefill($page, 0, 0, $white);
 
+        $scaleH = (int)round(120 * ($this->pageWidth / 1240));
+
         // Bold outer border
-        imagesetthickness($page, 8);
+        imagesetthickness($page, 8 * ($this->pageWidth > 1500 ? 2 : 1));
         imagerectangle($page, 20, 20, $this->pageWidth - 20, $this->pageHeight - 20, $black);
         imagesetthickness($page, 2);
         imagerectangle($page, 30, 30, $this->pageWidth - 30, $this->pageHeight - 30, $gray);
         imagesetthickness($page, 1);
 
         // Page header
-        $this->drawText($page, 'COLOR THIS PAGE!', $this->fontPath(), 42, 70, 60, $black, false, $this->pageWidth - 140);
-        imagefilledrectangle($page, 70, 76, $this->pageWidth - 70, 82, $black);
-        
-        // Scene caption
-        $this->drawText($page, $caption, $this->fontPath(), 28, 70, 110, $gray, false, $this->pageWidth - 140);
+        $headerSize = (int)round(42 * ($this->pageWidth / 1240));
+        $this->drawText($page, 'COLOR THIS PAGE!', $this->fontPath(), $headerSize, 70, $scaleH / 2, $black, false, $this->pageWidth - 140);
+        imagefilledrectangle($page, 70, (int)($scaleH / 2 + 16), $this->pageWidth - 70, (int)($scaleH / 2 + 22), $black);
 
-        // Enhanced line art processing
-        imagefilter($source, IMG_FILTER_GRAYSCALE);
-        imagefilter($source, IMG_FILTER_CONTRAST, -50); // Increase contrast
-        imagefilter($source, IMG_FILTER_BRIGHTNESS, 10); // Slight brightness
-        
-        // Multiple edge detection passes for cleaner lines
-        $edges = imagecreatetruecolor(imagesx($source), imagesy($source));
-        imagecopy($edges, $source, 0, 0, 0, 0);
-        imagefilter($edges, IMG_FILTER_EDGEDETECT);
-        
-        // Copy both original and edges for cleaner line art
-        $this->copyImageIntoBox($page, $source, 60, 140, $this->pageWidth - 120, 1450, true);
-        $this->copyImageIntoBox($page, $edges, 60, 140, $this->pageWidth - 120, 1450, true);
-        imagedestroy($edges);
+        // Scene caption
+        $this->drawText($page, $caption, $this->fontPath(), (int)round(28 * ($this->pageWidth / 1240)), 70, (int)($scaleH / 2 + 50), $gray, false, $this->pageWidth - 140);
+
+        // Real black-and-white line-art conversion (hard threshold + bold outlines).
+        // Runs even on Fal.ai's img2img result — a diffusion model's output still
+        // contains anti-aliased grays, and the requirement is PURE black/white.
+        $lineArt = $this->convertToPureLineArt($source);
         imagedestroy($source);
 
-        // Page number
-        $this->drawText($page, (string)$sceneNumber, $this->fontPath(), 28, (int)($this->pageWidth / 2) - 12, $this->pageHeight - 50, $black, false, 64);
-        
-        // Footer
-        imagefilledrectangle($page, 0, $this->pageHeight - 70, $this->pageWidth, $this->pageHeight, $gray);
-        $this->drawText($page, 'StoryHero Coloring Book', $this->fontPath(), 22, 70, $this->pageHeight - 42, $black, false, $this->pageWidth - 140);
+        $imageZoneY = (int)($scaleH + 40);
+        $imageZoneH = $this->pageHeight - $imageZoneY - ($scaleH + 20);
+        $this->copyImageIntoBoxNearest($page, $lineArt, 60, $imageZoneY, $this->pageWidth - 120, $imageZoneH, true);
+        imagedestroy($lineArt);
 
-        imagepng($page, $outputPath, 0);
+        // Page number
+        $this->drawText($page, (string)$sceneNumber, $this->fontPath(), (int)round(28 * ($this->pageWidth / 1240)), (int)($this->pageWidth / 2) - 12, $this->pageHeight - (int)($scaleH * 0.4), $black, false, 64);
+
+        // Footer
+        imagefilledrectangle($page, 0, $this->pageHeight - $scaleH, $this->pageWidth, $this->pageHeight, $gray);
+        $this->drawText($page, 'StoryHero Coloring Book', $this->fontPath(), (int)round(22 * ($this->pageWidth / 1240)), 70, $this->pageHeight - (int)($scaleH * 0.6), $black, false, $this->pageWidth - 140);
+
+        imagejpeg($page, $outputPath, 95);
         imagedestroy($page);
         return $outputPath;
     }
@@ -656,49 +714,42 @@ class StoryProductService
         $gray  = imagecolorallocate($page, 140, 140, 140);
         imagefill($page, 0, 0, $white);
         $font = $this->fontPath();
+        $scaleH = (int)round(120 * ($this->pageWidth / 1240));
 
         // Bold outer border
-        imagesetthickness($page, 8);
+        imagesetthickness($page, 8 * ($this->pageWidth > 1500 ? 2 : 1));
         imagerectangle($page, 20, 20, $this->pageWidth - 20, $this->pageHeight - 20, $black);
         imagesetthickness($page, 2);
         imagerectangle($page, 30, 30, $this->pageWidth - 30, $this->pageHeight - 30, $gray);
         imagesetthickness($page, 1);
 
         // Page header
-        $this->drawText($page, 'COLOR THIS PAGE!', $font, 42, 70, 60, $black, false, $this->pageWidth - 140);
-        imagefilledrectangle($page, 70, 76, $this->pageWidth - 70, 82, $black);
-        
-        // Scene caption
-        $this->drawText($page, $caption, $font, 28, 70, 110, $gray, false, $this->pageWidth - 140);
+        $headerSize = (int)round(42 * ($this->pageWidth / 1240));
+        $this->drawText($page, 'COLOR THIS PAGE!', $font, $headerSize, 70, $scaleH / 2, $black, false, $this->pageWidth - 140);
+        imagefilledrectangle($page, 70, (int)($scaleH / 2 + 16), $this->pageWidth - 70, (int)($scaleH / 2 + 22), $black);
 
-        // Enhanced GD edge detection with multiple passes
-        imagefilter($source, IMG_FILTER_GRAYSCALE);
-        imagefilter($source, IMG_FILTER_EDGEDETECT);
-        imagefilter($source, IMG_FILTER_NEGATE);
-        imagefilter($source, IMG_FILTER_CONTRAST, -55);
-        imagefilter($source, IMG_FILTER_BRIGHTNESS, 20);
-        
-        // Additional edge detection pass for cleaner lines
-        $edges = imagecreatetruecolor(imagesx($source), imagesy($source));
-        imagecopy($edges, $source, 0, 0, 0, 0);
-        imagefilter($edges, IMG_FILTER_EDGEDETECT);
-        imagefilter($edges, IMG_FILTER_CONTRAST, -30);
-        
-        // Combine both edge detection results
-        $this->copyImageIntoBox($page, $source, 60, 140, $this->pageWidth - 120, 1450, true);
-        $this->copyImageIntoBox($page, $edges, 60, 140, $this->pageWidth - 120, 1450, true);
-        imagedestroy($edges);
+        // Scene caption
+        $this->drawText($page, $caption, $font, (int)round(28 * ($this->pageWidth / 1240)), 70, (int)($scaleH / 2 + 50), $gray, false, $this->pageWidth - 140);
+
+        // Real black-and-white line-art conversion (hard threshold + bold outlines) —
+        // no gray tones, no shading; only pure black lines on a pure white page.
+        $lineArt = $this->convertToPureLineArt($source);
         imagedestroy($source);
 
-        // Page number
-        $this->drawText($page, (string)$pageNumber, $font, 28, (int)($this->pageWidth / 2) - 12, $this->pageHeight - 50, $black, false, 64);
-        
-        // Footer
-        imagefilledrectangle($page, 0, $this->pageHeight - 70, $this->pageWidth, $this->pageHeight, $gray);
-        $this->drawText($page, 'StoryHero Coloring Book', $font, 22, 70, $this->pageHeight - 42, $black, false, $this->pageWidth - 140);
+        $imageZoneY = (int)($scaleH + 40);
+        $imageZoneH = $this->pageHeight - $imageZoneY - ($scaleH + 20);
+        $this->copyImageIntoBoxNearest($page, $lineArt, 60, $imageZoneY, $this->pageWidth - 120, $imageZoneH, true);
+        imagedestroy($lineArt);
 
-        $path = "{$tmpDir}/coloring_gd_{$asset->scene_number}.png";
-        imagepng($page, $path, 0);
+        // Page number
+        $this->drawText($page, (string)$pageNumber, $font, (int)round(28 * ($this->pageWidth / 1240)), (int)($this->pageWidth / 2) - 12, $this->pageHeight - (int)($scaleH * 0.4), $black, false, 64);
+
+        // Footer
+        imagefilledrectangle($page, 0, $this->pageHeight - $scaleH, $this->pageWidth, $this->pageHeight, $gray);
+        $this->drawText($page, 'StoryHero Coloring Book', $font, (int)round(22 * ($this->pageWidth / 1240)), 70, $this->pageHeight - (int)($scaleH * 0.6), $black, false, $this->pageWidth - 140);
+
+        $path = "{$tmpDir}/coloring_gd_{$asset->scene_number}.jpg";
+        imagejpeg($page, $path, 95);
         imagedestroy($page);
         return $path;
     }
@@ -716,6 +767,57 @@ class StoryProductService
         return $canvas;
     }
 
+    /**
+     * Runs a page-builder closure (one of the createStoryBookCover /
+     * createTableOfContents / createMangaScenePage / createStoryBookEnding /
+     * createColoringBookCover methods) at the original tuned 1240x1754
+     * layout resolution, then upscales the finished page to the real
+     * print resolution (300 DPI). This lets all the existing, carefully
+     * positioned text/border coordinates keep working unchanged while the
+     * exported page still meets the 300 DPI print-ready requirement.
+     *
+     * NOT used for the coloring-page illustration builders — those render
+     * directly at full resolution and place pure-black/white line art with
+     * nearest-neighbor scaling, because resampled upscaling would
+     * reintroduce anti-aliased gray pixels into the line art.
+     */
+    private function renderAtLogicalSize(callable $builder): string
+    {
+        $realW = $this->pageWidth;
+        $realH = $this->pageHeight;
+        $this->pageWidth  = 1240;
+        $this->pageHeight = 1754;
+        try {
+            $path = $builder();
+        } finally {
+            $this->pageWidth  = $realW;
+            $this->pageHeight = $realH;
+        }
+        return $this->upscaleImageFile($path, $realW, $realH);
+    }
+
+    private function upscaleImageFile(string $path, int $targetW, int $targetH): string
+    {
+        $bytes = file_get_contents($path);
+        $src   = @imagecreatefromstring($bytes);
+        if (!$src) {
+            return $path;
+        }
+        $srcW  = imagesx($src);
+        $srcH  = imagesy($src);
+        $final = imagecreatetruecolor($targetW, $targetH);
+        imagecopyresampled($final, $src, 0, 0, 0, 0, $targetW, $targetH, $srcW, $srcH);
+        imagedestroy($src);
+
+        if (str_ends_with(strtolower($path), '.png')) {
+            imagepng($final, $path, 0);
+        } else {
+            imagejpeg($final, $path, 95);
+        }
+        imagedestroy($final);
+        return $path;
+    }
+
     private function copyImageIntoBox(\GdImage $canvas, \GdImage $source, int $x, int $y, int $boxW, int $boxH, bool $contain = false): void
     {
         $srcW  = imagesx($source);
@@ -726,6 +828,90 @@ class StoryProductService
         $dstX  = $x + (int)round(($boxW - $newW) / 2);
         $dstY  = $y + (int)round(($boxH - $newH) / 2);
         imagecopyresampled($canvas, $source, $dstX, $dstY, 0, 0, $newW, $newH, $srcW, $srcH);
+    }
+
+    /**
+     * Same as copyImageIntoBox() but uses nearest-neighbor scaling
+     * (imagecopyresized) instead of resampled/interpolated scaling.
+     * Pure black/white line art MUST be placed with this — resampled
+     * scaling reintroduces anti-aliased gray pixels along every line,
+     * which violates the "no gray tones" coloring-book requirement.
+     */
+    private function copyImageIntoBoxNearest(\GdImage $canvas, \GdImage $source, int $x, int $y, int $boxW, int $boxH, bool $contain = true): void
+    {
+        $srcW  = imagesx($source);
+        $srcH  = imagesy($source);
+        $scale = $contain ? min($boxW / $srcW, $boxH / $srcH) : max($boxW / $srcW, $boxH / $srcH);
+        $newW  = max(1, (int)round($srcW * $scale));
+        $newH  = max(1, (int)round($srcH * $scale));
+        $dstX  = $x + (int)round(($boxW - $newW) / 2);
+        $dstY  = $y + (int)round(($boxH - $newH) / 2);
+        imagecopyresized($canvas, $source, $dstX, $dstY, 0, 0, $newW, $newH, $srcW, $srcH);
+    }
+
+    /**
+     * Converts any source image (photo, illustration, or an AI img2img
+     * result) into genuine pure-black-and-white coloring-book line art:
+     * no gray tones, no shading, bold thickened outlines.
+     *
+     * This runs unconditionally — even on Fal.ai output — because a
+     * diffusion model's "line art" still contains anti-aliased grays at
+     * full resolution; only an explicit hard threshold guarantees the
+     * "pure black and white only" requirement actually holds.
+     *
+     * Processing happens on a small working canvas (not the 300 DPI page
+     * canvas) because the per-pixel threshold/dilation passes are O(w*h)
+     * and would be far too slow at print resolution. The result is then
+     * placed onto the final page with nearest-neighbor scaling to keep
+     * every pixel purely black or white.
+     */
+    private function convertToPureLineArt(\GdImage $source, int $workingWidth = 1100): \GdImage
+    {
+        $srcW  = imagesx($source);
+        $srcH  = imagesy($source);
+        $workW = min($workingWidth, $srcW);
+        $workH = max(1, (int)round($srcH * ($workW / $srcW)));
+
+        $work = imagecreatetruecolor($workW, $workH);
+        imagecopyresampled($work, $source, 0, 0, 0, 0, $workW, $workH, $srcW, $srcH);
+
+        imagefilter($work, IMG_FILTER_GRAYSCALE);
+        imagefilter($work, IMG_FILTER_EDGEDETECT);
+        imagefilter($work, IMG_FILTER_NEGATE);      // dark edges on a light background
+        imagefilter($work, IMG_FILTER_CONTRAST, -15);
+        imagefilter($work, IMG_FILTER_SMOOTH, 3);    // join hairline gaps before thresholding
+
+        // --- Hard threshold: every pixel becomes PURE black or PURE white ---
+        $binary = imagecreatetruecolor($workW, $workH);
+        $black  = imagecolorallocate($binary, 0, 0, 0);
+        $white  = imagecolorallocate($binary, 255, 255, 255);
+        imagefilledrectangle($binary, 0, 0, $workW, $workH, $white);
+
+        $threshold = 205;
+        for ($y = 0; $y < $workH; $y++) {
+            for ($x = 0; $x < $workW; $x++) {
+                if ((imagecolorat($work, $x, $y) & 0xFF) < $threshold) {
+                    imagesetpixel($binary, $x, $y, $black);
+                }
+            }
+        }
+        imagedestroy($work);
+
+        // --- Dilate: thicken 1px edge-detect lines into bold, crayon/marker-friendly outlines ---
+        $thickness = max(2, (int)round($workW / 400));
+        $bold = imagecreatetruecolor($workW, $workH);
+        imagefilledrectangle($bold, 0, 0, $workW, $workH, $white);
+        $boldBlack = imagecolorallocate($bold, 0, 0, 0);
+        for ($y = 0; $y < $workH; $y++) {
+            for ($x = 0; $x < $workW; $x++) {
+                if ((imagecolorat($binary, $x, $y) & 0xFF) === 0) {
+                    imagefilledellipse($bold, $x, $y, $thickness, $thickness, $boldBlack);
+                }
+            }
+        }
+        imagedestroy($binary);
+
+        return $bold;
     }
 
     private function drawWrappedText(\GdImage $canvas, string $text, string $font, int $size, int $x, int $y, int $color, bool $rtl, int $maxWidth, float $lineHeight): void
@@ -847,8 +1033,39 @@ class StoryProductService
     // PDF Builder
     // =========================================================================
 
-    private function buildImagePdf(array $imagePaths, string $title = 'StoryHero Book', string $author = 'StoryHero'): string
+    /**
+     * Builds print-ready single-page PDFs for every page (in addition to the
+     * combined book PDF) and attaches their URL to each page_urls entry as
+     * `pdf_url`, so any individual page can be downloaded/printed on its own.
+     */
+    private function attachPerPagePdfs(array $pageUrls, array $pages, string $storagePrefix, string $titlePrefix): array
     {
+        foreach ($pageUrls as $i => $entry) {
+            if (!isset($pages[$i])) {
+                continue;
+            }
+            $pdfBytes = $this->buildImagePdf([$pages[$i]], $titlePrefix . ' ' . $entry['page'], 'StoryHero', 'a4');
+            $pdfPath  = "{$storagePrefix}/page_{$entry['page']}.pdf";
+            Storage::disk($this->disk)->put($pdfPath, $pdfBytes, ['visibility' => 'public']);
+            $pageUrls[$i]['pdf_url'] = Storage::disk($this->disk)->url($pdfPath);
+        }
+        return $pageUrls;
+    }
+
+    /**
+     * Assembles a print-ready, multi-page PDF from a list of full-bleed page
+     * images. Every image is placed centered and "contain"-fit inside the
+     * chosen page's MediaBox (A4 or US Letter), preserving its aspect ratio —
+     * so switching format never stretches or distorts a page.
+     *
+     * All page images MUST be JPEG (DCTDecode is the only image filter this
+     * builder emits — a raw PNG file's bytes are NOT valid FlateDecode image
+     * sample data, so PNG must never reach this method).
+     */
+    private function buildImagePdf(array $imagePaths, string $title = 'StoryHero Book', string $author = 'StoryHero', string $pageFormat = 'a4'): string
+    {
+        [$mbW, $mbH] = $pageFormat === 'letter' ? self::MEDIABOX_LETTER : self::MEDIABOX_A4;
+
         $objects    = [];
         $pageIds    = [];
         $imageIds   = [];
@@ -874,19 +1091,41 @@ class StoryProductService
 
         foreach ($imagePaths as $index => $path) {
             [$imgW, $imgH] = getimagesize($path);
-            $imageData     = file_get_contents($path);
-            $isPng         = str_ends_with(strtolower($path), '.png');
-            $filter        = $isPng ? '/FlateDecode' : '/DCTDecode';
-            $colorSpace    = '/DeviceRGB';
-            $imageId       = $imageIds[$index];
-            $contentId     = $contentIds[$index];
-            $pageId        = $pageIds[$index];
-            $name          = 'Im' . ($index + 1);
 
-            $objects[$imageId]   = "<< /Type /XObject /Subtype /Image /Width {$imgW} /Height {$imgH} /ColorSpace {$colorSpace} /BitsPerComponent 8 /Filter {$filter} /Length " . strlen($imageData) . " >>\nstream\n" . $imageData . "\nendstream";
-            $content             = "q\n595 0 0 842 0 0 cm\n/{$name} Do\nQ";
+            // Guard: if anything upstream ever hands this a PNG, convert it
+            // to JPEG on the fly rather than emit an invalid PDF image stream.
+            if (str_ends_with(strtolower($path), '.png')) {
+                $converted = $path . '.jpg';
+                $im = imagecreatefrompng($path);
+                imagejpeg($im, $converted, 95);
+                imagedestroy($im);
+                $path = $converted;
+                [$imgW, $imgH] = getimagesize($path);
+            }
+
+            $imageData  = file_get_contents($path);
+            $colorSpace = '/DeviceRGB';
+            $imageId    = $imageIds[$index];
+            $contentId  = $contentIds[$index];
+            $pageId     = $pageIds[$index];
+            $name       = 'Im' . ($index + 1);
+
+            // Contain-fit the image inside the page's MediaBox, centered,
+            // preserving aspect ratio (never stretches/distorts a page).
+            $imgAspect = $imgW / $imgH;
+            $drawW = $mbW;
+            $drawH = $drawW / $imgAspect;
+            if ($drawH > $mbH) {
+                $drawH = $mbH;
+                $drawW = $drawH * $imgAspect;
+            }
+            $offX = ($mbW - $drawW) / 2;
+            $offY = ($mbH - $drawH) / 2;
+
+            $objects[$imageId]   = "<< /Type /XObject /Subtype /Image /Width {$imgW} /Height {$imgH} /ColorSpace {$colorSpace} /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($imageData) . " >>\nstream\n" . $imageData . "\nendstream";
+            $content             = sprintf("q\n%.2F 0 0 %.2F %.2F %.2F cm\n/%s Do\nQ", $drawW, $drawH, $offX, $offY, $name);
             $objects[$contentId] = "<< /Length " . strlen($content) . " >>\nstream\n{$content}\nendstream";
-            $objects[$pageId]    = "<< /Type /Page /Parent {$pagesId} 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /{$name} {$imageId} 0 R >> >> /Contents {$contentId} 0 R >>";
+            $objects[$pageId]    = sprintf("<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %.2F %.2F] /Resources << /XObject << /%s %d 0 R >> >> /Contents %d 0 R >>", $pagesId, $mbW, $mbH, $name, $imageId, $contentId);
         }
 
         ksort($objects);

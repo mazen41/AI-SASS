@@ -438,6 +438,18 @@ export default function StoryViewPage() {
 
 
 
+  const LetterDownloadLink = ({ output }: { output?: StoryOutput }) => {
+
+    const letterUrl = output?.metadata?.letter_url as string | undefined;
+
+    if (!letterUrl || output?.status !== 'completed') return null;
+
+    return <a className="btn btn-ghost" href={letterUrl} download style={{ display: 'inline-block' }}>⬇️ US Letter PDF</a>;
+
+  };
+
+
+
   return (
 
     <div className="site-shell" style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -639,10 +651,16 @@ export default function StoryViewPage() {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
 
-                  <div><h3><span className="gradient-text">📚 Interactive Story Book</span></h3><p style={{ color: 'var(--text-3)', marginTop: '0.35rem' }}>Interactive flipbook with page animations, narration sync, and {isRtl ? 'Arabic RTL' : 'English'} layout.</p></div>
+                  <div><h3><span className="gradient-text">📚 Interactive Story Book</span></h3><p style={{ color: 'var(--text-3)', marginTop: '0.35rem' }}>300 DPI print-ready manga/comic-style pages with dynamic panel layouts, narration sync, and {isRtl ? 'Arabic RTL' : 'English'} layout.</p></div>
 
-                  {flipbookStatus === 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7, fontSize: '0.85rem' }}>📖 Interactive Viewer</span>}
-                  {flipbookStatus !== 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7 }}>{flipbookStatus === 'failed' ? 'Generation failed' : 'Generating…'}</span>}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+
+                    {flipbookStatus === 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7, fontSize: '0.85rem' }}>📖 Interactive Viewer</span>}
+                    {flipbookStatus !== 'completed' && <span className="btn btn-ghost" style={{ opacity: 0.7 }}>{flipbookStatus === 'failed' ? 'Generation failed' : 'Generating…'}</span>}
+                    <DownloadButton output={storyBook} label="Download PDF (A4)" />
+                    <LetterDownloadLink output={storyBook} />
+
+                  </div>
 
                 </div>
 
@@ -665,17 +683,33 @@ export default function StoryViewPage() {
                         </div>
                         <div style={{ padding: '0.75rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
                           <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>{page.label}</div>
-                          <a href={page.url} download={`story_page_${page.page}.jpg`} style={{ 
-                            display: 'block', 
-                            textAlign: 'center', 
-                            fontSize: '0.75rem', 
-                            color: 'var(--primary)', 
-                            textDecoration: 'none',
-                            padding: '0.5rem 0',
-                            borderRadius: 'var(--r-sm)'
-                          }}>
-                            ⬇️ Download Page
-                          </a>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <a href={page.url} download={`story_page_${page.page}.jpg`} style={{
+                              flex: 1,
+                              textAlign: 'center',
+                              fontSize: '0.75rem',
+                              color: 'var(--primary)',
+                              textDecoration: 'none',
+                              padding: '0.5rem 0',
+                              borderRadius: 'var(--r-sm)'
+                            }}>
+                              ⬇️ Image
+                            </a>
+                            {page.pdf_url && (
+                              <a href={page.pdf_url} download={`story_page_${page.page}.pdf`} style={{
+                                flex: 1,
+                                textAlign: 'center',
+                                fontSize: '0.75rem',
+                                color: 'var(--primary)',
+                                textDecoration: 'none',
+                                padding: '0.5rem 0',
+                                borderRadius: 'var(--r-sm)',
+                                border: '1px solid var(--border)'
+                              }}>
+                                ⬇️ PDF
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -718,9 +752,15 @@ export default function StoryViewPage() {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
 
-                  <div><h3><span className="gradient-text">🖍️ Printable Coloring Book</span></h3><p style={{ color: 'var(--text-3)', marginTop: '0.35rem' }}>Print-ready A4 pages with clean black-and-white outlines for each scene.</p></div>
+                  <div><h3><span className="gradient-text">🖍️ Printable Coloring Book</span></h3><p style={{ color: 'var(--text-3)', marginTop: '0.35rem' }}>Print-ready 300 DPI pages with pure black-and-white bold outlines for each scene.</p></div>
 
-                  <DownloadButton output={coloringBook} label="Download PDF" />
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+
+                    <DownloadButton output={coloringBook} label="Download PDF (A4)" />
+
+                    <LetterDownloadLink output={coloringBook} />
+
+                  </div>
 
                 </div>
 
@@ -743,17 +783,33 @@ export default function StoryViewPage() {
                         </div>
                         <div style={{ padding: '0.75rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
                           <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>{page.label}</div>
-                          <a href={page.url} download={`coloring_page_${page.page}.png`} style={{ 
-                            display: 'block', 
-                            textAlign: 'center', 
-                            fontSize: '0.75rem', 
-                            color: 'var(--primary)', 
-                            textDecoration: 'none',
-                            padding: '0.5rem 0',
-                            borderRadius: 'var(--r-sm)'
-                          }}>
-                            ⬇️ Download Page
-                          </a>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <a href={page.url} download={`coloring_page_${page.page}.jpg`} style={{
+                              flex: 1,
+                              textAlign: 'center',
+                              fontSize: '0.75rem',
+                              color: 'var(--primary)',
+                              textDecoration: 'none',
+                              padding: '0.5rem 0',
+                              borderRadius: 'var(--r-sm)'
+                            }}>
+                              ⬇️ Image
+                            </a>
+                            {page.pdf_url && (
+                              <a href={page.pdf_url} download={`coloring_page_${page.page}.pdf`} style={{
+                                flex: 1,
+                                textAlign: 'center',
+                                fontSize: '0.75rem',
+                                color: 'var(--primary)',
+                                textDecoration: 'none',
+                                padding: '0.5rem 0',
+                                borderRadius: 'var(--r-sm)',
+                                border: '1px solid var(--border)'
+                              }}>
+                                ⬇️ PDF
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

@@ -70,7 +70,11 @@ class ElevenLabsService
             throw new \RuntimeException('ElevenLabs returned empty or invalid audio response');
         }
 
-        $disk = config('filesystems.default', 'public');
+        // Hardcoded 'public' — the 'local' disk (Laravel's default, and what
+        // FILESYSTEM_DISK=local resolves to) has no `url` resolver configured
+        // and throws on ->url(), which previously broke narration generation
+        // whenever config('filesystems.default') picked that up from .env.
+        $disk = 'public';
         $path = "stories/{$storyId}/narration_{$language}.mp3";
 
         Storage::disk($disk)->put($path, $audioContent);

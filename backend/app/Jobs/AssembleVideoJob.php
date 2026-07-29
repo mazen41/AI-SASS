@@ -101,7 +101,10 @@ class AssembleVideoJob implements ShouldQueue
 
     private function assembleVideo($story, $videoAssets, string $narrationUrl, MediaDurationService $mediaDuration): string
     {
-        $disk   = config('filesystems.default', 'public');
+        // Hardcoded 'public' — see StoryProductService::__construct() for
+        // why config('filesystems.default') must never be used here (it can
+        // resolve to 'local' from .env, whose disk has no `url` resolver).
+        $disk   = 'public';
         $tmpDir = storage_path('app/tmp/story_' . $story->id . '_' . time());
         @mkdir($tmpDir, 0755, true);
 

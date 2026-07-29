@@ -41,7 +41,9 @@ class MediaDurationService
 
     public function resolveLocalPath(string $url, ?string $disk = null): string
     {
-        $disk    = $disk ?? config('filesystems.default', 'public');
+        // Hardcoded 'public' by default — see StoryProductService::__construct()
+        // for why config('filesystems.default') must never be used here.
+        $disk    = $disk ?? 'public';
         $baseUrl = rtrim(Storage::disk($disk)->url(''), '/');
 
         if (str_starts_with($url, $baseUrl)) {

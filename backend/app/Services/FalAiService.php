@@ -95,7 +95,8 @@ class FalAiService
             // Always upload photos to Fal storage to avoid accessibility issues
             // This ensures fal.ai can always access the reference image regardless of network/firewall
             Log::info('Uploading photo to Fal storage for reliable access', ['original_url' => $photoUrl]);
-            $disk      = config('filesystems.default', 'public');
+            // Always 'public' — see downloadAndStore() below for why.
+            $disk      = 'public';
             $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
             $relative  = ltrim(substr($photoUrl, strlen($baseUrl)), '/');
             $localPath = Storage::disk($disk)->path($relative);
@@ -337,7 +338,14 @@ class FalAiService
             throw new \RuntimeException('Failed to download asset from: ' . $url);
         }
 
-        $disk = config('filesystems.default', 'public');
+        // Hardcoded to 'public': this is the only disk with a configured
+        // `url` resolver (see config/filesystems.php). Using
+        // config('filesystems.default') here previously picked up
+        // FILESYSTEM_DISK=local from .env, whose disk has no `url` resolver
+        // and throws RuntimeException on ->url() — silently breaking asset
+        // storage whenever local dev/deploy left FILESYSTEM_DISK unset to
+        // its Laravel default of 'local'.
+        $disk = 'public';
         Storage::disk($disk)->put($storagePath, $response->body());
 
         return Storage::disk($disk)->url($storagePath);

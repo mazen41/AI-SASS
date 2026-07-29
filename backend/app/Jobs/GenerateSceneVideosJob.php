@@ -83,7 +83,9 @@ class GenerateSceneVideosJob implements ShouldQueue
 
                 $imageUrlForFal = $asset->url;
                 if (!$this->isPublicFalUrl($imageUrlForFal)) {
-                    $disk      = config('filesystems.default', 'public');
+                    // Hardcoded 'public' — see StoryProductService::__construct()
+                    // for why config('filesystems.default') must never be used here.
+                    $disk      = 'public';
                     $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
                     $relative  = ltrim(substr($imageUrlForFal, strlen($baseUrl)), '/');
                     $localPath = Storage::disk($disk)->path($relative);
