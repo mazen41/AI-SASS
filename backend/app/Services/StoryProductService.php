@@ -156,7 +156,7 @@ class StoryProductService
             $pages    = [];
             $pageUrls = [];
             $falAi    = app(FalAiService::class);
-            $useFal   = $this->falColoringEnabled();
+            $useFal   = false; // Force GD method for better line art control
 
             // Coloring book cover
             $coverPath = $this->renderAtLogicalSize(fn () => $this->createColoringBookCover($tmpDir, $story));
@@ -882,29 +882,30 @@ class StoryProductService
         $work = imagecreatetruecolor($workW, $workH);
         imagecopyresampled($work, $source, 0, 0, 0, 0, $workW, $workH, $srcW, $srcH);
 
+        // Improved line art conversion with better threshold
         imagefilter($work, IMG_FILTER_GRAYSCALE);
-        imagefilter($work, IMG_FILTER_EDGEDETECT);
-        imagefilter($work, IMG_FILTER_NEGATE);      // dark edges on a light background
-        imagefilter($work, IMG_FILTER_CONTRAST, -15);
-        imagefilter($work, IMG_FILTER_SMOOTH, 3);    // join hairline gaps before thresholding
+        imagefilter($work, IMG_FILTER_CONTRAST, -50); // Increase contrast more
+        imagefilter($work, IMG_FILTER_BRIGHTNESS, 20); // Brighten to reduce dark areas
 
-        // --- Hard threshold: every pixel becomes PURE black or PURE white ---
+        // Hard threshold with more conservative value
         $binary = imagecreatetruecolor($workW, $workH);
         $black  = imagecolorallocate($binary, 0, 0, 0);
         $white  = imagecolorallocate($binary, 255, 255, 255);
         imagefilledrectangle($binary, 0, 0, $workW, $workH, $white);
 
-        $threshold = 205;
+        $threshold = 180; // Lower threshold to catch more detail
         for ($y = 0; $y < $workH; $y++) {
             for ($x = 0; $x < $workW; $x++) {
-                if ((imagecolorat($work, $x, $y) & 0xFF) < $threshold) {
+                $color = imagecolorat($work, $x, $y);
+                $gray = ($color >> 16) & 0xFF; // Get red channel as grayscale value
+                if ($gray < $threshold) {
                     imagesetpixel($binary, $x, $y, $black);
                 }
             }
         }
         imagedestroy($work);
 
-        // --- Dilate: thicken 1px edge-detect lines into bold, crayon/marker-friendly outlines ---
+        // Dilate lines for better coloring
         $thickness = max(2, (int)round($workW / 400));
         $bold = imagecreatetruecolor($workW, $workH);
         imagefilledrectangle($bold, 0, 0, $workW, $workH, $white);
