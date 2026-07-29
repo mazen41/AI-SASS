@@ -878,13 +878,29 @@ class StoryProductService
         $image = $image->greyscale()          // Convert to grayscale
             ->contrast(50)                   // High contrast for clean lines
             ->brightness(20)                 // Brighten to reduce noise
-            ->sharpen(5)                     // Sharpen edges
-            ->pixelate(1)                    // Remove noise
-            ->limitColors(2);                // Force pure black/white
+            ->sharpen(5);                    // Sharpen edges
         
-        // Convert back to GD image
+        // Convert back to GD image for threshold processing
         $imageData = $image->toJpeg();
         $lineArt = imagecreatefromstring($imageData);
+        
+        // Apply threshold to force pure black/white
+        $width = imagesx($lineArt);
+        $height = imagesy($lineArt);
+        
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $color = imagecolorat($lineArt, $x, $y);
+                $gray = ($color >> 8) & 0xFF;
+                
+                // Threshold for black/white
+                if ($gray < 128) {
+                    imagesetpixel($lineArt, $x, $y, 0x000000); // Black
+                } else {
+                    imagesetpixel($lineArt, $x, $y, 0xFFFFFF); // White
+                }
+            }
+        }
         
         return $lineArt;
     }
