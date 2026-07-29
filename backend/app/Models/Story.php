@@ -249,8 +249,12 @@ class Story extends Model
         });
 
 
-
-        $this->refresh();
+            // Safely refresh the model if it still exists
+            try {
+                $this->refresh();
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                // Story was deleted, ignore refresh error
+            }
 
     }
 
