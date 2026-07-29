@@ -1,0 +1,17 @@
+[Unit]
+Description=StoryHero Queue Worker
+After=network.target redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/ai-sass/backend
+ExecStart=/usr/bin/php /var/www/ai-sass/backend/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --timeout=3600
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/storyhero-worker.log
+StandardError=append:/var/log/storyhero-worker-error.log
+
+[Install]
+WantedBy=multi-user.target

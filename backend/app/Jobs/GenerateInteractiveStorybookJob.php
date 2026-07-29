@@ -16,7 +16,7 @@ class GenerateInteractiveStorybookJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
-    public int $timeout = 3600; // 60 minutes - generating many illustrations
+    public int $timeout = 420; // 7 minutes - reduced after removing background generation
     public array $backoff = [60, 180, 300];
 
     public function __construct(public readonly int $storyId) {}
@@ -62,16 +62,10 @@ class GenerateInteractiveStorybookJob implements ShouldQueue
 
             Log::info("Generated all storybook illustrations", ['story_id' => $this->storyId]);
 
-            // Step 3: Generate backgrounds only (skip decorative elements - too slow)
-            Log::info('STEP 6 START: Generate backgrounds loop', ['story_id' => $this->storyId, 'page_count' => count($story->storybookPages)]);
-            foreach ($story->storybookPages as $page) {
-                Log::info('STEP 6.1 START: generateBackground() for page', ['story_id' => $this->storyId, 'page_number' => $page->page_number]);
-                $illustrationService->generateBackground($page);
-                Log::info('STEP 6.1 COMPLETE: generateBackground() returned', ['story_id' => $this->storyId, 'page_number' => $page->page_number]);
-            }
-            Log::info('STEP 6 COMPLETE: All backgrounds generated', ['story_id' => $this->storyId]);
-
-            Log::info("Generated backgrounds", ['story_id' => $this->storyId]);
+            // Step 3: Skip background generation to improve performance
+            // Background generation was taking 6+ minutes for 16 pages via Fal.ai API
+            // Removed this step to reduce total time from 12+ minutes to ~6 minutes
+            Log::info('STEP 6 SKIPPED: Background generation disabled for performance', ['story_id' => $this->storyId]);
 
             // Step 4: Update story with storybook URL
             Log::info('STEP 7 START: Update storybook_url', ['story_id' => $this->storyId]);

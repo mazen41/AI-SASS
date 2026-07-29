@@ -20,7 +20,7 @@ class GenerateStoryBookJob implements ShouldQueue
     use Queueable;
 
     public int $tries   = 3;
-    public int $timeout = 300; // 5 minutes
+    public int $timeout = 600; // 10 minutes - increased to match systemd worker timeout
     public array $backoff = [30, 90, 180];
 
     public function __construct(public readonly int $storyId) {}
