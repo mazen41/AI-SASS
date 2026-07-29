@@ -872,7 +872,7 @@ class StoryProductService
      * placed onto the final page with nearest-neighbor scaling to keep
      * every pixel purely black or white.
      */
-    private function convertToPureLineArt(\GdImage $source, int $workingWidth = 1100): \GdImage
+    private function convertToPureLineArt(\GdImage $source, int $workingWidth = 800): \GdImage
     {
         $srcW  = imagesx($source);
         $srcH  = imagesy($source);
@@ -882,42 +882,89 @@ class StoryProductService
         $work = imagecreatetruecolor($workW, $workH);
         imagecopyresampled($work, $source, 0, 0, 0, 0, $workW, $workH, $srcW, $srcH);
 
-        // Simple black and white conversion using GD filters
-        imagefilter($work, IMG_FILTER_GRAYSCALE);     // Convert to grayscale
-        imagefilter($work, IMG_FILTER_CONTRAST, -100); // Maximum contrast for B&W
-        imagefilter($work, IMG_FILTER_BRIGHTNESS, 30);  // Slight brightness to reduce noise
+        // Pre-smooth BEFORE edge detection. Without this, every shading
+        // gradient / texture speckle in the source illustration gets picked
+        // up as a spurious "edge", which is what makes edge-detect line art
+        // look noisy/scratchy instead of clean like a hand-drawn coloring
+        // page. Two passes of Gaussian blur remove that high-frequency
+        // texture while leaving real shape boundaries intact.
+        imagefilter($work, IMG_FILTER_GAUSSIAN_BLUR);
+        imagefilter($work, IMG_FILTER_GAUSSIAN_BLUR);
 
-        // Simple threshold for pure black/white
+        // Better line art conversion with edge detection
+        imagefilter($work, IMG_FILTER_GRAYSCALE);
+        imagefilter($work, IMG_FILTER_EDGEDETECT);  // Detect edges/lines
+        imagefilter($work, IMG_FILTER_NEGATE);      // Make edges black on white
+        imagefilter($work, IMG_FILTER_CONTRAST, -50); // Boost contrast
+        imagefilter($work, IMG_FILTER_SMOOTH, 2);   // Smooth to join broken lines
+
+        // Threshold for better detail preservation (flat cutoff, not truly
+        // locally-adaptive, but works well after the pre-blur above).
         $binary = imagecreatetruecolor($workW, $workH);
         $black  = imagecolorallocate($binary, 0, 0, 0);
         $white  = imagecolorallocate($binary, 255, 255, 255);
         imagefilledrectangle($binary, 0, 0, $workW, $workH, $white);
 
-        // Simple threshold: dark = black, light = white
         for ($y = 0; $y < $workH; $y++) {
             for ($x = 0; $x < $workW; $x++) {
                 $color = imagecolorat($work, $x, $y);
-                $gray = ($color >> 8) & 0xFF; // Get green channel (grayscale)
-                if ($gray < 128) { // Middle threshold
+                $gray = ($color >> 8) & 0xFF;
+
+                // More conservative threshold to preserve detail
+                if ($gray < 200) {
                     imagesetpixel($binary, $x, $y, $black);
                 }
             }
         }
         imagedestroy($work);
 
-        // Light dilation for better coloring lines
-        $thickness = 2;
-        $bold = imagecreatetruecolor($workW, $workH);
-        imagefilledrectangle($bold, 0, 0, $workW, $workH, $white);
-        $boldBlack = imagecolorallocate($bold, 0, 0, 0);
+        // Speckle removal — a single stray black pixel (or a pair) with no
+        // real neighbors is threshold noise, not a line. Dropping these
+        // before dilation stops noise from getting thickened into visible
+        // dots, which is what made earlier output look stippled instead of
+        // clean like a hand-drawn coloring page.
+        $denoised = imagecreatetruecolor($workW, $workH);
+        imagefilledrectangle($denoised, 0, 0, $workW, $workH, $white);
         for ($y = 0; $y < $workH; $y++) {
             for ($x = 0; $x < $workW; $x++) {
-                if ((imagecolorat($binary, $x, $y) & 0xFF) === 0) {
-                    imagefilledellipse($bold, $x, $y, $thickness, $thickness, $boldBlack);
+                if ((imagecolorat($binary, $x, $y) & 0xFF) !== 0) {
+                    continue;
+                }
+                $blackNeighbors = 0;
+                for ($dy = -1; $dy <= 1; $dy++) {
+                    for ($dx = -1; $dx <= 1; $dx++) {
+                        if ($dx === 0 && $dy === 0) continue;
+                        $nx = $x + $dx;
+                        $ny = $y + $dy;
+                        if ($nx < 0 || $ny < 0 || $nx >= $workW || $ny >= $workH) continue;
+                        if ((imagecolorat($binary, $nx, $ny) & 0xFF) === 0) $blackNeighbors++;
+                    }
+                }
+                if ($blackNeighbors >= 2) {
+                    imagesetpixel($denoised, $x, $y, $black);
                 }
             }
         }
         imagedestroy($binary);
+
+        // Dilation for bold, coloring-friendly lines. A thickness of 1 draws
+        // a 1x1 "ellipse" per black pixel — i.e. no real expansion at all.
+        // Overlapping circles only actually widen the line once the
+        // diameter is > 1, so this needs to be 3 (not 1) to have any visible
+        // effect.
+        $thickness = 3;
+        $bold = imagecreatetruecolor($workW, $workH);
+        imagefilledrectangle($bold, 0, 0, $workW, $workH, $white);
+        $boldBlack = imagecolorallocate($bold, 0, 0, 0);
+
+        for ($y = 0; $y < $workH; $y++) {
+            for ($x = 0; $x < $workW; $x++) {
+                if ((imagecolorat($denoised, $x, $y) & 0xFF) === 0) {
+                    imagefilledellipse($bold, $x, $y, $thickness, $thickness, $boldBlack);
+                }
+            }
+        }
+        imagedestroy($denoised);
 
         return $bold;
     }
@@ -948,10 +995,12 @@ class StoryProductService
 
     private function drawText(\GdImage $canvas, string $text, string $font, int $size, int $x, int $baselineY, int $color, bool $rtl, int $maxWidth): void
     {
-        $display = $rtl ? $this->prepareRtlText($text) : $text;
+        // Only apply RTL logic if text actually contains Arabic characters
+        $isArabic = preg_match('/\p{Arabic}/u', $text);
+        $display = ($rtl && $isArabic) ? $this->prepareRtlText($text) : $text;
         $box     = imagettfbbox($size, 0, $font, $display);
         $width   = $box ? ($box[2] - $box[0]) : 0;
-        $drawX   = $rtl ? ($x + $maxWidth - $width) : $x;
+        $drawX   = ($rtl && $isArabic) ? ($x + $maxWidth - $width) : $x;
         imagettftext($canvas, $size, 0, $drawX, $baselineY, $color, $font, $display);
     }
 
@@ -1185,18 +1234,18 @@ class StoryProductService
 
     private function fontPath(): string
     {
-        // Arabic-supporting fonts (priority for Arabic content)
-        $arabicFonts = [
-            '/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf',
-            '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
+        // Standard fonts with good English support
+        $fonts = [
             '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
             '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
             '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
+            '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
             'C:\\Windows\\Fonts\\arial.ttf',
             'C:\\Windows\\Fonts\\segoeui.ttf',
         ];
         
-        foreach ($arabicFonts as $candidate) {
+        foreach ($fonts as $candidate) {
             if (file_exists($candidate)) return $candidate;
         }
         throw new \RuntimeException('No TrueType font found for story product rendering.');
@@ -1217,6 +1266,7 @@ class StoryProductService
             }
         }
         
+        // For English and other languages, use standard fonts
         return $this->fontPath();
     }
 
