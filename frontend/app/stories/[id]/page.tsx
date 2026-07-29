@@ -94,7 +94,7 @@ export default function StoryViewPage() {
 
   const router = useRouter();
 
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading: authLoading } = useAuth();
 
 
 
@@ -206,6 +206,8 @@ export default function StoryViewPage() {
 
   useEffect(() => {
 
+    if (authLoading) return;
+
     if (!isLoggedIn) {
 
       router.push('/login');
@@ -258,7 +260,7 @@ export default function StoryViewPage() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
 
-  }, [id, isLoggedIn]);
+  }, [id, isLoggedIn, authLoading]);
 
 
 
@@ -362,7 +364,7 @@ export default function StoryViewPage() {
 
 
 
-  if (loading) {
+  if (loading || authLoading) {
 
     return (
 

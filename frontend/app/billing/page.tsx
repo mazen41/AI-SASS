@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 
 export default function BillingPage() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading: authLoading } = useAuth();
   const { theme } = useTheme();
   const { locale } = useLang();
   const router = useRouter();
@@ -67,8 +67,8 @@ export default function BillingPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    if (!isLoggedIn) router.push('/login');
-  }, [isLoggedIn, router]);
+    if (!authLoading && !isLoggedIn) router.push('/login');
+  }, [authLoading, isLoggedIn, router]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -137,7 +137,7 @@ export default function BillingPage() {
     }
   };
 
-  if (!isLoggedIn) return null;
+  if (authLoading || !isLoggedIn) return null;
 
   if (loading) {
     return (

@@ -25,15 +25,15 @@ const fadeUp: Variants = {
 };
 
 export default function DashboardPage() {
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, loading: authLoading } = useAuth();
   const { theme } = useTheme();
   const { locale } = useLang();
   const router = useRouter();
   const [stories, setStories] = useState<Story[]>([]);
 
   useEffect(() => {
-    if (!isLoggedIn) router.push('/login');
-  }, [isLoggedIn, router]);
+    if (!authLoading && !isLoggedIn) router.push('/login');
+  }, [authLoading, isLoggedIn, router]);
 
   const [activeSub, setActiveSub] = useState<Subscription | null>(null);
   const [packageData, setPackageData] = useState<ProductBalancesResponse | null>(null);
@@ -57,7 +57,7 @@ export default function DashboardPage() {
     loadDashboardData();
   }, [isLoggedIn]);
 
-  if (!isLoggedIn) return null;
+  if (authLoading || !isLoggedIn) return null;
 
   const firstName = user?.name?.split(' ')[0] ?? '';
   const greeting = locale === 'ar' ? `مرحباً، ${firstName}` : `Welcome back, ${firstName}`;

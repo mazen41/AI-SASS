@@ -25,7 +25,7 @@ const themeEmoji: Record<string, string> = Object.fromEntries(themes.map(t => [t
 
 export default function CreateStoryPage() {
   const router = useRouter();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading: authLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState('');
@@ -77,7 +77,7 @@ export default function CreateStoryPage() {
   }, [isLoggedIn]);
 
   if (!isLoggedIn) {
-    if (typeof window !== 'undefined') router.push('/login');
+    if (typeof window !== 'undefined' && !authLoading) router.push('/login');
     return null;
   }
 
