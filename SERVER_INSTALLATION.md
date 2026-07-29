@@ -55,12 +55,24 @@ wget https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansArabi
 fc-cache -fv
 ```
 
-### 7. Update Environment Variables (Optional)
+### 7. Update Environment Variables (Required)
 ```bash
 nano /var/www/ai-sass/backend/.env
 ```
 
-Add these lines if not present:
+Update these session settings to fix logout issues:
+```env
+SESSION_DRIVER=database
+SESSION_LIFETIME=4320
+SESSION_ENCRYPT=true
+SESSION_PATH=/
+SESSION_DOMAIN=null
+SESSION_SECURE_COOKIE=false
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+```
+
+Add these ArPDF settings:
 ```env
 ARPDF_ENGINE=mpdf
 ARPDF_DIRECTION=ltr
@@ -69,13 +81,43 @@ ARPDF_PAPER_FORMAT=A4
 ARPDF_ORIENTATION=portrait
 ```
 
-### 8. Restart Queue Worker
+### 8. Update Server Environment Variables
+```bash
+nano /var/www/ai-sass/backend/.env
+```
+
+Update these session settings on the server:
+```env
+SESSION_DRIVER=database
+SESSION_LIFETIME=4320
+SESSION_ENCRYPT=true
+SESSION_PATH=/
+SESSION_DOMAIN=nazstudio.art
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+```
+
+### 9. Update CORS Configuration
+```bash
+nano /var/www/ai-sass/backend/config/cors.php
+```
+
+Update the CORS configuration to fix session issues:
+```php
+'paths' => ['api/*', 'sanctum/csrf-cookie'],
+'allowed_origins' => ['https://nazstudio.art', 'https://www.nazstudio.art', 'http://localhost:3000', 'http://localhost:5173'],
+'allowed_origins_patterns' => ['*'],
+'supports_credentials' => true,
+```
+
+### 10. Restart Queue Worker
 ```bash
 systemctl restart storyhero-worker
 systemctl status storyhero-worker
 ```
 
-### 9. Test the Installation
+### 11. Test the Installation
 ```bash
 # Test ArPDF installation
 php artisan tinker
@@ -83,12 +125,29 @@ php artisan tinker
 >>> ArPDF::direction('rtl')->title('Test')->view('pdf.storybook-cover', ['title' => 'Test', 'childName' => null, 'imageUrl' => null, 'rtl' => true, 'language' => 'ar', 'font' => 'Cairo'])->output();
 ```
 
-### 10. Monitor Queue Processing
+### 12. Monitor Queue Processing
 ```bash
 journalctl -u storyhero-worker -f
 ```
 
 ## 🔧 Troubleshooting
+
+### Session/Auth Issues
+If you're getting logged out frequently:
+```bash
+# Check session configuration
+php artisan tinker
+>>> config('session')
+
+# Clear sessions
+php artisan session:table
+php artisan migrate:fresh --seed=SessionTable
+
+# Clear all caches
+php artisan cache:clear
+php artisan config:clear
+php artisan view:clear
+```
 
 ### Package Installation Issues
 If composer fails, try:
@@ -159,15 +218,29 @@ composer remove intervention/image
 git checkout HEAD~1 -- composer.json
 git checkout HEAD~1 -- app/Services/StoryProductService.php
 git checkout HEAD~1 -- config/arpdf.php
+git checkout HEAD~1 -- config/cors.php
+git checkout HEAD~1 -- .env
 git checkout HEAD~1 -- resources/views/pdf/
 
 # Clear cache
 php artisan config:clear
 php artisan cache:clear
+php artisan view:clear
+php artisan view:clear
 
 # Restart services
 systemctl restart storyhero-worker
 ```
+
+## ✅ Installation Complete
+
+Once all steps are completed, your system should be ready for:
+- Professional Arabic text rendering
+- Perfect English text rendering
+- High-quality coloring book line art
+- Zero API costs
+- Fast, reliable processing
+- Stable session management (no more frequent logouts)
 
 ## 📞 Support
 
