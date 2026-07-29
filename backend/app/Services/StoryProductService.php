@@ -271,9 +271,11 @@ class StoryProductService
         }
 
         // Manga-style dark overlay gradient at bottom for readability
+        // (GD alpha is 0-127, NOT 0-255 — 127 is fully transparent... actually
+        // 0 = opaque, 127 = fully transparent, so we scale within that range.)
         for ($y = $this->pageHeight - 600; $y < $this->pageHeight; $y++) {
             $progress = ($y - ($this->pageHeight - 600)) / 600;
-            $alpha    = (int)(140 * (1 - $progress));
+            $alpha    = max(0, min(127, (int)(120 * (1 - $progress))));
             $c        = imagecolorallocatealpha($canvas, 8, 5, 18, $alpha);
             imagefilledrectangle($canvas, 0, $y, $this->pageWidth, $y, $c);
             imagecolordeallocate($canvas, $c);
