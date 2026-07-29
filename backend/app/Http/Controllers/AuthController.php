@@ -186,7 +186,7 @@ class AuthController extends Controller
         
         return response()->json([
             'user' => $user,
-            'active_package' => $user->activeUserPackage?->load('package.items.product'),
+            'active_package' => $user->activeUserPackage,
             'balances' => $user->getAllProductBalances(),
         ]);
     }
