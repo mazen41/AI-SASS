@@ -62,13 +62,9 @@ class StoryProductService
             $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
             
             // Setup ArPDF with proper direction and font
-            $config = [
-                'direction' => $isRtl ? 'rtl' : 'ltr',
-                'default_font' => $font,
-                'temp_dir' => storage_path('app/laravel-arpdf')
-            ];
-            $pdf = new ArPDF($config);
+            $pdf = new ArPDF();
             $pdf->direction($isRtl ? 'rtl' : 'ltr');
+            $pdf->setFont($font);
             
             // Generate cover page HTML
             $coverImage = $images->first();
@@ -210,13 +206,9 @@ class StoryProductService
             $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
             
             // Setup ArPDF with proper direction and font
-            $config = [
-                'direction' => $isRtl ? 'rtl' : 'ltr',
-                'default_font' => $font,
-                'temp_dir' => storage_path('app/laravel-arpdf')
-            ];
-            $pdf = new ArPDF($config);
+            $pdf = new ArPDF();
             $pdf->direction($isRtl ? 'rtl' : 'ltr');
+            $pdf->setFont($font);
             
             // Generate cover page HTML
             $coverHtml = view('pdf.coloring-page', [
