@@ -228,63 +228,6 @@ class StoryProductService
         }
     }
 
-            // Scene coloring pages — process in batches for better performance
-            $chunkSize = 4; // Process 4 scenes at a time
-            $imageChunks = $images->chunk($chunkSize);
-            
-            foreach ($imageChunks as $chunk) {
-                foreach ($chunk as $asset) {
-                    $scene        = $scenes->get($asset->scene_number);
-                    $sceneCaption = $scene['title'] ?? ('Scene ' . $asset->scene_number);
-
-                    $lineArtPath = $useFal
-                        ? $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption)
-                        : $this->createLineArtPageViaGd($tmpDir, $asset, $sceneCaption, count($pages), $story->language);
-
-                    $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
-                    Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
-
-                    StoryAsset::updateOrCreate(
-                        ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
-                        ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => $useFal ? self::COLORING_PROMPT : 'Thresholded pure black/white line-art transform.']
-                    );
-
-                    $pageUrls[] = [
-                        'page'  => count($pages),
-                        'label' => 'Page ' . $asset->scene_number . ' — ' . $sceneCaption,
-                        'url'   => Storage::disk($this->disk)->url($coloringStoragePath),
-                    ];
-                    $pages[] = $lineArtPath;
-                }
-            }
-
-            // Per-page single-page PDFs, so any one page can be downloaded/printed alone.
-            $pageUrls = $this->attachPerPagePdfs($pageUrls, $pages, "stories/{$story->id}/coloring/pages", ($story->title ?? 'Coloring Book') . ' — Page');
-
-            $pdfBytes = $this->buildImagePdf($pages, ($story->title ?? 'Coloring Book') . ' — Coloring Book', 'StoryHero', 'a4');
-            $path     = "stories/{$story->id}/books/coloring_book.pdf";
-            Storage::disk($this->disk)->put($path, $pdfBytes, ['visibility' => 'public']);
-
-            $letterBytes = $this->buildImagePdf($pages, ($story->title ?? 'Coloring Book') . ' — Coloring Book', 'StoryHero', 'letter');
-            $letterPath  = "stories/{$story->id}/books/coloring_book_letter.pdf";
-            Storage::disk($this->disk)->put($letterPath, $letterBytes, ['visibility' => 'public']);
-
-            return $this->markCompleted($output, $path, [
-                'page_count' => count($pages),
-                'format'     => '300 DPI print-ready PDF — pure black & white coloring book — A4 (default) & US Letter',
-                'source'     => $useFal ? 'fal_ai_img2img+threshold' : 'gd_threshold_line_art',
-                'child_safe' => true,
-                'page_urls'  => $pageUrls,
-                'letter_url' => Storage::disk($this->disk)->url($letterPath),
-                'a4_url'     => Storage::disk($this->disk)->url($path),
-            ]);
-        } catch (\Throwable $e) {
-            return $this->markFailed($output, $e);
-        } finally {
-            $this->cleanupDirectory($tmpDir);
-        }
-    }
-
     // -------------------------------------------------------------------------
     // Register existing media outputs (video / audio)
     // -------------------------------------------------------------------------
