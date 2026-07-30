@@ -288,7 +288,7 @@ export default function StoryViewPage() {
 
 
 
-  const getStepLabel = (step: string | null) => (!step ? 'Ready' : STEP_LABELS[step] || step.replaceAll('_', ' '));
+  const getStepLabel = (step: string | null) => (!step ? 'Ready' : step.replaceAll('_', ' '));
 
 
 
