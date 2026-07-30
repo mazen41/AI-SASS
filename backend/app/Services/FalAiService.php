@@ -88,57 +88,45 @@ class FalAiService
     // --- Image Generation ---------------------------------------------------
 
     /**
-     * Generate a black and white line art image specifically for coloring books.
-     * This creates clean outlines that are perfect for children to color.
+     * Generate a black and white line art image for coloring books.
+     *
+     * Uses fal-ai/flux/schnell — the only Fal model that reliably honours
+     * monochrome/coloring-book style prompts. flux-pro and PuLID always
+     * produce full-colour output regardless of the prompt wording.
+     *
+     * The caller (StoryProductService) applies an additional hard-threshold
+     * GD pass to guarantee truly pure black/white pixels.
      */
     public function generateLineArtImage(string $prompt, ?string $photoUrl = null): string
     {
         $this->ensureConfigured();
 
-        if ($photoUrl) {
-            // Upload photo to Fal storage for consistent character
-            Log::info('Uploading photo to Fal storage for line art generation', ['original_url' => $photoUrl]);
-            $disk      = 'public';
-            $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
-            $relative  = ltrim(substr($photoUrl, strlen($baseUrl)), '/');
-            $localPath = Storage::disk($disk)->path($relative);
-            $photoUrl  = $this->uploadFileToFal($localPath);
-            Log::info('Photo uploaded to Fal storage for line art', ['fal_url' => $photoUrl]);
+        // Always use schnell for line art — it honours style prompts correctly.
+        // We intentionally ignore $photoUrl here: PuLID (the photo-consistency
+        // model) always generates full-colour images regardless of the prompt,
+        // so we cannot use it for a pure-B&W coloring book page.
+        $model = 'fal-ai/flux/schnell';
 
-            // Use PuLID for character consistency with line art style
-            $model   = 'fal-ai/flux-pulid';
-            $payload = [
-                'prompt'                => $prompt
-                    . ', black and white line art coloring book page, clean outlines, simple shapes,'
-                    . ' child-friendly drawing style, coloring book aesthetic, no shading, no gradients,'
-                    . ' pure black lines on white background, cartoon style, thick bold lines,'
-                    . ' same exact child protagonist from reference photo, identical facial features,'
-                    . ' identical hairstyle, identical clothing, same age appearance,'
-                    . ' professional coloring book illustration, high contrast, clear boundaries',
-                'reference_image_url'   => $photoUrl,
-                'num_images'            => 1,
-                'image_size'            => 'landscape_16_9',
-                'id_weight'             => 1.0,
-                'num_inference_steps'   => 40,
-                'guidance_scale'        => 8.0,
-                'true_cfg'              => 1.0,
-                'enable_safety_checker' => true,
-            ];
-        } else {
-            $model   = $this->imageModel;
-            $payload = [
-                'prompt'                => $prompt
-                    . ', black and white line art coloring book page, clean outlines, simple shapes,'
-                    . ' child-friendly drawing style, coloring book aesthetic, no shading, no gradients,'
-                    . ' pure black lines on white background, cartoon style, thick bold lines,'
-                    . ' same exact child protagonist, identical facial features, identical hairstyle,'
-                    . ' identical clothing, same age appearance,'
-                    . ' professional coloring book illustration, high contrast, clear boundaries',
-                'num_images'            => 1,
-                'image_size'            => 'landscape_16_9',
-                'enable_safety_checker' => true,
-            ];
-        }
+        $lineArtPrompt = trim($prompt)
+            . ', children\'s coloring book page, pure black ink outlines on solid white background,'
+            . ' NO color NO shading NO gray tones NO gradients NO fills,'
+            . ' thick bold clean outlines only, simple flat shapes,'
+            . ' professional printable coloring book illustration,'
+            . ' stark black and white, high contrast line art,'
+            . ' child-friendly cartoon style, clear open coloring areas,'
+            . ' monochrome pen and ink drawing style';
+
+        $payload = [
+            'prompt'                => $lineArtPrompt,
+            'num_images'            => 1,
+            'image_size'            => 'landscape_16_9',
+            'num_inference_steps'   => 4,   // schnell is distilled — 4 steps is optimal
+            'enable_safety_checker' => true,
+        ];
+
+        Log::info('Fal.ai line art: submitting to flux/schnell', [
+            'prompt_preview' => substr($lineArtPrompt, 0, 120),
+        ]);
 
         [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($model, $payload);
         $result = $this->pollForResult($model, $requestId, $statusUrl, $responseUrl);
@@ -149,6 +137,7 @@ class FalAiService
             throw new \RuntimeException('No image URL in Fal.ai line art response');
         }
 
+        Log::info('Fal.ai line art: image received', ['url' => $imageUrl]);
         return $imageUrl;
     }
 

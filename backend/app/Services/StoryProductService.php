@@ -175,10 +175,12 @@ class StoryProductService
                 $sceneCaption = $scene['title'] ?? ('Scene ' . $asset->scene_number);
                 
                 // Generate line art using Fal.ai
-                $lineArtPath = $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption);
-                $lineArtPaths[$asset->scene_number] = $lineArtPath;
+                $rawFalImage = $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption);
                 
-                // Store the line art as a coloring page asset
+                // Convert to pure black and white line art
+                $lineArtPath = $this->convertToPureLineArt($rawFalImage);
+                
+                // Store the black and white line art as the coloring page asset
                 $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
                 Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
                 
@@ -186,6 +188,10 @@ class StoryProductService
                     ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
                     ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => self::COLORING_PROMPT]
                 );
+                
+                // Clean up temp files
+                if (file_exists($rawFalImage)) unlink($rawFalImage);
+                if (file_exists($lineArtPath)) unlink($lineArtPath);
             }
             
             // Determine font based on language
@@ -628,8 +634,10 @@ class StoryProductService
                 throw new \RuntimeException("Failed to download Fal.ai line art result for scene {$sceneNumber}");
             }
 
-            $path = "{$tmpDir}/coloring_fal_{$sceneNumber}.jpg";
-            return $this->buildColoringPageCanvas($response->body(), $tmpDir, $sceneNumber, $caption, $path);
+            // Save the raw Fal.ai image for later B&W conversion
+            $path = "{$tmpDir}/coloring_fal_raw_{$sceneNumber}.jpg";
+            file_put_contents($path, $response->body());
+            return $path;
         } catch (\Throwable $e) {
             Log::error("Fal.ai line art generation failed for scene {$asset->scene_number}", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             // Don't fall back to GD - fail the whole coloring book generation
@@ -709,54 +717,8 @@ class StoryProductService
 
     private function buildColoringPageCanvas(string $imageBytes, string $tmpDir, int $sceneNumber, string $caption, string $outputPath): string
     {
-        $source = @imagecreatefromstring($imageBytes);
-        if (!$source) {
-            throw new \RuntimeException("Cannot decode Fal.ai image bytes for scene {$sceneNumber}");
-        }
-
-        $page  = imagecreatetruecolor($this->pageWidth, $this->pageHeight);
-        $white = imagecolorallocate($page, 255, 255, 255);
-        $black = imagecolorallocate($page, 20, 20, 20);
-        $gray  = imagecolorallocate($page, 140, 140, 140);
-        imagefill($page, 0, 0, $white);
-
-        $scaleH = (int)round(120 * ($this->pageWidth / 1240));
-
-        // Bold outer border
-        imagesetthickness($page, 8 * ($this->pageWidth > 1500 ? 2 : 1));
-        imagerectangle($page, 20, 20, $this->pageWidth - 20, $this->pageHeight - 20, $black);
-        imagesetthickness($page, 2);
-        imagerectangle($page, 30, 30, $this->pageWidth - 30, $this->pageHeight - 30, $gray);
-        imagesetthickness($page, 1);
-
-        // Page header
-        $headerSize = (int)round(42 * ($this->pageWidth / 1240));
-        $this->drawText($page, 'COLOR THIS PAGE!', $this->fontPath(), $headerSize, 70, $scaleH / 2, $black, false, $this->pageWidth - 140);
-        imagefilledrectangle($page, 70, (int)($scaleH / 2 + 16), $this->pageWidth - 70, (int)($scaleH / 2 + 22), $black);
-
-        // Scene caption
-        $this->drawText($page, $caption, $this->fontPath(), (int)round(28 * ($this->pageWidth / 1240)), 70, (int)($scaleH / 2 + 50), $gray, false, $this->pageWidth - 140);
-
-        // Real black-and-white line-art conversion (hard threshold + bold outlines).
-        // Runs even on Fal.ai's img2img result — a diffusion model's output still
-        // contains anti-aliased grays, and the requirement is PURE black/white.
-        $lineArt = $this->convertToPureLineArt($source);
-        imagedestroy($source);
-
-        $imageZoneY = (int)($scaleH + 40);
-        $imageZoneH = $this->pageHeight - $imageZoneY - ($scaleH + 20);
-        $this->copyImageIntoBoxNearest($page, $lineArt, 60, $imageZoneY, $this->pageWidth - 120, $imageZoneH, true);
-        imagedestroy($lineArt);
-
-        // Page number
-        $this->drawText($page, (string)$sceneNumber, $this->fontPath(), (int)round(28 * ($this->pageWidth / 1240)), (int)($this->pageWidth / 2) - 12, $this->pageHeight - (int)($scaleH * 0.4), $black, false, 64);
-
-        // Footer
-        imagefilledrectangle($page, 0, $this->pageHeight - $scaleH, $this->pageWidth, $this->pageHeight, $gray);
-        $this->drawText($page, 'StoryHero Coloring Book', $this->fontPath(), (int)round(22 * ($this->pageWidth / 1240)), 70, $this->pageHeight - (int)($scaleH * 0.6), $black, false, $this->pageWidth - 140);
-
-        imagejpeg($page, $outputPath, 95);
-        imagedestroy($page);
+        // Simple method to save image bytes (B&W conversion done separately)
+        file_put_contents($outputPath, $imageBytes);
         return $outputPath;
     }
 
@@ -926,49 +888,74 @@ class StoryProductService
      */
     private function convertToPureLineArt(\GdImage $source, int $workingWidth = 800): \GdImage
     {
-        // Use Intervention Image for better line art conversion
-        $manager = ImageManager::gd();
+        // Pure GD implementation - no Intervention Image to avoid API issues
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
         
-        // Convert GD image to Intervention Image
-        ob_start();
-        imagejpeg($source);
-        $imageData = ob_get_clean();
-        $image = $manager->read($imageData);
+        // Create working canvas at smaller resolution for performance
+        $scale = $workingWidth / $sourceWidth;
+        $workingHeight = (int)($sourceHeight * $scale);
         
-        // Resize to working resolution
-        $image = $image->resize($workingWidth, null, function ($constraint) {
-            $constraint->aspectRatio();
-        });
+        $working = imagecreatetruecolor($workingWidth, $workingHeight);
+        imagecopyresampled($working, $source, 0, 0, 0, 0, $workingWidth, $workingHeight, $sourceWidth, $sourceHeight);
         
-        // Apply line art filters using Intervention Image
-        $image = $image->greyscale()          // Convert to grayscale
-            ->contrast(50)                   // High contrast for clean lines
-            ->brightness(20)                 // Brighten to reduce noise
-            ->sharpen(5);                    // Sharpen edges
-        
-        // Convert back to GD image for threshold processing
-        $imageData = $image->toJpeg();
-        $lineArt = imagecreatefromstring($imageData);
-        
-        // Apply threshold to force pure black/white
-        $width = imagesx($lineArt);
-        $height = imagesy($lineArt);
+        // Convert to grayscale using proper luminance formula
+        $width = imagesx($working);
+        $height = imagesy($working);
         
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++) {
-                $color = imagecolorat($lineArt, $x, $y);
-                $gray = ($color >> 8) & 0xFF;
+                $color = imagecolorat($working, $x, $y);
+                $r = ($color >> 16) & 0xFF;
+                $g = ($color >> 8) & 0xFF;
+                $b = $color & 0xFF;
                 
-                // Threshold for black/white
-                if ($gray < 128) {
-                    imagesetpixel($lineArt, $x, $y, 0x000000); // Black
+                // Proper luminance formula (NTSC standard)
+                $luminance = (0.299 * $r) + (0.587 * $g) + (0.114 * $b);
+                
+                // Hard threshold: pure black or white
+                $gray = $luminance > 128 ? 255 : 0;
+                
+                imagesetpixel($working, $x, $y, ($gray << 16) | ($gray << 8) | $gray);
+            }
+        }
+        
+        // Optional: Dilate to make lines thicker
+        $this->dilateImage($working);
+        
+        return $working;
+    }
+    
+    /**
+     * Dilate image to make lines thicker
+     */
+    private function dilateImage(\GdImage $image): void
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $temp = imagecreatetruecolor($width, $height);
+        
+        for ($y = 1; $y < $height - 1; $y++) {
+            for ($x = 1; $x < $width - 1; $x++) {
+                $neighbors = 0;
+                for ($dy = -1; $dy <= 1; $dy++) {
+                    for ($dx = -1; $dx <= 1; $dx++) {
+                        $color = imagecolorat($image, $x + $dx, $y + $dy);
+                        $gray = ($color >> 8) & 0xFF;
+                        if ($gray < 128) $neighbors++;
+                    }
+                }
+                
+                if ($neighbors >= 5) {
+                    imagesetpixel($temp, $x, $y, 0);
                 } else {
-                    imagesetpixel($lineArt, $x, $y, 0xFFFFFF); // White
+                    imagesetpixel($temp, $x, $y, 0xFFFFFF);
                 }
             }
         }
         
-        return $lineArt;
+        imagecopy($image, $temp, 0, 0, 0, 0, $width, $height);
+        imagedestroy($temp);
     }
 
     private function drawWrappedText(\GdImage $canvas, string $text, string $font, int $size, int $x, int $y, int $color, bool $rtl, int $maxWidth, float $lineHeight): void
