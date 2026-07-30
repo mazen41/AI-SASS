@@ -47,6 +47,30 @@ class StoryProductService
     // Story Book (using ArPDF for Arabic/English support)
     // -------------------------------------------------------------------------
 
+    /**
+     * Returns true if the given URL points to a readable image with non-zero dimensions.
+     * mPDF internally divides by image width/height; passing it a broken or
+     * zero-dimension image causes an unhandled "Division by zero" crash, so we
+     * must validate every image URL before embedding it in the HTML.
+     */
+    private function isValidImageUrl(?string $url): bool
+    {
+        if (!$url) return false;
+        try {
+            $localPath = $this->resolveLocalPath($url);
+            if ($localPath && file_exists($localPath)) {
+                $size = @getimagesize($localPath);
+            } else {
+                $bytes = @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => 10]]));
+                if (!$bytes) return false;
+                $size = @getimagesizefromstring($bytes);
+            }
+            return $size && $size[0] > 0 && $size[1] > 0;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     public function generateStoryBook(Story $story): StoryOutput
     {
         $output = $this->markGenerating($story, StoryOutput::TYPE_STORY_BOOK_PDF);
@@ -90,16 +114,17 @@ class StoryProductService
             
             // Generate cover page HTML
             $coverImage = $images->first();
+            $coverImageUrl = $this->isValidImageUrl($coverImage?->url) ? $coverImage->url : null;
             $coverHtml = view('pdf.storybook-cover', [
                 'title' => $story->title ?? 'Story Book',
                 'childName' => $story->child_name,
-                'imageUrl' => $coverImage?->url,
+                'imageUrl' => $coverImageUrl,
                 'rtl' => $isRtl,
                 'language' => $language,
                 'font' => $font
             ])->render();
             $mpdf->WriteHTML($coverHtml);
-            
+
             // Generate scene pages HTML
             // NOTE: loadHTML() does NOT insert a page break on its own between
             // calls -- it only paginates automatically once content overflows
@@ -109,10 +134,11 @@ class StoryProductService
             $pageNum = 1;
             foreach ($scenes->sortKeys() as $sceneNumber => $scene) {
                 $asset = $images->get($sceneNumber);
+                $sceneImageUrl = $this->isValidImageUrl($asset?->url) ? $asset->url : null;
                 $pageHtml = view('pdf.storybook-page', [
                     'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
                     'text' => $scene['text'] ?? $scene['description'] ?? '',
-                    'imageUrl' => $asset?->url,
+                    'imageUrl' => $sceneImageUrl,
                     'pageNumber' => $pageNum,
                     'rtl' => $isRtl,
                     'language' => $language,
