@@ -406,11 +406,6 @@ export default function StoryViewPage() {
     selectedOutputs = [];
   }
   
-  // Debug: log the selected outputs
-  console.log('Selected outputs:', selectedOutputs);
-  console.log('Story selected_outputs raw:', story.selected_outputs);
-  console.log('Story selected_outputs type:', typeof story.selected_outputs);
-  
   // Determine which tabs should be visible based on user selection
   const availableTabs = [
     { key: 'story' as StoryTab, label: 'Story', alwaysShow: true }, // Story tab always shows
