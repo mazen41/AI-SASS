@@ -147,13 +147,15 @@ class StoryProductService
     }
 
     // -------------------------------------------------------------------------
-    // Coloring Book (using ArPDF for Arabic/English support)
+    // Coloring Book (using ArPDF for Arabic/English support + Fal.ai line art)
     // -------------------------------------------------------------------------
 
     public function generateColoringBook(Story $story): StoryOutput
     {
         $output = $this->markGenerating($story, StoryOutput::TYPE_COLORING_BOOK_PDF);
-        
+        $tmpDir = storage_path('app/tmp/coloring_book_' . $story->id . '_' . uniqid());
+        @mkdir($tmpDir, 0755, true);
+
         try {
             $images = $story->imageAssets()->get()->sortBy('scene_number');
             $scenes = collect($story->scenes ?? [])->keyBy('scene_number');
@@ -162,6 +164,28 @@ class StoryProductService
             
             if ($images->isEmpty()) {
                 throw new \RuntimeException('No scene images are available for coloring book generation.');
+            }
+            
+            // Generate black and white line art images using Fal.ai
+            $falAi = app(FalAiService::class);
+            $lineArtPaths = [];
+            
+            foreach ($images as $asset) {
+                $scene = $scenes->get($asset->scene_number);
+                $sceneCaption = $scene['title'] ?? ('Scene ' . $asset->scene_number);
+                
+                // Generate line art using Fal.ai
+                $lineArtPath = $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption);
+                $lineArtPaths[$asset->scene_number] = $lineArtPath;
+                
+                // Store the line art as a coloring page asset
+                $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
+                Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
+                
+                StoryAsset::updateOrCreate(
+                    ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
+                    ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => self::COLORING_PROMPT]
+                );
             }
             
             // Determine font based on language
@@ -187,15 +211,18 @@ class StoryProductService
             ])->render();
             $pdf->loadHTML($coverHtml);
             
-            // Generate coloring pages HTML (line art images)
+            // Generate coloring pages HTML (using line art images)
             $pageNum = 1;
             foreach ($images as $asset) {
                 $scene = $scenes->get($asset->scene_number);
                 $sceneCaption = $scene['title'] ?? ($isRtl ? 'صفحة تلوين ' . $pageNum : 'Coloring Page ' . $pageNum);
                 
+                // Use the line art image URL instead of colored image
+                $lineArtUrl = Storage::disk($this->disk)->url("stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg");
+                
                 $pageHtml = view('pdf.coloring-page', [
                     'title' => $sceneCaption,
-                    'imageUrl' => $asset->url,
+                    'imageUrl' => $lineArtUrl,
                     'pageNumber' => $pageNum,
                     'rtl' => $isRtl,
                     'language' => $language,
@@ -226,13 +253,15 @@ class StoryProductService
             
             return $this->markCompleted($output, $path, [
                 'page_count' => $pageNum,
-                'format' => 'Professional coloring book PDF with Arabic/English support using ArPDF',
+                'format' => 'Professional coloring book PDF with Arabic/English support using ArPDF + Fal.ai line art',
                 'viewer' => 'web_coloring_book',
                 'rtl' => $isRtl,
                 'url' => Storage::disk($this->disk)->url($path),
             ]);
         } catch (\Throwable $e) {
             return $this->markFailed($output, $e);
+        } finally {
+            $this->cleanupDirectory($tmpDir);
         }
     }
 
