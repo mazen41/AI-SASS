@@ -2,14 +2,14 @@
 
 require __DIR__ . '/vendor/autoload.php';
 
-use Mpdf\Mpdf;
+use \Mpdf\Mpdf;
 
 echo "=== mPDF Generation Test ===\n\n";
 
 try {
     // Test 1: Basic mPDF instantiation
     echo "Test 1: mPDF instantiation...";
-    $mpdf = new Mpdf\Mpdf([
+    $mpdf = new \Mpdf\Mpdf([
         'mode' => 'utf-8',
         'format' => 'A4',
         'default_font_size' => 10,
@@ -45,7 +45,7 @@ try {
     
     // Test 3: Arabic text rendering with RTL
     echo "Test 3: Arabic text rendering with RTL...";
-    $mpdfArabic = new Mpdf\Mpdf([
+    $mpdfArabic = new \Mpdf\Mpdf([
         'mode' => 'utf-8',
         'format' => 'A4',
         'default_font_size' => 10,
