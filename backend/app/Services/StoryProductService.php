@@ -59,7 +59,7 @@ class StoryProductService
             $language = $story->language ?? 'en';
             
             // Determine font based on language
-            $font = $isRtl ? 'Cairo' : 'DejaVu Sans';
+            $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
             
             // Setup ArPDF with proper direction and font
             $config = [
@@ -165,7 +165,7 @@ class StoryProductService
             }
             
             // Determine font based on language
-            $font = $isRtl ? 'Cairo' : 'DejaVu Sans';
+            $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
             
             // Setup ArPDF with proper direction and font
             $config = [

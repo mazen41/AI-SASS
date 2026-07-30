@@ -29,7 +29,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Default font to use for PDF generation.
-    | For Arabic, recommended fonts: 'Cairo', 'Amiri', 'Tajawal'
+    | For Arabic, recommended fonts: 'Noto Sans Arabic', 'Noto Naskh Arabic', 'Cairo'
     | For English, recommended fonts: 'DejaVu Sans', 'Arial'
     |
     */
@@ -51,20 +51,21 @@ return [
     |--------------------------------------------------------------------------
     |
     | Custom font definitions for PDF generation.
+    | Format: 'Font Name' => ['R' => 'regular.ttf', 'B' => 'bold.ttf']
     |
     */
     'fonts' => [
-        'arabic' => [
-            'Cairo' => 'Cairo-Regular.ttf',
-            'Cairo-Bold' => 'Cairo-Bold.ttf',
-            'Amiri' => 'Amiri-Regular.ttf',
-            'Amiri-Bold' => 'Amiri-Bold.ttf',
-            'Tajawal' => 'Tajawal-Regular.ttf',
-            'Tajawal-Bold' => 'Tajawal-Bold.ttf',
+        'Noto Sans Arabic' => [
+            'R' => '/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf',
+            'B' => '/usr/share/fonts/truetype/noto/NotoSansArabic-Bold.ttf',
         ],
-        'english' => [
-            'DejaVu Sans' => 'DejaVuSans.ttf',
-            'Arial' => 'arial.ttf',
+        'Noto Naskh Arabic' => [
+            'R' => '/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf',
+            'B' => '/usr/share/fonts/truetype/noto/NotoNaskhArabic-Bold.ttf',
+        ],
+        'DejaVu Sans' => [
+            'R' => '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            'B' => '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
         ],
     ],
 
