@@ -795,7 +795,7 @@ class StoryProductService
         $gray  = imagecolorallocate($page, 140, 140, 140);
         imagefill($page, 0, 0, $white);
         $font = $this->fontPathForLanguage($language);
-        $scaleH = (int)round(120 * ($this->pageWidth / 1240));
+        $scaleH = max(1, (int)round(120 * ($this->pageWidth / 1240)));
 
         // Bold outer border
         imagesetthickness($page, 8 * ($this->pageWidth > 1500 ? 2 : 1));
@@ -805,12 +805,12 @@ class StoryProductService
         imagesetthickness($page, 1);
 
         // Page header
-        $headerSize = (int)round(42 * ($this->pageWidth / 1240));
+        $headerSize = max(1, (int)round(42 * ($this->pageWidth / 1240)));
         $this->drawText($page, 'COLOR THIS PAGE!', $font, $headerSize, 70, $scaleH / 2, $black, false, $this->pageWidth - 140);
         imagefilledrectangle($page, 70, (int)($scaleH / 2 + 16), $this->pageWidth - 70, (int)($scaleH / 2 + 22), $black);
 
         // Scene caption
-        $this->drawText($page, $caption, $font, (int)round(28 * ($this->pageWidth / 1240)), 70, (int)($scaleH / 2 + 50), $gray, false, $this->pageWidth - 140);
+        $this->drawText($page, $caption, $font, max(1, (int)round(28 * ($this->pageWidth / 1240))), 70, (int)($scaleH / 2 + 50), $gray, false, $this->pageWidth - 140);
 
         // Real black-and-white line-art conversion (hard threshold + bold outlines) —
         // no gray tones, no shading; only pure black lines on a pure white page.
@@ -823,11 +823,11 @@ class StoryProductService
         imagedestroy($lineArt);
 
         // Page number
-        $this->drawText($page, (string)$pageNumber, $font, (int)round(28 * ($this->pageWidth / 1240)), (int)($this->pageWidth / 2) - 12, $this->pageHeight - (int)($scaleH * 0.4), $black, false, 64);
+        $this->drawText($page, (string)$pageNumber, $font, max(1, (int)round(28 * ($this->pageWidth / 1240))), (int)($this->pageWidth / 2) - 12, $this->pageHeight - (int)($scaleH * 0.4), $black, false, 64);
 
         // Footer
         imagefilledrectangle($page, 0, $this->pageHeight - $scaleH, $this->pageWidth, $this->pageHeight, $gray);
-        $this->drawText($page, 'StoryHero Coloring Book', $font, (int)round(22 * ($this->pageWidth / 1240)), 70, $this->pageHeight - (int)($scaleH * 0.6), $black, false, $this->pageWidth - 140);
+        $this->drawText($page, 'StoryHero Coloring Book', $font, max(1, (int)round(22 * ($this->pageWidth / 1240))), 70, $this->pageHeight - (int)($scaleH * 0.6), $black, false, $this->pageWidth - 140);
 
         $path = "{$tmpDir}/coloring_gd_{$asset->scene_number}.jpg";
         imagejpeg($page, $path, 95);
