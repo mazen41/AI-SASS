@@ -413,6 +413,7 @@ export interface Story {
   processing_step: string | null;
   error_message: string | null;
   custom_prompt: string | null;
+  selected_outputs: string | null;
   scenes: StoryScene[] | null;
   duration_seconds: number | null;
   language: string;
