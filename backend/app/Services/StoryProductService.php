@@ -618,10 +618,12 @@ class StoryProductService
             $photoUrl = $story->child_photo_url ?? null;
             
             // Generate line art image specifically for coloring book
+            Log::info("Generating Fal.ai line art for scene {$sceneNumber}");
             $lineArtUrl = $falAi->generateLineArtImage($scenePrompt, $photoUrl);
+            Log::info("Fal.ai line art generated for scene {$sceneNumber}: {$lineArtUrl}");
             
             // Download the line art image
-            $response = \Illuminate\Support\Facades\Http::timeout(60)->get($lineArtUrl);
+            $response = \Illuminate\Support\Facades\Http::timeout(120)->get($lineArtUrl);
             if (!$response->successful()) {
                 throw new \RuntimeException("Failed to download Fal.ai line art result for scene {$sceneNumber}");
             }
@@ -629,8 +631,9 @@ class StoryProductService
             $path = "{$tmpDir}/coloring_fal_{$sceneNumber}.jpg";
             return $this->buildColoringPageCanvas($response->body(), $tmpDir, $sceneNumber, $caption, $path);
         } catch (\Throwable $e) {
-            Log::warning("Fal.ai line art generation failed for scene {$asset->scene_number}, falling back to GD", ['error' => $e->getMessage()]);
-            return $this->createLineArtPageViaGd($tmpDir, $asset, $caption, $asset->scene_number, null);
+            Log::error("Fal.ai line art generation failed for scene {$asset->scene_number}", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            // Don't fall back to GD - fail the whole coloring book generation
+            throw new \RuntimeException("Line art generation failed for scene {$asset->scene_number}: " . $e->getMessage());
         }
     }
 

@@ -393,7 +393,14 @@ export default function StoryViewPage() {
   // Parse selected outputs to determine which tabs to show
   let selectedOutputs: string[] = [];
   try {
-    selectedOutputs = story.selected_outputs ? JSON.parse(story.selected_outputs) : [];
+    if (story.selected_outputs) {
+      // Handle both array and string formats
+      if (Array.isArray(story.selected_outputs)) {
+        selectedOutputs = story.selected_outputs;
+      } else if (typeof story.selected_outputs === 'string') {
+        selectedOutputs = JSON.parse(story.selected_outputs);
+      }
+    }
   } catch (e) {
     console.error('Failed to parse selected_outputs:', story.selected_outputs, e);
     selectedOutputs = [];
@@ -402,6 +409,7 @@ export default function StoryViewPage() {
   // Debug: log the selected outputs
   console.log('Selected outputs:', selectedOutputs);
   console.log('Story selected_outputs raw:', story.selected_outputs);
+  console.log('Story selected_outputs type:', typeof story.selected_outputs);
   
   // Determine which tabs should be visible based on user selection
   const availableTabs = [
