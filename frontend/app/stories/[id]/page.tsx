@@ -393,6 +393,10 @@ export default function StoryViewPage() {
   // Parse selected outputs to determine which tabs to show
   const selectedOutputs = story.selected_outputs ? JSON.parse(story.selected_outputs) : [];
   
+  // Debug: log the selected outputs
+  console.log('Selected outputs:', selectedOutputs);
+  console.log('Story selected_outputs raw:', story.selected_outputs);
+  
   // Determine which tabs should be visible based on user selection
   const availableTabs = [
     { key: 'story' as StoryTab, label: 'Story', alwaysShow: true }, // Story tab always shows
@@ -401,6 +405,9 @@ export default function StoryViewPage() {
     { key: 'audio' as StoryTab, label: 'Audio', condition: selectedOutputs.includes('audio') },
     { key: 'video' as StoryTab, label: 'Video', condition: selectedOutputs.includes('video') },
   ].filter(tab => tab.alwaysShow || tab.condition);
+  
+  // Debug: log the available tabs
+  console.log('Available tabs:', availableTabs);
 
 
 
