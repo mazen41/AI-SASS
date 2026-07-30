@@ -83,6 +83,11 @@ class StoryProductService
             $pdf->loadHTML($coverHtml);
             
             // Generate scene pages HTML
+            // NOTE: loadHTML() does NOT insert a page break on its own between
+            // calls -- it only paginates automatically once content overflows
+            // the current page. Every page here is a full 210mm x 297mm block
+            // meant to occupy exactly one page, so we must explicitly start a
+            // new page before each one after the cover.
             $pageNum = 1;
             foreach ($scenes->sortKeys() as $sceneNumber => $scene) {
                 $asset = $images->get($sceneNumber);
@@ -95,6 +100,7 @@ class StoryProductService
                     'language' => $language,
                     'font' => $font
                 ])->render();
+                $pdf->newPage();
                 $pdf->loadHTML($pageHtml);
                 $pageNum++;
             }
@@ -109,6 +115,7 @@ class StoryProductService
                 'language' => $language,
                 'font' => $font
             ])->render();
+            $pdf->newPage();
             $pdf->loadHTML($endingHtml);
             
             // Save PDF to temp file first
@@ -195,6 +202,7 @@ class StoryProductService
                     'font' => $font,
                     'isCover' => false
                 ])->render();
+                $pdf->newPage();
                 $pdf->loadHTML($pageHtml);
                 
                 $pageNum++;
