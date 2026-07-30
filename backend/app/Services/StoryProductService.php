@@ -61,10 +61,25 @@ class StoryProductService
             // Determine font based on language
             $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
             
-            // Setup ArPDF with proper direction and font
-            $pdf = new ArPDF();
-            $pdf->direction($isRtl ? 'rtl' : 'ltr');
-            $pdf->setFont($font);
+            // Setup mPDF directly for Arabic/English support
+            $mpdf = new \Mpdf\Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4',
+                'default_font_size' => 10,
+                'default_font' => $font,
+                'margin_left' => 15,
+                'margin_right' => 15,
+                'margin_top' => 20,
+                'margin_bottom' => 20,
+                'margin_header' => 10,
+                'margin_footer' => 10,
+                'orientation' => 'P',
+            ]);
+            
+            // Set direction for Arabic
+            if ($isRtl) {
+                $mpdf->SetDirectionality('rtl');
+            }
             
             // Generate cover page HTML
             $coverImage = $images->first();
@@ -76,7 +91,7 @@ class StoryProductService
                 'language' => $language,
                 'font' => $font
             ])->render();
-            $pdf->loadHTML($coverHtml);
+            $mpdf->WriteHTML($coverHtml);
             
             // Generate scene pages HTML
             // NOTE: loadHTML() does NOT insert a page break on its own between
@@ -96,8 +111,8 @@ class StoryProductService
                     'language' => $language,
                     'font' => $font
                 ])->render();
-                $pdf->pageBreak();
-                $pdf->loadHTML($pageHtml);
+                $mpdf->AddPage();
+                $mpdf->WriteHTML($pageHtml);
                 $pageNum++;
             }
             
@@ -111,12 +126,12 @@ class StoryProductService
                 'language' => $language,
                 'font' => $font
             ])->render();
-            $pdf->pageBreak();
-            $pdf->loadHTML($endingHtml);
+            $mpdf->AddPage();
+            $mpdf->WriteHTML($endingHtml);
             
             // Save PDF to temp file first
             $tempPath = storage_path('app/temp_storybook_' . $story->id . '.pdf');
-            $pdf->save($tempPath);
+            $mpdf->Output($tempPath, \Mpdf\Output\Destination::FILE);
             
             // Read the PDF content
             $pdfContent = file_get_contents($tempPath);
@@ -181,8 +196,20 @@ class StoryProductService
                     // Generate line art using Fal.ai
                     $rawFalImage = $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption);
                     
+                    // Load the image as GD resource
+                    $gdImage = imagecreatefromstring(file_get_contents($rawFalImage));
+                    if (!$gdImage) {
+                        throw new \RuntimeException("Failed to load image for B&W conversion: {$rawFalImage}");
+                    }
+                    
                     // Convert to pure black and white line art
-                    $lineArtPath = $this->convertToPureLineArt($rawFalImage);
+                    $lineArtGd = $this->convertToPureLineArt($gdImage);
+                    
+                    // Save B&W image to temp file
+                    $lineArtPath = "{$tmpDir}/bw_lineart_{$asset->scene_number}.jpg";
+                    imagejpeg($lineArtGd, $lineArtPath, 95);
+                    imagedestroy($gdImage);
+                    imagedestroy($lineArtGd);
                     
                     // Store the black and white line art as the coloring page asset
                     $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
@@ -205,10 +232,25 @@ class StoryProductService
             // Determine font based on language
             $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
             
-            // Setup ArPDF with proper direction and font
-            $pdf = new ArPDF();
-            $pdf->direction($isRtl ? 'rtl' : 'ltr');
-            $pdf->setFont($font);
+            // Setup mPDF directly for Arabic/English support
+            $mpdf = new \Mpdf\Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4',
+                'default_font_size' => 10,
+                'default_font' => $font,
+                'margin_left' => 15,
+                'margin_right' => 15,
+                'margin_top' => 20,
+                'margin_bottom' => 20,
+                'margin_header' => 10,
+                'margin_footer' => 10,
+                'orientation' => 'P',
+            ]);
+            
+            // Set direction for Arabic
+            if ($isRtl) {
+                $mpdf->SetDirectionality('rtl');
+            }
             
             // Generate cover page HTML
             $coverHtml = view('pdf.coloring-page', [
@@ -219,7 +261,7 @@ class StoryProductService
                 'font' => $font,
                 'isCover' => true
             ])->render();
-            $pdf->loadHTML($coverHtml);
+            $mpdf->WriteHTML($coverHtml);
             
             // Generate coloring pages HTML (using line art images)
             $pageNum = 1;
@@ -239,15 +281,15 @@ class StoryProductService
                     'font' => $font,
                     'isCover' => false
                 ])->render();
-                $pdf->pageBreak();
-                $pdf->loadHTML($pageHtml);
+                $mpdf->AddPage();
+                $mpdf->WriteHTML($pageHtml);
                 
                 $pageNum++;
             }
             
             // Save PDF to temp file first
             $tempPath = storage_path('app/temp_coloringbook_' . $story->id . '.pdf');
-            $pdf->save($tempPath);
+            $mpdf->Output($tempPath, \Mpdf\Output\Destination::FILE);
             
             // Read the PDF content
             $pdfContent = file_get_contents($tempPath);
