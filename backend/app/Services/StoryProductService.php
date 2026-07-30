@@ -157,7 +157,12 @@ class StoryProductService
         @mkdir($tmpDir, 0755, true);
 
         try {
-            $images = $story->imageAssets()->get()->sortBy('scene_number');
+            // Check if we already have coloring_page assets (black and white)
+            $coloringAssets = $story->assets()->where('asset_type', 'coloring_page')->get();
+            $images = $coloringAssets->isNotEmpty() 
+                ? $coloringAssets->sortBy('scene_number')  // Use existing B&W assets
+                : $story->imageAssets()->get()->sortBy('scene_number');  // Or convert colored assets
+            
             $scenes = collect($story->scenes ?? [])->keyBy('scene_number');
             $isRtl  = ($story->language ?? 'en') === 'ar';
             $language = $story->language ?? 'en';
@@ -166,32 +171,39 @@ class StoryProductService
                 throw new \RuntimeException('No scene images are available for coloring book generation.');
             }
             
-            // Generate black and white line art images using Fal.ai
-            $falAi = app(FalAiService::class);
-            $lineArtPaths = [];
+            // Only generate B&W conversion if we don't already have coloring_page assets
+            $needsConversion = $coloringAssets->isEmpty();
             
-            foreach ($images as $asset) {
-                $scene = $scenes->get($asset->scene_number);
-                $sceneCaption = $scene['title'] ?? ('Scene ' . $asset->scene_number);
+            if ($needsConversion) {
+                // Generate black and white line art images using Fal.ai
+                $falAi = app(FalAiService::class);
                 
-                // Generate line art using Fal.ai
-                $rawFalImage = $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption);
+                foreach ($images as $asset) {
+                    $scene = $scenes->get($asset->scene_number);
+                    $sceneCaption = $scene['title'] ?? ('Scene ' . $asset->scene_number);
+                    
+                    // Generate line art using Fal.ai
+                    $rawFalImage = $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption);
+                    
+                    // Convert to pure black and white line art
+                    $lineArtPath = $this->convertToPureLineArt($rawFalImage);
+                    
+                    // Store the black and white line art as the coloring page asset
+                    $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
+                    Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
+                    
+                    StoryAsset::updateOrCreate(
+                        ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
+                        ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => self::COLORING_PROMPT]
+                    );
+                    
+                    // Clean up temp files
+                    if (file_exists($rawFalImage)) unlink($rawFalImage);
+                    if (file_exists($lineArtPath)) unlink($lineArtPath);
+                }
                 
-                // Convert to pure black and white line art
-                $lineArtPath = $this->convertToPureLineArt($rawFalImage);
-                
-                // Store the black and white line art as the coloring page asset
-                $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
-                Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
-                
-                StoryAsset::updateOrCreate(
-                    ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
-                    ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => self::COLORING_PROMPT]
-                );
-                
-                // Clean up temp files
-                if (file_exists($rawFalImage)) unlink($rawFalImage);
-                if (file_exists($lineArtPath)) unlink($lineArtPath);
+                // Refresh images to use the new coloring_page assets
+                $images = $story->assets()->where('asset_type', 'coloring_page')->get()->sortBy('scene_number');
             }
             
             // Determine font based on language

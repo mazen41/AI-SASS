@@ -60,28 +60,59 @@ class GenerateImagesJob implements ShouldQueue
                 $prompt   = $scene['image_prompt'];
                 $photoUrl = $story->photo_url;
 
-                // Add style prefix based on selected outputs
-                $stylePrefix = '';
+                // Only generate colored scene images if story_book_pdf is selected
+                // If only coloring_book_pdf is selected, generate black and white line art directly
                 if (in_array('story_book_pdf', $selected, true)) {
+                    // Add style prefix for story book
                     $stylePrefix = 'Manga/comic style illustration, bold outlines, vibrant colors, dynamic composition, professional children\'s book art style. ';
+                    $enhancedPrompt = $stylePrefix . $prompt;
+
+                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl);
+                    $storedUrl = $fal->downloadAndStore(
+                        $imageUrl,
+                        "stories/{$story->id}/scene_{$sceneNum}.jpg"
+                    );
+
+                    StoryAsset::updateOrCreate(
+                        ['story_id' => $story->id, 'scene_number' => $sceneNum, 'asset_type' => 'image'],
+                        ['url' => $storedUrl, 'prompt' => $prompt]
+                    );
+
+                    Log::info("Colored image stored for scene {$sceneNum}", ['story_id' => $story->id]);
                 } elseif (in_array('coloring_book_pdf', $selected, true)) {
-                    $stylePrefix = 'Children\'s illustration with clean lines and shapes, coloring book friendly, clear boundaries, no shading or gradients. ';
+                    // Generate black and white line art directly for coloring book
+                    $stylePrefix = 'Children\'s illustration with clean lines and shapes, coloring book friendly, clear boundaries, no shading or gradients, black and white line art only, pure black outlines on white background. ';
+                    $enhancedPrompt = $stylePrefix . $prompt;
+
+                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl);
+                    $storedUrl = $fal->downloadAndStore(
+                        $imageUrl,
+                        "stories/{$story->id}/scene_{$sceneNum}.jpg"
+                    );
+
+                    StoryAsset::updateOrCreate(
+                        ['story_id' => $story->id, 'scene_number' => $sceneNum, 'asset_type' => 'coloring_page'],
+                        ['url' => $storedUrl, 'prompt' => $prompt]
+                    );
+
+                    Log::info("Black and white line art stored for scene {$sceneNum}", ['story_id' => $story->id]);
+                } else {
+                    // Just story text - generate basic illustrations
+                    $enhancedPrompt = $prompt;
+
+                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl);
+                    $storedUrl = $fal->downloadAndStore(
+                        $imageUrl,
+                        "stories/{$story->id}/scene_{$sceneNum}.jpg"
+                    );
+
+                    StoryAsset::updateOrCreate(
+                        ['story_id' => $story->id, 'scene_number' => $sceneNum, 'asset_type' => 'image'],
+                        ['url' => $storedUrl, 'prompt' => $prompt]
+                    );
+
+                    Log::info("Basic image stored for scene {$sceneNum}", ['story_id' => $story->id]);
                 }
-                
-                $enhancedPrompt = $stylePrefix . $prompt;
-
-                $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl);
-                $storedUrl = $fal->downloadAndStore(
-                    $imageUrl,
-                    "stories/{$story->id}/scene_{$sceneNum}.jpg"
-                );
-
-                StoryAsset::updateOrCreate(
-                    ['story_id' => $story->id, 'scene_number' => $sceneNum, 'asset_type' => 'image'],
-                    ['url' => $storedUrl, 'prompt' => $prompt]
-                );
-
-                Log::info("Image stored for scene {$sceneNum}", ['story_id' => $story->id]);
             }
 
             $log->complete();
