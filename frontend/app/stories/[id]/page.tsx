@@ -391,7 +391,13 @@ export default function StoryViewPage() {
   const isRtl = story.language === 'ar';
 
   // Parse selected outputs to determine which tabs to show
-  const selectedOutputs = story.selected_outputs ? JSON.parse(story.selected_outputs) : [];
+  let selectedOutputs: string[] = [];
+  try {
+    selectedOutputs = story.selected_outputs ? JSON.parse(story.selected_outputs) : [];
+  } catch (e) {
+    console.error('Failed to parse selected_outputs:', story.selected_outputs, e);
+    selectedOutputs = [];
+  }
   
   // Debug: log the selected outputs
   console.log('Selected outputs:', selectedOutputs);
