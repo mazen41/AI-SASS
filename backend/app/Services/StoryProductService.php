@@ -903,6 +903,7 @@ class StoryProductService
     {
         $srcW  = imagesx($source);
         $srcH  = imagesy($source);
+        if ($srcW <= 0 || $srcH <= 0) return;
         $scale = $contain ? min($boxW / $srcW, $boxH / $srcH) : max($boxW / $srcW, $boxH / $srcH);
         $newW  = (int)round($srcW * $scale);
         $newH  = (int)round($srcH * $scale);
@@ -922,6 +923,7 @@ class StoryProductService
     {
         $srcW  = imagesx($source);
         $srcH  = imagesy($source);
+        if ($srcW <= 0 || $srcH <= 0) return;
         $scale = $contain ? min($boxW / $srcW, $boxH / $srcH) : max($boxW / $srcW, $boxH / $srcH);
         $newW  = max(1, (int)round($srcW * $scale));
         $newH  = max(1, (int)round($srcH * $scale));
@@ -951,7 +953,11 @@ class StoryProductService
         // Pure GD implementation - no Intervention Image to avoid API issues
         $sourceWidth = imagesx($source);
         $sourceHeight = imagesy($source);
-        
+
+        if ($sourceWidth <= 0 || $sourceHeight <= 0) {
+            throw new \RuntimeException("Invalid image dimensions ({$sourceWidth}x{$sourceHeight}) — cannot convert to line art.");
+        }
+
         // Create working canvas at smaller resolution for performance
         $scale = $workingWidth / $sourceWidth;
         $workingHeight = (int)($sourceHeight * $scale);
@@ -1223,6 +1229,10 @@ class StoryProductService
 
         foreach ($imagePaths as $index => $path) {
             [$imgW, $imgH] = getimagesize($path);
+
+            if (!$imgW || !$imgH) {
+                throw new \RuntimeException("Invalid image dimensions for PDF page: {$path}");
+            }
 
             // Guard: if anything upstream ever hands this a PNG, convert it
             // to JPEG on the fly rather than emit an invalid PDF image stream.
