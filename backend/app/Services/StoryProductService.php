@@ -63,9 +63,9 @@ class StoryProductService
             
             // Setup ArPDF with proper direction and font
             $config = [
-                'directionality' => $isRtl ? 'rtl' : 'ltr',
+                'direction' => $isRtl ? 'rtl' : 'ltr',
                 'default_font' => $font,
-                'tempDir' => storage_path('app/laravel-arpdf')
+                'temp_dir' => storage_path('app/laravel-arpdf')
             ];
             $pdf = new ArPDF($config);
             $pdf->direction($isRtl ? 'rtl' : 'ltr');
@@ -100,7 +100,7 @@ class StoryProductService
                     'language' => $language,
                     'font' => $font
                 ])->render();
-                $pdf->newPage();
+                $pdf->pageBreak();
                 $pdf->loadHTML($pageHtml);
                 $pageNum++;
             }
@@ -115,7 +115,7 @@ class StoryProductService
                 'language' => $language,
                 'font' => $font
             ])->render();
-            $pdf->newPage();
+            $pdf->pageBreak();
             $pdf->loadHTML($endingHtml);
             
             // Save PDF to temp file first
@@ -169,9 +169,9 @@ class StoryProductService
             
             // Setup ArPDF with proper direction and font
             $config = [
-                'directionality' => $isRtl ? 'rtl' : 'ltr',
+                'direction' => $isRtl ? 'rtl' : 'ltr',
                 'default_font' => $font,
-                'tempDir' => storage_path('app/laravel-arpdf')
+                'temp_dir' => storage_path('app/laravel-arpdf')
             ];
             $pdf = new ArPDF($config);
             $pdf->direction($isRtl ? 'rtl' : 'ltr');
@@ -202,7 +202,7 @@ class StoryProductService
                     'font' => $font,
                     'isCover' => false
                 ])->render();
-                $pdf->newPage();
+                $pdf->pageBreak();
                 $pdf->loadHTML($pageHtml);
                 
                 $pageNum++;
