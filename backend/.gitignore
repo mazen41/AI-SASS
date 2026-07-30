@@ -19,9 +19,6 @@
 /storage/*.key
 /storage/pail
 /vendor
-
-# Exception for ArPDF config (we want to track this)
-!/vendor/baidouabdellah/laravel-arpdf/config/arpdf.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
