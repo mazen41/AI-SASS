@@ -146,11 +146,36 @@ class StoryProductService
                 ])->render();
                 $mpdf->WriteHTML($coverHtml);
             } catch (\Throwable $e) {
-                Log::error("Failed to render cover page", [
-                    'story_id' => $story->id,
-                    'error' => $e->getMessage()
-                ]);
-                throw new \RuntimeException("Cover page rendering failed: " . $e->getMessage());
+                // If rendering fails with the image, try again without the image
+                if ($coverImageUrl && strpos($e->getMessage(), 'Division by zero') !== false) {
+                    Log::warning("Cover page failed with image, retrying without image", [
+                        'story_id' => $story->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    try {
+                        $coverHtml = view('pdf.storybook-cover', [
+                            'title' => $story->title ?? 'Story Book',
+                            'childName' => $story->child_name,
+                            'imageUrl' => null, // Skip the problematic image
+                            'rtl' => $isRtl,
+                            'language' => $language,
+                            'font' => $font
+                        ])->render();
+                        $mpdf->WriteHTML($coverHtml);
+                    } catch (\Throwable $retryError) {
+                        Log::error("Cover page failed even without image", [
+                            'story_id' => $story->id,
+                            'error' => $retryError->getMessage()
+                        ]);
+                        throw new \RuntimeException("Cover page rendering failed even without image: " . $retryError->getMessage());
+                    }
+                } else {
+                    Log::error("Failed to render cover page", [
+                        'story_id' => $story->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    throw new \RuntimeException("Cover page rendering failed: " . $e->getMessage());
+                }
             }
 
             // Generate scene pages HTML
@@ -168,7 +193,7 @@ class StoryProductService
             foreach ($scenesToProcess as $sceneNumber => $scene) {
                 $asset = $images->get($sceneNumber);
                 $sceneImageUrl = $this->cacheImageLocally($asset?->url, $tmpDir, "scene_{$sceneNumber}");
-                
+
                 // Skip scene if image caching failed
                 if (!$sceneImageUrl) {
                     Log::warning("Failed to cache scene image {$sceneNumber} for story #{$story->id}");
@@ -188,11 +213,38 @@ class StoryProductService
                     $mpdf->AddPage();
                     $mpdf->WriteHTML($pageHtml);
                 } catch (\Throwable $e) {
-                    Log::error("Failed to render scene page {$sceneNumber}", [
-                        'story_id' => $story->id,
-                        'error' => $e->getMessage()
-                    ]);
-                    throw new \RuntimeException("Scene page {$sceneNumber} rendering failed: " . $e->getMessage());
+                    // If rendering fails with the image, try again without the image
+                    if ($sceneImageUrl && strpos($e->getMessage(), 'Division by zero') !== false) {
+                        Log::warning("Scene page {$sceneNumber} failed with image, retrying without image", [
+                            'story_id' => $story->id,
+                            'error' => $e->getMessage()
+                        ]);
+                        try {
+                            $pageHtml = view('pdf.storybook-page', [
+                                'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
+                                'text' => $scene['text'] ?? $scene['description'] ?? '',
+                                'imageUrl' => null, // Skip the problematic image
+                                'pageNumber' => $pageNum,
+                                'rtl' => $isRtl,
+                                'language' => $language,
+                                'font' => $font
+                            ])->render();
+                            $mpdf->AddPage();
+                            $mpdf->WriteHTML($pageHtml);
+                        } catch (\Throwable $retryError) {
+                            Log::error("Scene page {$sceneNumber} failed even without image", [
+                                'story_id' => $story->id,
+                                'error' => $retryError->getMessage()
+                            ]);
+                            throw new \RuntimeException("Scene page {$sceneNumber} rendering failed even without image: " . $retryError->getMessage());
+                        }
+                    } else {
+                        Log::error("Failed to render scene page {$sceneNumber}", [
+                            'story_id' => $story->id,
+                            'error' => $e->getMessage()
+                        ]);
+                        throw new \RuntimeException("Scene page {$sceneNumber} rendering failed: " . $e->getMessage());
+                    }
                 }
                 $pageNum++;
             }
