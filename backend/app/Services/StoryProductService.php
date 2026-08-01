@@ -133,28 +133,7 @@ class StoryProductService
             // Determine font based on language
             $font = 'DejaVu Sans'; // DomPDF works best with DejaVu
 
-            // Setup DomPDF (barryvdh/laravel-dompdf wrapper — NOT Dompdf\Dompdf
-            // directly: the raw Dompdf::setOptions() expects an Options object,
-            // not an array; the wrapper's setPaper()/setOptions() both accept
-            // plain values/arrays, matching how they're called below).
-            $pdf = app('dompdf.wrapper');
-            $pdf->setPaper('a4', 'portrait');
-
-            $fontCachePath = storage_path('fonts');
-            if (!is_dir($fontCachePath)) {
-                @mkdir($fontCachePath, 0755, true);
-            }
-
-            // Set options for better Arabic support and image loading
-            $pdf->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'isPhpEnabled' => true,
-                'defaultFont' => 'DejaVu Sans',
-                'tempDir' => $tmpDir,
-                'fontDir' => $fontCachePath,
-                'fontCache' => $fontCachePath,
-            ]);
+            // PDF engines will be initialized dynamically based on RTL requirements at output time.
 
             // Build complete HTML for all pages
             $allHtml = '';
@@ -245,20 +224,75 @@ class StoryProductService
                 throw new \RuntimeException("Ending page rendering failed: " . $e->getMessage());
             }
 
-            // Load complete HTML and generate PDF
-            $pdf->loadHTML($allHtml);
-
-            // Save PDF to storage
+            // Generate PDF content using the appropriate engine
             try {
-                $pdfContent = $pdf->output();
+                if ($isRtl) {
+                    // Setup mPDF for native Arabic shaping and directionality
+                    $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+                    $fontDirs = $defaultConfig['fontDir'];
+                    $defaultFontConfig = (new \Mpdf\Config\FontVariables())->getDefaults();
+                    $fontData = $defaultFontConfig['fontdata'];
+
+                    $customFontDirs = [];
+                    if (file_exists('/usr/share/fonts/truetype/noto')) {
+                        $customFontDirs[] = '/usr/share/fonts/truetype/noto';
+                    }
+                    if (file_exists('/usr/share/fonts/truetype/dejavu')) {
+                        $customFontDirs[] = '/usr/share/fonts/truetype/dejavu';
+                    }
+
+                    $mpdf = new \Mpdf\Mpdf([
+                        'mode' => 'utf-8',
+                        'format' => 'A4',
+                        'default_font_size' => 12,
+                        'default_font' => 'Noto Sans Arabic',
+                        'margin_left' => 0,
+                        'margin_right' => 0,
+                        'margin_top' => 0,
+                        'margin_bottom' => 0,
+                        'tempDir' => $tmpDir,
+                        'fontDir' => array_merge($fontDirs, $customFontDirs),
+                        'fontdata' => $fontData + [
+                            'noto sans arabic' => [
+                                'R' => 'NotoSansArabic-Regular.ttf',
+                                'B' => 'NotoSansArabic-Bold.ttf',
+                            ],
+                        ],
+                    ]);
+                    $mpdf->SetDirectionality('rtl');
+                    $mpdf->WriteHTML($allHtml);
+                    $pdfContent = $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
+                } else {
+                    // Setup DomPDF for English/LTR
+                    $fontCachePath = storage_path('fonts');
+                    if (!is_dir($fontCachePath)) {
+                        @mkdir($fontCachePath, 0755, true);
+                    }
+
+                    $pdf = app('dompdf.wrapper');
+                    $pdf->setPaper('a4', 'portrait');
+                    $pdf->setOptions([
+                        'isHtml5ParserEnabled' => true,
+                        'isRemoteEnabled' => true,
+                        'isPhpEnabled' => true,
+                        'defaultFont' => 'DejaVu Sans',
+                        'tempDir' => $tmpDir,
+                        'fontDir' => $fontCachePath,
+                        'fontCache' => $fontCachePath,
+                    ]);
+
+                    $pdf->loadHTML($allHtml);
+                    $pdfContent = $pdf->output();
+                }
+
                 $path = "stories/{$story->id}/books/story_book.pdf";
                 Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
             } catch (\Throwable $e) {
-                Log::error("Failed to save PDF", [
+                Log::error("Failed to generate/save story book PDF", [
                     'story_id' => $story->id,
                     'error' => $e->getMessage()
                 ]);
-                throw new \RuntimeException("PDF save failed: " . $e->getMessage());
+                throw new \RuntimeException("Story book PDF generation failed: " . $e->getMessage());
             }
 
             return $this->markCompleted($output, $path, [
@@ -365,25 +399,7 @@ class StoryProductService
             // Determine font based on language
             $font = 'DejaVu Sans'; // DomPDF works best with DejaVu
 
-            // Setup DomPDF (barryvdh/laravel-dompdf wrapper — see note above)
-            $pdf = app('dompdf.wrapper');
-            $pdf->setPaper('a4', 'portrait');
-
-            $fontCachePath = storage_path('fonts');
-            if (!is_dir($fontCachePath)) {
-                @mkdir($fontCachePath, 0755, true);
-            }
-
-            // Set options for better Arabic support and image loading
-            $pdf->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'isPhpEnabled' => true,
-                'defaultFont' => 'DejaVu Sans',
-                'tempDir' => $tmpDir,
-                'fontDir' => $fontCachePath,
-                'fontCache' => $fontCachePath,
-            ]);
+            // PDF engines will be initialized dynamically based on RTL requirements at output time.
 
             // Build complete HTML for all pages
             $allHtml = '';
@@ -434,20 +450,75 @@ class StoryProductService
                 $pageNum++;
             }
 
-            // Load complete HTML and generate PDF
-            $pdf->loadHTML($allHtml);
-
-            // Save PDF to storage
+            // Generate PDF content using the appropriate engine
             try {
-                $pdfContent = $pdf->output();
+                if ($isRtl) {
+                    // Setup mPDF for native Arabic shaping and directionality
+                    $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+                    $fontDirs = $defaultConfig['fontDir'];
+                    $defaultFontConfig = (new \Mpdf\Config\FontVariables())->getDefaults();
+                    $fontData = $defaultFontConfig['fontdata'];
+
+                    $customFontDirs = [];
+                    if (file_exists('/usr/share/fonts/truetype/noto')) {
+                        $customFontDirs[] = '/usr/share/fonts/truetype/noto';
+                    }
+                    if (file_exists('/usr/share/fonts/truetype/dejavu')) {
+                        $customFontDirs[] = '/usr/share/fonts/truetype/dejavu';
+                    }
+
+                    $mpdf = new \Mpdf\Mpdf([
+                        'mode' => 'utf-8',
+                        'format' => 'A4',
+                        'default_font_size' => 12,
+                        'default_font' => 'Noto Sans Arabic',
+                        'margin_left' => 0,
+                        'margin_right' => 0,
+                        'margin_top' => 0,
+                        'margin_bottom' => 0,
+                        'tempDir' => $tmpDir,
+                        'fontDir' => array_merge($fontDirs, $customFontDirs),
+                        'fontdata' => $fontData + [
+                            'noto sans arabic' => [
+                                'R' => 'NotoSansArabic-Regular.ttf',
+                                'B' => 'NotoSansArabic-Bold.ttf',
+                            ],
+                        ],
+                    ]);
+                    $mpdf->SetDirectionality('rtl');
+                    $mpdf->WriteHTML($allHtml);
+                    $pdfContent = $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
+                } else {
+                    // Setup DomPDF for English/LTR
+                    $fontCachePath = storage_path('fonts');
+                    if (!is_dir($fontCachePath)) {
+                        @mkdir($fontCachePath, 0755, true);
+                    }
+
+                    $pdf = app('dompdf.wrapper');
+                    $pdf->setPaper('a4', 'portrait');
+                    $pdf->setOptions([
+                        'isHtml5ParserEnabled' => true,
+                        'isRemoteEnabled' => true,
+                        'isPhpEnabled' => true,
+                        'defaultFont' => 'DejaVu Sans',
+                        'tempDir' => $tmpDir,
+                        'fontDir' => $fontCachePath,
+                        'fontCache' => $fontCachePath,
+                    ]);
+
+                    $pdf->loadHTML($allHtml);
+                    $pdfContent = $pdf->output();
+                }
+
                 $path = "stories/{$story->id}/coloring/coloring_book.pdf";
                 Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
             } catch (\Throwable $e) {
-                Log::error("Failed to save coloring book PDF", [
+                Log::error("Failed to generate/save coloring book PDF", [
                     'story_id' => $story->id,
                     'error' => $e->getMessage()
                 ]);
-                throw new \RuntimeException("Coloring book PDF save failed: " . $e->getMessage());
+                throw new \RuntimeException("Coloring book PDF generation failed: " . $e->getMessage());
             }
 
             return $this->markCompleted($output, $path, [
