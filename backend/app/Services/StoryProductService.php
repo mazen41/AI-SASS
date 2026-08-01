@@ -140,6 +140,9 @@ class StoryProductService
                 'defaultFont' => 'DejaVu Sans',
             ]);
 
+            // Build complete HTML for all pages
+            $allHtml = '';
+
             // Generate cover page HTML
             $coverImage = $images->first();
             $coverImageUrl = $this->cacheImageLocally($coverImage?->url, $tmpDir, 'cover');
@@ -159,7 +162,7 @@ class StoryProductService
                     'language' => $language,
                     'font' => $font
                 ])->render();
-                $pdf->loadHTML($coverHtml);
+                $allHtml .= $coverHtml;
             } catch (\Throwable $e) {
                 Log::error("Failed to render cover page", [
                     'story_id' => $story->id,
@@ -195,8 +198,7 @@ class StoryProductService
                         'language' => $language,
                         'font' => $font
                     ])->render();
-                    $pdf->addPage();
-                    $pdf->loadHTML($pageHtml);
+                    $allHtml .= $pageHtml;
                 } catch (\Throwable $e) {
                     Log::error("Failed to render scene page {$sceneNumber}", [
                         'story_id' => $story->id,
@@ -218,8 +220,7 @@ class StoryProductService
                     'language' => $language,
                     'font' => $font
                 ])->render();
-                $pdf->addPage();
-                $pdf->loadHTML($endingHtml);
+                $allHtml .= $endingHtml;
             } catch (\Throwable $e) {
                 Log::error("Failed to render ending page", [
                     'story_id' => $story->id,
@@ -227,6 +228,9 @@ class StoryProductService
                 ]);
                 throw new \RuntimeException("Ending page rendering failed: " . $e->getMessage());
             }
+
+            // Load complete HTML and generate PDF
+            $pdf->loadHTML($allHtml);
 
             // Save PDF to storage
             try {
@@ -356,10 +360,8 @@ class StoryProductService
                 'defaultFont' => 'DejaVu Sans',
             ]);
 
-            // Set direction for Arabic
-            if ($isRtl) {
-                $mpdf->SetDirectionality('rtl');
-            }
+            // Build complete HTML for all pages
+            $allHtml = '';
 
             // Generate cover page HTML
             $coverHtml = view('pdf.coloring-page', [
@@ -370,7 +372,7 @@ class StoryProductService
                 'font' => $font,
                 'isCover' => true
             ])->render();
-            $mpdf->WriteHTML($coverHtml);
+            $allHtml .= $coverHtml;
 
             // Limit to TEST_IMAGE_COUNT for testing in PDF generation
             $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
@@ -402,26 +404,25 @@ class StoryProductService
                     'font' => $font,
                     'isCover' => false
                 ])->render();
-                $mpdf->AddPage();
-                $mpdf->WriteHTML($pageHtml);
+                $allHtml .= $pageHtml;
 
                 $pageNum++;
             }
 
-            // Save PDF to temp file first
-            $tempPath = storage_path('app/temp_coloringbook_' . $story->id . '.pdf');
-            $mpdf->Output($tempPath, \Mpdf\Output\Destination::FILE);
+            // Load complete HTML and generate PDF
+            $pdf->loadHTML($allHtml);
 
-            // Read the PDF content
-            $pdfContent = file_get_contents($tempPath);
-
-            // Save to storage
-            $path = "stories/{$story->id}/coloring/coloring_book.pdf";
-            Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
-
-            // Clean up temp file
-            if (file_exists($tempPath)) {
-                unlink($tempPath);
+            // Save PDF to storage
+            try {
+                $pdfContent = $pdf->output();
+                $path = "stories/{$story->id}/coloring/coloring_book.pdf";
+                Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
+            } catch (\Throwable $e) {
+                Log::error("Failed to save coloring book PDF", [
+                    'story_id' => $story->id,
+                    'error' => $e->getMessage()
+                ]);
+                throw new \RuntimeException("Coloring book PDF save failed: " . $e->getMessage());
             }
 
             return $this->markCompleted($output, $path, [
