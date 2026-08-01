@@ -97,6 +97,12 @@ class StoryProductService
 
             // Determine font based on language
             $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
+            
+            // Ensure temp directory exists and is writable
+            $tmpDir = storage_path('app/tmp');
+            if (!is_dir($tmpDir)) {
+                mkdir($tmpDir, 0755, true);
+            }
 
             // Setup mPDF directly for Arabic/English support
             $mpdf = new \Mpdf\Mpdf([
@@ -287,6 +293,12 @@ class StoryProductService
 
             // Determine font based on language
             $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
+            
+            // Ensure temp directory exists and is writable
+            $tmpDir = storage_path('app/tmp');
+            if (!is_dir($tmpDir)) {
+                mkdir($tmpDir, 0755, true);
+            }
 
             // Setup mPDF directly for Arabic/English support
             $mpdf = new \Mpdf\Mpdf([
