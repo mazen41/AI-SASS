@@ -29,7 +29,7 @@ class StoryProductService
     }
 
     // -------------------------------------------------------------------------
-    // Story Book (using mPDF for Arabic/English support)
+    // Story Book (using DomPDF for Arabic/English support)
     // -------------------------------------------------------------------------
 
     /**
@@ -37,14 +37,15 @@ class StoryProductService
      * on disk and returns its local path, or null if it can't be fetched or
      * decoded as a valid non-zero-dimension image.
      *
-     * mPDF internally divides by an embedded image's width/height. It re-
-     * fetches every <img src="..."> itself at render time — a SEPARATE
-     * request from any check we run beforehand. A URL that was valid a
-     * moment ago (signed/expiring link, flaky CDN, slow response) can fail
-     * on mPDF's own fetch, leaving it trying to size a broken image and
-     * throwing an unhandled "Division by zero" deep in its layout code.
-     * Fetching once here and handing mPDF a local, already-verified file
-     * removes that second, redundant, unguarded fetch entirely.
+     * PDF renderers (mPDF, DomPDF) internally divide by an embedded image's
+     * width/height. They re-fetch every <img src="..."> themselves at render
+     * time — a SEPARATE request from any check we run beforehand. A URL that
+     * was valid a moment ago (signed/expiring link, flaky CDN, slow response)
+     * can fail on that second fetch, leaving the renderer trying to size a
+     * broken image and throwing an unhandled "Division by zero" deep in its
+     * layout code. Fetching once here and handing the renderer a local,
+     * already-verified file removes that second, redundant, unguarded fetch
+     * entirely.
      */
     private function cacheImageLocally(?string $url, string $tmpDir, string $name): ?string
     {
@@ -129,12 +130,15 @@ class StoryProductService
             // Determine font based on language
             $font = 'DejaVu Sans'; // DomPDF works best with DejaVu
 
-            // Setup DomPDF with Spatie PDF
-            $pdf = new \Spatie\Pdf\Pdf();
-            $pdf->getDomPDF()->setPaper('A4', 'portrait');
+            // Setup DomPDF (barryvdh/laravel-dompdf wrapper — NOT Dompdf\Dompdf
+            // directly: the raw Dompdf::setOptions() expects an Options object,
+            // not an array; the wrapper's setPaper()/setOptions() both accept
+            // plain values/arrays, matching how they're called below).
+            $pdf = app('dompdf.wrapper');
+            $pdf->setPaper('a4', 'portrait');
 
             // Set options for better Arabic support
-            $pdf->getDomPDF()->setOptions([
+            $pdf->setOptions([
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
                 'defaultFont' => 'DejaVu Sans',
@@ -349,12 +353,12 @@ class StoryProductService
             // Determine font based on language
             $font = 'DejaVu Sans'; // DomPDF works best with DejaVu
 
-            // Setup DomPDF with Spatie PDF
-            $pdf = new \Spatie\Pdf\Pdf();
-            $pdf->getDomPDF()->setPaper('A4', 'portrait');
+            // Setup DomPDF (barryvdh/laravel-dompdf wrapper — see note above)
+            $pdf = app('dompdf.wrapper');
+            $pdf->setPaper('a4', 'portrait');
 
             // Set options for better Arabic support
-            $pdf->getDomPDF()->setOptions([
+            $pdf->setOptions([
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
                 'defaultFont' => 'DejaVu Sans',
