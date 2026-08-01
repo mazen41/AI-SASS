@@ -140,6 +140,11 @@ class StoryProductService
             $pdf = app('dompdf.wrapper');
             $pdf->setPaper('a4', 'portrait');
 
+            $fontCachePath = storage_path('fonts');
+            if (!is_dir($fontCachePath)) {
+                @mkdir($fontCachePath, 0755, true);
+            }
+
             // Set options for better Arabic support and image loading
             $pdf->setOptions([
                 'isHtml5ParserEnabled' => true,
@@ -147,6 +152,8 @@ class StoryProductService
                 'isPhpEnabled' => true,
                 'defaultFont' => 'DejaVu Sans',
                 'tempDir' => $tmpDir,
+                'fontDir' => $fontCachePath,
+                'fontCache' => $fontCachePath,
             ]);
 
             // Build complete HTML for all pages
@@ -362,6 +369,11 @@ class StoryProductService
             $pdf = app('dompdf.wrapper');
             $pdf->setPaper('a4', 'portrait');
 
+            $fontCachePath = storage_path('fonts');
+            if (!is_dir($fontCachePath)) {
+                @mkdir($fontCachePath, 0755, true);
+            }
+
             // Set options for better Arabic support and image loading
             $pdf->setOptions([
                 'isHtml5ParserEnabled' => true,
@@ -369,6 +381,8 @@ class StoryProductService
                 'isPhpEnabled' => true,
                 'defaultFont' => 'DejaVu Sans',
                 'tempDir' => $tmpDir,
+                'fontDir' => $fontCachePath,
+                'fontCache' => $fontCachePath,
             ]);
 
             // Build complete HTML for all pages
