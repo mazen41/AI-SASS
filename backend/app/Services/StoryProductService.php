@@ -59,16 +59,31 @@ class StoryProductService
                 : @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => 15]]));
 
             if (!$bytes) {
+                Log::warning("Failed to fetch image bytes", ['url' => $url, 'local_path' => $localPath]);
                 return null;
             }
 
             $size = @getimagesizefromstring($bytes);
             if (!$size || $size[0] <= 0 || $size[1] <= 0) {
+                Log::warning("Invalid image dimensions", ['url' => $url, 'size' => $size]);
+                return null;
+            }
+
+            // Additional validation: ensure minimum dimensions
+            if ($size[0] < 50 || $size[1] < 50) {
+                Log::warning("Image too small for PDF rendering", ['url' => $url, 'dimensions' => $size]);
+                return null;
+            }
+
+            // Additional validation: ensure maximum dimensions to prevent memory issues
+            if ($size[0] > 10000 || $size[1] > 10000) {
+                Log::warning("Image too large for PDF rendering", ['url' => $url, 'dimensions' => $size]);
                 return null;
             }
 
             $image = @imagecreatefromstring($bytes);
             if (!$image) {
+                Log::warning("Failed to create GD image from bytes", ['url' => $url]);
                 return null;
             }
 
@@ -76,8 +91,24 @@ class StoryProductService
             imagejpeg($image, $cachedPath, 92);
             imagedestroy($image);
 
+            // Verify the cached file exists and is valid
+            if (!file_exists($cachedPath)) {
+                Log::warning("Cached file does not exist", ['cached_path' => $cachedPath]);
+                return null;
+            }
+
+            $cachedSize = @getimagesize($cachedPath);
+            if (!$cachedSize || $cachedSize[0] <= 0 || $cachedSize[1] <= 0) {
+                Log::warning("Cached file has invalid dimensions", ['cached_path' => $cachedPath, 'size' => $cachedSize]);
+                return null;
+            }
+
             return $cachedPath;
         } catch (\Throwable $e) {
+            Log::error("Exception in cacheImageLocally", [
+                'url' => $url,
+                'error' => $e->getMessage()
+            ]);
             return null;
         }
     }
