@@ -42,6 +42,12 @@ class StorybookIllustrationService
         $pagesNeedingIllustration = $pages->filter(function ($page) {
             return $page->illustration_prompt && !$page->illustration_url;
         });
+        
+        // Limit to TEST_IMAGE_COUNT for testing
+        $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+        if ($testImageCount > 0) {
+            $pagesNeedingIllustration = $pagesNeedingIllustration->take($testImageCount);
+        }
 
         Log::info("SERVICE STEP 2: Starting concurrent illustration generation", [
             'story_id' => $story->id,

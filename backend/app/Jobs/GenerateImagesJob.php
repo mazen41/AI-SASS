@@ -31,7 +31,7 @@ class GenerateImagesJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 1800; // 30 min — 6 images × ~5 min worst case
+    public int $timeout = 600; // 10 min — reduced for testing mode (2 images)
     public int $tries   = 1;
 
     public function __construct(
@@ -44,7 +44,6 @@ class GenerateImagesJob implements ShouldQueue
         $story = Story::findOrFail($this->storyId);
         $log   = AiJobLog::start($story->id, 'generate_images');
         $story->setStep('generate_images');
-        $testMode = (bool) config('app.story_test_mode', false);
 
         try {
             $scenes = $story->scenes ?? [];
@@ -52,7 +51,9 @@ class GenerateImagesJob implements ShouldQueue
                 throw new \RuntimeException('No scenes available for image generation.');
             }
 
-            $scenesToProcess = $testMode ? array_slice($scenes, 0, 1) : $scenes;
+            // Use TEST_IMAGE_COUNT from .env for testing, otherwise process all scenes
+            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+            $scenesToProcess = $testImageCount > 0 ? array_slice($scenes, 0, $testImageCount) : $scenes;
             $selected        = $this->selectedOutputs;
 
             foreach ($scenesToProcess as $scene) {

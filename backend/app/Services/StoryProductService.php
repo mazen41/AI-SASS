@@ -152,7 +152,12 @@ class StoryProductService
             // meant to occupy exactly one page, so we must explicitly start a
             // new page before each one after the cover.
             $pageNum = 1;
-            foreach ($scenes->sortKeys() as $sceneNumber => $scene) {
+            
+            // Limit to TEST_IMAGE_COUNT for testing
+            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+            $scenesToProcess = $testImageCount > 0 ? $scenes->sortKeys()->take($testImageCount) : $scenes->sortKeys();
+            
+            foreach ($scenesToProcess as $sceneNumber => $scene) {
                 $asset = $images->get($sceneNumber);
                 $sceneImageUrl = $this->cacheImageLocally($asset?->url, $tmpDir, "scene_{$sceneNumber}");
                 
@@ -244,14 +249,20 @@ class StoryProductService
                 throw new \RuntimeException('No scene images are available for coloring book generation.');
             }
 
+            // Limit to TEST_IMAGE_COUNT for testing
+            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+
             // Only generate B&W conversion if we don't already have coloring_page assets
             $needsConversion = $coloringAssets->isEmpty();
 
             if ($needsConversion) {
                 // Generate black and white line art images using Fal.ai
                 $falAi = app(FalAiService::class);
+                
+                // Limit to TEST_IMAGE_COUNT for testing
+                $imagesToProcess = $testImageCount > 0 ? $images->take($testImageCount) : $images;
 
-                foreach ($images as $asset) {
+                foreach ($imagesToProcess as $asset) {
                     $scene = $scenes->get($asset->scene_number);
                     $sceneCaption = $scene['title'] ?? ('Scene ' . $asset->scene_number);
 
@@ -287,8 +298,11 @@ class StoryProductService
                     if (file_exists($lineArtPath)) unlink($lineArtPath);
                 }
 
-                // Refresh images to use the new coloring_page assets
+                // Refresh images to use the new coloring_page assets (limited by TEST_IMAGE_COUNT)
                 $images = $story->assets()->where('asset_type', 'coloring_page')->get()->sortBy('scene_number');
+                if ($testImageCount > 0) {
+                    $images = $images->take($testImageCount);
+                }
             }
 
             // Determine font based on language
@@ -332,9 +346,14 @@ class StoryProductService
             ])->render();
             $mpdf->WriteHTML($coverHtml);
 
+            // Limit to TEST_IMAGE_COUNT for testing in PDF generation
+            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+            $imagesToProcess = $testImageCount > 0 ? $images->take($testImageCount) : $images;
+
             // Generate coloring pages HTML (using line art images)
             $pageNum = 1;
-            foreach ($images as $asset) {
+            
+            foreach ($imagesToProcess as $asset) {
                 $scene = $scenes->get($asset->scene_number);
                 $sceneCaption = $scene['title'] ?? ($isRtl ? 'صفحة تلوين ' . $pageNum : 'Coloring Page ' . $pageNum);
 

@@ -36,7 +36,7 @@ class StorybookGenerationService
             'child_name' => $story->child_name,
             'theme' => $story->theme,
             'language' => $story->language,
-            'page_count' => 16,
+            'page_count' => (int)env('TEST_IMAGE_COUNT', 16),
         ]);
 
         Log::info("SERVICE STEP 1 COMPLETE: GeminiService::generateStorybookPages() returned", [
