@@ -251,6 +251,7 @@ class StoryProductService
 
             // Limit to TEST_IMAGE_COUNT for testing
             $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+            $originalImages = $images; // Keep original for conversion logic
 
             // Only generate B&W conversion if we don't already have coloring_page assets
             $needsConversion = $coloringAssets->isEmpty();
@@ -260,7 +261,7 @@ class StoryProductService
                 $falAi = app(FalAiService::class);
                 
                 // Limit to TEST_IMAGE_COUNT for testing
-                $imagesToProcess = $testImageCount > 0 ? $images->take($testImageCount) : $images;
+                $imagesToProcess = $testImageCount > 0 ? $originalImages->take($testImageCount) : $originalImages;
 
                 foreach ($imagesToProcess as $asset) {
                     $scene = $scenes->get($asset->scene_number);
@@ -298,11 +299,16 @@ class StoryProductService
                     if (file_exists($lineArtPath)) unlink($lineArtPath);
                 }
 
-                // Refresh images to use the new coloring_page assets (limited by TEST_IMAGE_COUNT)
+                // Refresh images to use the new coloring_page assets
                 $images = $story->assets()->where('asset_type', 'coloring_page')->get()->sortBy('scene_number');
-                if ($testImageCount > 0) {
-                    $images = $images->take($testImageCount);
-                }
+            } else {
+                // Use existing coloring_page assets
+                $images = $coloringAssets->sortBy('scene_number');
+            }
+            
+            // Apply TEST_IMAGE_COUNT limit for PDF generation
+            if ($testImageCount > 0) {
+                $images = $images->take($testImageCount);
             }
 
             // Determine font based on language
