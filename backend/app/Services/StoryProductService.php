@@ -154,7 +154,9 @@ class StoryProductService
             }
 
             try {
-                $coverHtml = view('pdf.storybook-cover', [
+                // Use dedicated mPDF-safe template for Arabic, premium DomPDF template for English
+                $coverView = $isRtl ? 'pdf.storybook-cover-ar' : 'pdf.storybook-cover';
+                $coverHtml = view($coverView, [
                     'title' => $story->title ?? 'Story Book',
                     'childName' => $story->child_name,
                     'imageUrl' => $coverImageUrl,
@@ -189,7 +191,9 @@ class StoryProductService
                 }
 
                 try {
-                    $pageHtml = view('pdf.storybook-page', [
+                    // Use dedicated mPDF-safe template for Arabic, premium DomPDF template for English
+                    $pageView = $isRtl ? 'pdf.storybook-page-ar' : 'pdf.storybook-page';
+                    $pageHtml = view($pageView, [
                         'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
                         'text' => $scene['text'] ?? $scene['description'] ?? '',
                         'imageUrl' => $sceneImageUrl,
@@ -211,7 +215,9 @@ class StoryProductService
 
             // Generate ending page HTML
             try {
-                $endingHtml = view('pdf.storybook-page', [
+                // Use dedicated mPDF-safe template for Arabic ending page
+                $endView = $isRtl ? 'pdf.storybook-page-ar' : 'pdf.storybook-page';
+                $endingHtml = view($endView, [
                     'title' => $isRtl ? 'النهاية' : 'The End',
                     'text' => $isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!',
                     'imageUrl' => null,
