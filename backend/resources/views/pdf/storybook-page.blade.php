@@ -5,72 +5,97 @@
     <style>
         @page {
             size: A4;
-            margin: 0;
+            margin: 20mm;
         }
         body {
             margin: 0;
             padding: 0;
-            font-family: '{{ $font }}', sans-serif;
+            font-family: 'DejaVu Sans', sans-serif;
+            background: #f8f9fa;
         }
-        .page {
-            width: 210mm;
-            height: 297mm;
-            position: relative;
-            background: linear-gradient(135deg, #120c24 0%, #a0d2eb 100%);
+        .page-container {
+            width: 100%;
+            min-height: 257mm;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             overflow: hidden;
+            page-break-after: always;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            text-align: center;
+        }
+        .page-number {
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .content-wrapper {
+            padding: 30px;
+        }
+        .image-container {
+            width: 100%;
+            height: 400px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            border: 3px solid #667eea;
         }
         .scene-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            position: absolute;
-            top: 0;
-            left: 0;
-            {{ $imageUrl ? '' : 'display: none;' }}
-        }
-        .overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 180px;
-            background: linear-gradient(transparent, rgba(8, 5, 18, 0.9));
-        }
-        .content {
-            position: absolute;
-            bottom: 30px;
-            left: 30px;
-            right: 30px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         .title {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: bold;
+            color: #333;
             margin-bottom: 20px;
-            color: #FFD25A;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
         }
         .text {
-            font-size: 26px;
-            line-height: 1.6;
-        }
-        .page-number {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: rgba(255,255,255,0.8);
             font-size: 18px;
+            line-height: 1.8;
+            color: #444;
+            text-align: justify;
+        }
+        .no-image {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
         }
     </style>
 </head>
 <body>
-    <div class="page">
-        @if($imageUrl)
-            <img src="{{ $imageUrl }}" class="scene-image" alt="Scene">
-        @endif
-        <div class="overlay"></div>
-        <div class="page-number">{{ $rtl ? 'الصفحة ' . $pageNumber : 'Page ' . $pageNumber }}</div>
-        <div class="content">
+    <div class="page-container">
+        <div class="header">
+            <div class="page-number">{{ $rtl ? 'الصفحة ' . $pageNumber : 'Page ' . $pageNumber }}</div>
+        </div>
+        <div class="content-wrapper">
+            @if($imageUrl)
+                <div class="image-container">
+                    <img src="{{ $imageUrl }}" class="scene-image" alt="Scene">
+                </div>
+            @else
+                <div class="no-image">
+                    {{ $rtl ? '📖 صورة غير متوفرة' : '📖 Image Not Available' }}
+                </div>
+            @endif
             <h2 class="title">{{ $title }}</h2>
             <div class="text">{{ $text }}</div>
         </div>

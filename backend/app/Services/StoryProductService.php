@@ -104,7 +104,10 @@ class StoryProductService
                 return null;
             }
 
-            return $cachedPath;
+            // Convert to base64 for DomPDF compatibility
+            $imageData = base64_encode(file_get_contents($cachedPath));
+            $imageType = pathinfo($cachedPath, PATHINFO_EXTENSION);
+            return "data:image/{$imageType};base64,{$imageData}";
         } catch (\Throwable $e) {
             Log::error("Exception in cacheImageLocally", [
                 'url' => $url,
@@ -137,11 +140,13 @@ class StoryProductService
             $pdf = app('dompdf.wrapper');
             $pdf->setPaper('a4', 'portrait');
 
-            // Set options for better Arabic support
+            // Set options for better Arabic support and image loading
             $pdf->setOptions([
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
+                'isPhpEnabled' => true,
                 'defaultFont' => 'DejaVu Sans',
+                'tempDir' => $tmpDir,
             ]);
 
             // Build complete HTML for all pages
@@ -357,11 +362,13 @@ class StoryProductService
             $pdf = app('dompdf.wrapper');
             $pdf->setPaper('a4', 'portrait');
 
-            // Set options for better Arabic support
+            // Set options for better Arabic support and image loading
             $pdf->setOptions([
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
+                'isPhpEnabled' => true,
                 'defaultFont' => 'DejaVu Sans',
+                'tempDir' => $tmpDir,
             ]);
 
             // Build complete HTML for all pages
