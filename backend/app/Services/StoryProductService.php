@@ -47,7 +47,7 @@ class StoryProductService
      * already-verified file removes that second, redundant, unguarded fetch
      * entirely.
      */
-    private function cacheImageLocally(?string $url, string $tmpDir, string $name): ?string
+    private function cacheImageLocally(?string $url, string $tmpDir, string $name, bool $returnPath = false): ?string
     {
         if (!$url) {
             return null;
@@ -104,7 +104,11 @@ class StoryProductService
                 return null;
             }
 
-            // Convert to base64 for DomPDF compatibility
+            // mPDF needs a local file path; DomPDF works best with base64 data URIs
+            if ($returnPath) {
+                return $cachedPath;
+            }
+
             $imageData = base64_encode(file_get_contents($cachedPath));
             $imageType = pathinfo($cachedPath, PATHINFO_EXTENSION);
             return "data:image/{$imageType};base64,{$imageData}";
@@ -139,8 +143,9 @@ class StoryProductService
             $allHtml = '';
 
             // Generate cover page HTML
+            // mPDF (Arabic) needs local file paths; DomPDF (English) needs base64
             $coverImage = $images->first();
-            $coverImageUrl = $this->cacheImageLocally($coverImage?->url, $tmpDir, 'cover');
+            $coverImageUrl = $this->cacheImageLocally($coverImage?->url, $tmpDir, 'cover', $isRtl);
 
             // Skip cover if image caching failed
             if (!$coverImageUrl) {
@@ -175,7 +180,7 @@ class StoryProductService
             
             foreach ($scenesToProcess as $sceneNumber => $scene) {
                 $asset = $images->get($sceneNumber);
-                $sceneImageUrl = $this->cacheImageLocally($asset?->url, $tmpDir, "scene_{$sceneNumber}");
+                $sceneImageUrl = $this->cacheImageLocally($asset?->url, $tmpDir, "scene_{$sceneNumber}", $isRtl);
 
                 // Skip scene if image caching failed
                 if (!$sceneImageUrl) {
@@ -428,7 +433,7 @@ class StoryProductService
 
                 // Use the line art image URL instead of colored image
                 $lineArtUrl = Storage::disk($this->disk)->url("stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg");
-                $lineArtLocal = $this->cacheImageLocally($lineArtUrl, $tmpDir, "coloring_page_{$asset->scene_number}");
+                $lineArtLocal = $this->cacheImageLocally($lineArtUrl, $tmpDir, "coloring_page_{$asset->scene_number}", $isRtl);
                 
                 // Skip page if image caching failed
                 if (!$lineArtLocal) {
