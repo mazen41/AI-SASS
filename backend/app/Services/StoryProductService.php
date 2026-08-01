@@ -128,22 +128,30 @@ class StoryProductService
             // Generate cover page HTML
             $coverImage = $images->first();
             $coverImageUrl = $this->cacheImageLocally($coverImage?->url, $tmpDir, 'cover');
-            
+
             // Skip cover if image caching failed
             if (!$coverImageUrl) {
                 Log::warning("Failed to cache cover image for story #{$story->id}");
                 $coverImageUrl = null;
             }
-            
-            $coverHtml = view('pdf.storybook-cover', [
-                'title' => $story->title ?? 'Story Book',
-                'childName' => $story->child_name,
-                'imageUrl' => $coverImageUrl,
-                'rtl' => $isRtl,
-                'language' => $language,
-                'font' => $font
-            ])->render();
-            $mpdf->WriteHTML($coverHtml);
+
+            try {
+                $coverHtml = view('pdf.storybook-cover', [
+                    'title' => $story->title ?? 'Story Book',
+                    'childName' => $story->child_name,
+                    'imageUrl' => $coverImageUrl,
+                    'rtl' => $isRtl,
+                    'language' => $language,
+                    'font' => $font
+                ])->render();
+                $mpdf->WriteHTML($coverHtml);
+            } catch (\Throwable $e) {
+                Log::error("Failed to render cover page", [
+                    'story_id' => $story->id,
+                    'error' => $e->getMessage()
+                ]);
+                throw new \RuntimeException("Cover page rendering failed: " . $e->getMessage());
+            }
 
             // Generate scene pages HTML
             // NOTE: loadHTML() does NOT insert a page break on its own between
@@ -166,48 +174,72 @@ class StoryProductService
                     Log::warning("Failed to cache scene image {$sceneNumber} for story #{$story->id}");
                     $sceneImageUrl = null;
                 }
-                
-                $pageHtml = view('pdf.storybook-page', [
-                    'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
-                    'text' => $scene['text'] ?? $scene['description'] ?? '',
-                    'imageUrl' => $sceneImageUrl,
+
+                try {
+                    $pageHtml = view('pdf.storybook-page', [
+                        'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
+                        'text' => $scene['text'] ?? $scene['description'] ?? '',
+                        'imageUrl' => $sceneImageUrl,
+                        'pageNumber' => $pageNum,
+                        'rtl' => $isRtl,
+                        'language' => $language,
+                        'font' => $font
+                    ])->render();
+                    $mpdf->AddPage();
+                    $mpdf->WriteHTML($pageHtml);
+                } catch (\Throwable $e) {
+                    Log::error("Failed to render scene page {$sceneNumber}", [
+                        'story_id' => $story->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    throw new \RuntimeException("Scene page {$sceneNumber} rendering failed: " . $e->getMessage());
+                }
+                $pageNum++;
+            }
+
+            // Generate ending page HTML
+            try {
+                $endingHtml = view('pdf.storybook-page', [
+                    'title' => $isRtl ? 'النهاية' : 'The End',
+                    'text' => $isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!',
+                    'imageUrl' => null,
                     'pageNumber' => $pageNum,
                     'rtl' => $isRtl,
                     'language' => $language,
                     'font' => $font
                 ])->render();
                 $mpdf->AddPage();
-                $mpdf->WriteHTML($pageHtml);
-                $pageNum++;
+                $mpdf->WriteHTML($endingHtml);
+            } catch (\Throwable $e) {
+                Log::error("Failed to render ending page", [
+                    'story_id' => $story->id,
+                    'error' => $e->getMessage()
+                ]);
+                throw new \RuntimeException("Ending page rendering failed: " . $e->getMessage());
             }
 
-            // Generate ending page HTML
-            $endingHtml = view('pdf.storybook-page', [
-                'title' => $isRtl ? 'النهاية' : 'The End',
-                'text' => $isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!',
-                'imageUrl' => null,
-                'pageNumber' => $pageNum,
-                'rtl' => $isRtl,
-                'language' => $language,
-                'font' => $font
-            ])->render();
-            $mpdf->AddPage();
-            $mpdf->WriteHTML($endingHtml);
-
             // Save PDF to temp file first
-            $tempPath = storage_path('app/temp_storybook_' . $story->id . '.pdf');
-            $mpdf->Output($tempPath, \Mpdf\Output\Destination::FILE);
+            try {
+                $tempPath = storage_path('app/temp_storybook_' . $story->id . '.pdf');
+                $mpdf->Output($tempPath, \Mpdf\Output\Destination::FILE);
 
-            // Read the PDF content
-            $pdfContent = file_get_contents($tempPath);
+                // Read the PDF content
+                $pdfContent = file_get_contents($tempPath);
 
-            // Save to storage
-            $path = "stories/{$story->id}/books/story_book.pdf";
-            Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
+                // Save to storage
+                $path = "stories/{$story->id}/books/story_book.pdf";
+                Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
 
-            // Clean up temp file
-            if (file_exists($tempPath)) {
-                unlink($tempPath);
+                // Clean up temp file
+                if (file_exists($tempPath)) {
+                    unlink($tempPath);
+                }
+            } catch (\Throwable $e) {
+                Log::error("Failed to save PDF", [
+                    'story_id' => $story->id,
+                    'error' => $e->getMessage()
+                ]);
+                throw new \RuntimeException("PDF save failed: " . $e->getMessage());
             }
 
             return $this->markCompleted($output, $path, [

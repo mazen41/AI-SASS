@@ -35,6 +35,7 @@ class GenerateStoryBookJob implements ShouldQueue
         );
 
         try {
+            Log::info("Starting story book generation", ['story_id' => $this->storyId]);
             $result = $service->generateStoryBook($story);
 
             if ($result->status === 'completed') {
@@ -43,6 +44,11 @@ class GenerateStoryBookJob implements ShouldQueue
                 throw new \RuntimeException($result->error_message ?? 'Story book generation returned non-completed status.');
             }
         } catch (Throwable $e) {
+            Log::error("Story book generation failed", [
+                'story_id' => $this->storyId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             $output->update(['status' => 'failed', 'error_message' => mb_substr($e->getMessage(), 0, 500)]);
             throw $e;
         }
