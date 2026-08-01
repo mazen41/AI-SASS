@@ -127,34 +127,18 @@ class StoryProductService
             $language = $story->language ?? 'en';
 
             // Determine font based on language
-            $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
-            
-            // Ensure temp directory exists and is writable
-            $tmpDir = storage_path('app/tmp');
-            if (!is_dir($tmpDir)) {
-                mkdir($tmpDir, 0755, true);
-            }
+            $font = 'DejaVu Sans'; // DomPDF works best with DejaVu
 
-            // Setup mPDF directly for Arabic/English support
-            $mpdf = new \Mpdf\Mpdf([
-                'mode' => 'utf-8',
-                'format' => 'A4',
-                'default_font_size' => 10,
-                'default_font' => $font,
-                'margin_left' => 15,
-                'margin_right' => 15,
-                'margin_top' => 20,
-                'margin_bottom' => 20,
-                'margin_header' => 10,
-                'margin_footer' => 10,
-                'orientation' => 'P',
-                'tempDir' => $tmpDir,
+            // Setup DomPDF with Spatie PDF
+            $pdf = new \Spatie\Pdf\Pdf();
+            $pdf->getDomPDF()->setPaper('A4', 'portrait');
+
+            // Set options for better Arabic support
+            $pdf->getDomPDF()->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'DejaVu Sans',
             ]);
-
-            // Set direction for Arabic
-            if ($isRtl) {
-                $mpdf->SetDirectionality('rtl');
-            }
 
             // Generate cover page HTML
             $coverImage = $images->first();
@@ -175,46 +159,16 @@ class StoryProductService
                     'language' => $language,
                     'font' => $font
                 ])->render();
-                $mpdf->WriteHTML($coverHtml);
+                $pdf->loadHTML($coverHtml);
             } catch (\Throwable $e) {
-                // If rendering fails with the image, try again without the image
-                if ($coverImageUrl && strpos($e->getMessage(), 'Division by zero') !== false) {
-                    Log::warning("Cover page failed with image, retrying without image", [
-                        'story_id' => $story->id,
-                        'error' => $e->getMessage()
-                    ]);
-                    try {
-                        $coverHtml = view('pdf.storybook-cover', [
-                            'title' => $story->title ?? 'Story Book',
-                            'childName' => $story->child_name,
-                            'imageUrl' => null, // Skip the problematic image
-                            'rtl' => $isRtl,
-                            'language' => $language,
-                            'font' => $font
-                        ])->render();
-                        $mpdf->WriteHTML($coverHtml);
-                    } catch (\Throwable $retryError) {
-                        Log::error("Cover page failed even without image", [
-                            'story_id' => $story->id,
-                            'error' => $retryError->getMessage()
-                        ]);
-                        throw new \RuntimeException("Cover page rendering failed even without image: " . $retryError->getMessage());
-                    }
-                } else {
-                    Log::error("Failed to render cover page", [
-                        'story_id' => $story->id,
-                        'error' => $e->getMessage()
-                    ]);
-                    throw new \RuntimeException("Cover page rendering failed: " . $e->getMessage());
-                }
+                Log::error("Failed to render cover page", [
+                    'story_id' => $story->id,
+                    'error' => $e->getMessage()
+                ]);
+                throw new \RuntimeException("Cover page rendering failed: " . $e->getMessage());
             }
 
             // Generate scene pages HTML
-            // NOTE: loadHTML() does NOT insert a page break on its own between
-            // calls -- it only paginates automatically once content overflows
-            // the current page. Every page here is a full 210mm x 297mm block
-            // meant to occupy exactly one page, so we must explicitly start a
-            // new page before each one after the cover.
             $pageNum = 1;
             
             // Limit to TEST_IMAGE_COUNT for testing
@@ -241,60 +195,14 @@ class StoryProductService
                         'language' => $language,
                         'font' => $font
                     ])->render();
-                    $mpdf->AddPage();
-                    $mpdf->WriteHTML($pageHtml);
+                    $pdf->addPage();
+                    $pdf->loadHTML($pageHtml);
                 } catch (\Throwable $e) {
-                    // If rendering fails with the image, try again without the image
-                    if ($sceneImageUrl && strpos($e->getMessage(), 'Division by zero') !== false) {
-                        Log::warning("Scene page {$sceneNumber} failed with image, retrying without image", [
-                            'story_id' => $story->id,
-                            'error' => $e->getMessage()
-                        ]);
-                        try {
-                            $pageHtml = view('pdf.storybook-page', [
-                                'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
-                                'text' => $scene['text'] ?? $scene['description'] ?? '',
-                                'imageUrl' => null, // Skip the problematic image
-                                'pageNumber' => $pageNum,
-                                'rtl' => $isRtl,
-                                'language' => $language,
-                                'font' => $font
-                            ])->render();
-                            $mpdf->AddPage();
-                            $mpdf->WriteHTML($pageHtml);
-                        } catch (\Throwable $retryError) {
-                            // If it still fails without image, try a very simple page
-                            if (strpos($retryError->getMessage(), 'Division by zero') !== false) {
-                                Log::warning("Scene page {$sceneNumber} failed even without image, trying simple text", [
-                                    'story_id' => $story->id,
-                                    'error' => $retryError->getMessage()
-                                ]);
-                                try {
-                                    $simpleHtml = "<html><body><h1>Page {$pageNum}</h1><p>" . htmlspecialchars($scene['title'] ?? '') . "</p></body></html>";
-                                    $mpdf->AddPage();
-                                    $mpdf->WriteHTML($simpleHtml);
-                                } catch (\Throwable $simpleError) {
-                                    Log::error("Scene page {$sceneNumber} failed even with simple HTML", [
-                                        'story_id' => $story->id,
-                                        'error' => $simpleError->getMessage()
-                                    ]);
-                                    throw new \RuntimeException("Scene page {$sceneNumber} rendering failed even with simple HTML: " . $simpleError->getMessage());
-                                }
-                            } else {
-                                Log::error("Scene page {$sceneNumber} failed without image (non-division error)", [
-                                    'story_id' => $story->id,
-                                    'error' => $retryError->getMessage()
-                                ]);
-                                throw new \RuntimeException("Scene page {$sceneNumber} rendering failed without image: " . $retryError->getMessage());
-                            }
-                        }
-                    } else {
-                        Log::error("Failed to render scene page {$sceneNumber}", [
-                            'story_id' => $story->id,
-                            'error' => $e->getMessage()
-                        ]);
-                        throw new \RuntimeException("Scene page {$sceneNumber} rendering failed: " . $e->getMessage());
-                    }
+                    Log::error("Failed to render scene page {$sceneNumber}", [
+                        'story_id' => $story->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    throw new \RuntimeException("Scene page {$sceneNumber} rendering failed: " . $e->getMessage());
                 }
                 $pageNum++;
             }
@@ -310,8 +218,8 @@ class StoryProductService
                     'language' => $language,
                     'font' => $font
                 ])->render();
-                $mpdf->AddPage();
-                $mpdf->WriteHTML($endingHtml);
+                $pdf->addPage();
+                $pdf->loadHTML($endingHtml);
             } catch (\Throwable $e) {
                 Log::error("Failed to render ending page", [
                     'story_id' => $story->id,
@@ -320,22 +228,11 @@ class StoryProductService
                 throw new \RuntimeException("Ending page rendering failed: " . $e->getMessage());
             }
 
-            // Save PDF to temp file first
+            // Save PDF to storage
             try {
-                $tempPath = storage_path('app/temp_storybook_' . $story->id . '.pdf');
-                $mpdf->Output($tempPath, \Mpdf\Output\Destination::FILE);
-
-                // Read the PDF content
-                $pdfContent = file_get_contents($tempPath);
-
-                // Save to storage
+                $pdfContent = $pdf->output();
                 $path = "stories/{$story->id}/books/story_book.pdf";
                 Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
-
-                // Clean up temp file
-                if (file_exists($tempPath)) {
-                    unlink($tempPath);
-                }
             } catch (\Throwable $e) {
                 Log::error("Failed to save PDF", [
                     'story_id' => $story->id,
@@ -359,7 +256,7 @@ class StoryProductService
     }
 
     // -------------------------------------------------------------------------
-    // Coloring Book (using mPDF for Arabic/English support + Fal.ai line art)
+    // Coloring Book (using DomPDF for Arabic/English support + Fal.ai line art)
     // -------------------------------------------------------------------------
 
     public function generateColoringBook(Story $story): StoryOutput
@@ -446,28 +343,17 @@ class StoryProductService
             }
 
             // Determine font based on language
-            $font = $isRtl ? 'Noto Sans Arabic' : 'DejaVu Sans';
-            
-            // Ensure temp directory exists and is writable
-            $tmpDir = storage_path('app/tmp');
-            if (!is_dir($tmpDir)) {
-                mkdir($tmpDir, 0755, true);
-            }
+            $font = 'DejaVu Sans'; // DomPDF works best with DejaVu
 
-            // Setup mPDF directly for Arabic/English support
-            $mpdf = new \Mpdf\Mpdf([
-                'mode' => 'utf-8',
-                'format' => 'A4',
-                'default_font_size' => 10,
-                'default_font' => $font,
-                'margin_left' => 15,
-                'margin_right' => 15,
-                'margin_top' => 20,
-                'margin_bottom' => 20,
-                'margin_header' => 10,
-                'margin_footer' => 10,
-                'orientation' => 'P',
-                'tempDir' => $tmpDir,
+            // Setup DomPDF with Spatie PDF
+            $pdf = new \Spatie\Pdf\Pdf();
+            $pdf->getDomPDF()->setPaper('A4', 'portrait');
+
+            // Set options for better Arabic support
+            $pdf->getDomPDF()->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'DejaVu Sans',
             ]);
 
             // Set direction for Arabic
