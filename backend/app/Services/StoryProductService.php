@@ -263,11 +263,30 @@ class StoryProductService
                             $mpdf->AddPage();
                             $mpdf->WriteHTML($pageHtml);
                         } catch (\Throwable $retryError) {
-                            Log::error("Scene page {$sceneNumber} failed even without image", [
-                                'story_id' => $story->id,
-                                'error' => $retryError->getMessage()
-                            ]);
-                            throw new \RuntimeException("Scene page {$sceneNumber} rendering failed even without image: " . $retryError->getMessage());
+                            // If it still fails without image, try a very simple page
+                            if (strpos($retryError->getMessage(), 'Division by zero') !== false) {
+                                Log::warning("Scene page {$sceneNumber} failed even without image, trying simple text", [
+                                    'story_id' => $story->id,
+                                    'error' => $retryError->getMessage()
+                                ]);
+                                try {
+                                    $simpleHtml = "<html><body><h1>Page {$pageNum}</h1><p>" . htmlspecialchars($scene['title'] ?? '') . "</p></body></html>";
+                                    $mpdf->AddPage();
+                                    $mpdf->WriteHTML($simpleHtml);
+                                } catch (\Throwable $simpleError) {
+                                    Log::error("Scene page {$sceneNumber} failed even with simple HTML", [
+                                        'story_id' => $story->id,
+                                        'error' => $simpleError->getMessage()
+                                    ]);
+                                    throw new \RuntimeException("Scene page {$sceneNumber} rendering failed even with simple HTML: " . $simpleError->getMessage());
+                                }
+                            } else {
+                                Log::error("Scene page {$sceneNumber} failed without image (non-division error)", [
+                                    'story_id' => $story->id,
+                                    'error' => $retryError->getMessage()
+                                ]);
+                                throw new \RuntimeException("Scene page {$sceneNumber} rendering failed without image: " . $retryError->getMessage());
+                            }
                         }
                     } else {
                         Log::error("Failed to render scene page {$sceneNumber}", [
