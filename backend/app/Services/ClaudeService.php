@@ -151,7 +151,14 @@ class ClaudeService implements StoryTextGeneratorInterface
         $childName = $params['child_name'] ?? 'the hero';
         $theme     = $params['theme']      ?? 'adventure';
         $language  = $params['language']   ?? 'en';
-        $pageCount = max(15, min(20, (int) ($params['page_count'] ?? 16)));
+        
+        // Respect TEST_IMAGE_COUNT for testing, otherwise use default range
+        $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+        if ($testImageCount > 0) {
+            $pageCount = $testImageCount;
+        } else {
+            $pageCount = max(15, min(20, (int) ($params['page_count'] ?? 16)));
+        }
 
         $langInstruction = $language === 'ar'
             ? 'Write all "title", "content", and "dialogue" text fields entirely in Arabic.'

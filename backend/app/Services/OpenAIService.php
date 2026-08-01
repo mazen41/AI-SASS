@@ -29,7 +29,10 @@ class OpenAIService
         $theme       = $params['theme']      ?? 'adventure';
         $language    = $params['language']   ?? 'en';
         $customPrompt = $params['custom_prompt'] ?? null;
-        $sceneCount   = 6;
+        
+        // Respect TEST_IMAGE_COUNT for testing, otherwise use default 6 scenes
+        $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+        $sceneCount   = $testImageCount > 0 ? $testImageCount : 6;
 
         $langInstruction = $language === 'ar'
             ? 'Write entirely in Arabic.'
@@ -58,7 +61,7 @@ Respond ONLY with valid JSON, no markdown:
 }
 
 Generate exactly {$sceneCount} scenes.
-The 6 scenes MUST form a complete beginning, middle, climax, and ending:
+The {$sceneCount} scenes MUST form a complete beginning, middle, climax, and ending:
 1. opening setup, 2. invitation or discovery, 3. rising action, 4. challenge, 5. climax, 6. warm resolution.
 Every scene description MUST include camera movement. Every image_prompt MUST enforce same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, character consistency across all scenes, same age appearance, and cinematic children's movie style.
 Make it magical, complete, and age-appropriate.
