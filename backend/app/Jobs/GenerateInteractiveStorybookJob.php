@@ -43,9 +43,18 @@ class GenerateInteractiveStorybookJob implements ShouldQueue
         try {
             Log::info("Starting interactive storybook generation", ['story_id' => $this->storyId]);
 
+            // Apply TEST_IMAGE_COUNT limit for testing
+            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+
             // Step 1: Generate page structure and content
             Log::info('STEP 3 START: generateStorybook() call', ['story_id' => $this->storyId]);
             $pages = $generationService->generateStorybook($story);
+            
+            // Limit pages for testing
+            if ($testImageCount > 0) {
+                $pages = array_slice($pages, 0, $testImageCount);
+            }
+            
             Log::info('STEP 3 COMPLETE: generateStorybook() returned', ['story_id' => $this->storyId, 'page_count' => count($pages)]);
 
             Log::info("Generated storybook page structure", ['story_id' => $this->storyId, 'page_count' => count($pages)]);
