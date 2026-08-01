@@ -25,6 +25,7 @@
             position: absolute;
             top: 0;
             left: 0;
+            {{ $imageUrl ? '' : 'display: none;' }}
         }
         .overlay {
             position: absolute;

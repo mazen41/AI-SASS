@@ -122,6 +122,13 @@ class StoryProductService
             // Generate cover page HTML
             $coverImage = $images->first();
             $coverImageUrl = $this->cacheImageLocally($coverImage?->url, $tmpDir, 'cover');
+            
+            // Skip cover if image caching failed
+            if (!$coverImageUrl) {
+                Log::warning("Failed to cache cover image for story #{$story->id}");
+                $coverImageUrl = null;
+            }
+            
             $coverHtml = view('pdf.storybook-cover', [
                 'title' => $story->title ?? 'Story Book',
                 'childName' => $story->child_name,
@@ -142,6 +149,13 @@ class StoryProductService
             foreach ($scenes->sortKeys() as $sceneNumber => $scene) {
                 $asset = $images->get($sceneNumber);
                 $sceneImageUrl = $this->cacheImageLocally($asset?->url, $tmpDir, "scene_{$sceneNumber}");
+                
+                // Skip scene if image caching failed
+                if (!$sceneImageUrl) {
+                    Log::warning("Failed to cache scene image {$sceneNumber} for story #{$story->id}");
+                    $sceneImageUrl = null;
+                }
+                
                 $pageHtml = view('pdf.storybook-page', [
                     'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
                     'text' => $scene['text'] ?? $scene['description'] ?? '',
@@ -314,7 +328,13 @@ class StoryProductService
 
                 // Use the line art image URL instead of colored image
                 $lineArtUrl = Storage::disk($this->disk)->url("stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg");
-                $lineArtLocal = $this->cacheImageLocally($lineArtUrl, $tmpDir, "coloring_page_{$asset->scene_number}") ?? $lineArtUrl;
+                $lineArtLocal = $this->cacheImageLocally($lineArtUrl, $tmpDir, "coloring_page_{$asset->scene_number}");
+                
+                // Skip page if image caching failed
+                if (!$lineArtLocal) {
+                    Log::warning("Failed to cache coloring page image {$asset->scene_number} for story #{$story->id}");
+                    $lineArtLocal = null;
+                }
 
                 $pageHtml = view('pdf.coloring-page', [
                     'title' => $sceneCaption,
