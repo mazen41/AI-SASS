@@ -290,7 +290,10 @@ class StoryController extends Controller
 
         $file = $request->file('file');
         $outputType = $validated['output_type'];
-        $disk = config('filesystems.default', 'public');
+        // Always use 'public' — it is the only disk with a configured url()
+        // resolver. config('filesystems.default') can be 'local' in .env,
+        // which has no url() resolver and throws RuntimeException.
+        $disk = 'public';
 
         if ($outputType === 'story_book_pdf') {
             $path = "stories/{$story->id}/books/story_book.pdf";
@@ -306,14 +309,14 @@ class StoryController extends Controller
         $output = \App\Models\StoryOutput::updateOrCreate(
             ['story_id' => $story->id, 'output_type' => $outputType],
             [
-                'status' => 'completed',
-                'url' => $url,
-                'path' => $path,
+                'status'        => 'completed',
+                'url'           => $url,
+                'storage_path'  => $path,
                 'error_message' => null,
-                'metadata' => [
-                    'generated_by' => 'frontend_pdf_generator',
-                    'size_bytes' => $file->getSize(),
-                ]
+                'metadata'      => [
+                    'generated_by' => 'frontend_jspdf',
+                    'size_bytes'   => $file->getSize(),
+                ],
             ]
         );
 
