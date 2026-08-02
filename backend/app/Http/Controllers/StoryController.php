@@ -276,4 +276,55 @@ class StoryController extends Controller
 
         return response()->json(['message' => 'Story deleted']);
     }
+
+    public function uploadPdf(Request $request, Story $story)
+    {
+        if ($story->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'file' => 'required|file|mimes:pdf|max:20480', // max 20MB
+            'output_type' => 'required|string|in:story_book_pdf,coloring_book_pdf',
+        ]);
+
+        $file = $request->file('file');
+        $outputType = $validated['output_type'];
+        $disk = config('filesystems.default', 'public');
+
+        if ($outputType === 'story_book_pdf') {
+            $path = "stories/{$story->id}/books/story_book.pdf";
+        } else {
+            $path = "stories/{$story->id}/coloring/coloring_book.pdf";
+        }
+
+        // Store the PDF on the configured disk
+        Storage::disk($disk)->put($path, file_get_contents($file), ['visibility' => 'public']);
+        $url = Storage::disk($disk)->url($path);
+
+        // Update the StoryOutput status
+        $output = \App\Models\StoryOutput::updateOrCreate(
+            ['story_id' => $story->id, 'output_type' => $outputType],
+            [
+                'status' => 'completed',
+                'url' => $url,
+                'path' => $path,
+                'error_message' => null,
+                'metadata' => [
+                    'generated_by' => 'frontend_pdf_generator',
+                    'size_bytes' => $file->getSize(),
+                ]
+            ]
+        );
+
+        // Decrement pending outputs count if it was in generating/processing/planned state
+        if ($story->status === 'processing') {
+            $story->decrementPendingOutputs();
+        }
+
+        return response()->json([
+            'message' => 'PDF uploaded and saved successfully',
+            'output' => $output,
+        ]);
+    }
 }

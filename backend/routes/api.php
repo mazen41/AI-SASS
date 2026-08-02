@@ -87,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/stories/{story}', [StoryController::class, 'update']);
     Route::delete('/stories/{story}', [StoryController::class, 'destroy']);
     Route::post('/stories/{story}/generate', [StoryController::class, 'generate']);
+    Route::post('/stories/{story}/upload-pdf', [StoryController::class, 'uploadPdf']);
 
     // Billing
     Route::get('/billing/plans', [BillingController::class, 'plans']);
