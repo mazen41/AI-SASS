@@ -536,7 +536,7 @@ export default function StoryViewPage() {
             return (
               <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFFFFF', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '10px double #333', direction: isRtl ? 'rtl' : 'ltr' }}>
                 <div style={{ width: '100%', textAlign: 'center', marginTop: '5mm' }}>
-                  <h2 style={{ fontSize: '20pt', color: '#111', margin: '0', fontWeight: 'bold' }}>{scene.title || (isRtl ? `صفحة تلوين ${index + 1}` : `Coloring Page ${index + 1}`)}</h2>
+                  <h2 style={{ fontSize: '20pt', color: '#111', margin: '0', fontWeight: 'bold' }}>{(scene as any).title || (isRtl ? `صفحة تلوين ${index + 1}` : `Coloring Page ${index + 1}`)}</h2>
                   <div style={{ width: '25mm', height: '1px', backgroundColor: '#66', margin: '4mm auto' }} />
                 </div>
                 {coloringImg ? (<div style={{ width: '160mm', height: '120mm', border: '2px solid #333', overflow: 'hidden', backgroundColor: '#FFF' }}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={`/api/proxy-image?url=${encodeURIComponent(coloringImg)}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={`Coloring ${index + 1}`} /></div>) : (<div style={{ width: '160mm', height: '120mm', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>No image</div>)}
