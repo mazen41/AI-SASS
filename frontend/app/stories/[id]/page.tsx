@@ -17,24 +17,339 @@ import StorybookViewer from '@/components/StorybookViewer';
 const EXPECTED_SCENE_COUNT = 6;
 type StoryTab = 'story' | 'storybook' | 'coloring' | 'audio' | 'video';
 
-// ─── Convert an image URL to a base64 data-URL ───────────────────────────────
-// html2canvas cannot load cross-origin images even with useCORS:true unless the
-// server sends the right CORS headers — which S3/CDN often don't for <canvas>.
-// Embedding images as base64 data-URLs completely bypasses the CORS restriction.
-async function toDataUrl(url: string): Promise<string> {
+// ─── Convert image URL → base64 data-URL via server-side proxy (no CORS) ─────
+async function toDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, { mode: 'cors' });
-    if (!res.ok) throw new Error('fetch failed');
+    // Proxy through Next.js API route so the fetch is server-side (no CORS)
+    const proxied = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxied);
+    if (!res.ok) return null;
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload  = () => resolve(reader.result as string);
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
   } catch {
-    return url; // fallback – image may still load if same-origin
+    return null;
   }
+}
+
+// ─── Pre-fetch a list of URLs → keyed base64 map ─────────────────────────────
+async function fetchBase64Map(urls: string[]): Promise<Record<string, string>> {
+  const entries = await Promise.all(
+    urls.map(async url => [url, await toDataUrl(url)] as [string, string | null])
+  );
+  // Only keep entries where fetch succeeded
+  return Object.fromEntries(entries.filter((e): e is [string, string] => e[1] !== null));
+}
+
+// ─── Wrap text into lines that fit maxWidth (jsPDF unit = mm) ─────────────────
+function wrapText(pdf: any, text: string, maxWidth: number): string[] {
+  return pdf.splitTextToSize(text, maxWidth);
+}
+
+// ─── Draw a rounded rectangle border ─────────────────────────────────────────
+function drawBorder(
+  pdf: any,
+  x: number, y: number, w: number, h: number,
+  color: [number,number,number], lineWidth: number
+) {
+  pdf.setDrawColor(...color);
+  pdf.setLineWidth(lineWidth);
+  pdf.rect(x, y, w, h, 'S');
+}
+
+// ─── Draw a horizontal rule ───────────────────────────────────────────────────
+function drawHR(
+  pdf: any, cx: number, y: number, halfW: number,
+  color: [number,number,number], lw = 0.5
+) {
+  pdf.setDrawColor(...color);
+  pdf.setLineWidth(lw);
+  pdf.line(cx - halfW, y, cx + halfW, y);
+}
+
+// ─── Page dimensions (A4 in mm) ───────────────────────────────────────────────
+const PW = 210;  // page width
+const PH = 297;  // page height
+const M  = 16;   // margin
+
+// ─── Build story book PDF with jsPDF directly (no html2canvas) ───────────────
+async function buildStoryBookPdf(
+  story: Story,
+  imageAssets: StoryAsset[],
+  isRtl: boolean
+): Promise<Blob> {
+  const { jsPDF } = await import('jspdf');
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+  // Pre-fetch all scene images as base64
+  const b64: Record<number, string> = {};
+  await Promise.all(imageAssets.map(async a => {
+    const d = await toDataUrl(a.url);
+    if (d) b64[a.scene_number] = d;
+  }));
+
+  const scenes = story.scenes ?? [];
+  const gold:   [number,number,number] = [200, 169, 110];
+  const purple: [number,number,number] = [61,  31,  110];
+  const grey:   [number,number,number] = [100, 100, 100];
+  const cx = PW / 2;
+
+  // ── COVER ──────────────────────────────────────────────────────────────────
+  pdf.setFillColor(255, 248, 231);          // parchment
+  pdf.rect(0, 0, PW, PH, 'F');
+  drawBorder(pdf, M, M, PW - 2*M, PH - 2*M, gold, 2.5);
+  drawBorder(pdf, M+4, M+4, PW - 2*M - 8, PH - 2*M - 8, gold, 0.5);
+
+  // Stars row
+  pdf.setTextColor(...gold);
+  pdf.setFontSize(14);
+  pdf.text('✦  ✦  ✦  ✦  ✦  ✦  ✦', cx, 38, { align: 'center' });
+
+  // Subtitle
+  pdf.setTextColor(...grey);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(isRtl ? 'قصة مصورة' : 'STORY HERO', cx, 48, { align: 'center' });
+
+  // Title
+  pdf.setTextColor(...purple);
+  pdf.setFontSize(26);
+  pdf.setFont('helvetica', 'bold');
+  const titleLines = wrapText(pdf, story.title, PW - 2*M - 16);
+  pdf.text(titleLines, cx, 62, { align: 'center' });
+  const titleBottom = 62 + (titleLines.length - 1) * 10;
+
+  // Gold rule
+  drawHR(pdf, cx, titleBottom + 6, 30, gold, 0.8);
+
+  // Cover image
+  const coverB64 = b64[imageAssets[0]?.scene_number ?? 1] ?? b64[imageAssets[0]?.scene_number];
+  const imgY = titleBottom + 14;
+  const imgH = 90;
+  const imgW = 130;
+  if (coverB64) {
+    // Gold border frame then image on top
+    pdf.setDrawColor(...gold);
+    pdf.setLineWidth(1.5);
+    pdf.rect(cx - imgW/2 - 1, imgY - 1, imgW + 2, imgH + 2, 'S');
+    pdf.addImage(coverB64, 'JPEG', cx - imgW/2, imgY, imgW, imgH);
+    pdf.setDrawColor(...gold);
+    pdf.setLineWidth(1.2);
+    pdf.rect(cx - imgW/2, imgY, imgW, imgH, 'S');
+  }
+
+  // Child name
+  const nameY = imgY + imgH + 16;
+  if (story.child_name) {
+    pdf.setTextColor(...grey);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'italic');
+    pdf.text(isRtl ? 'بطولة' : 'Starring', cx, nameY, { align: 'center' });
+    pdf.setTextColor(...purple);
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(story.child_name, cx, nameY + 10, { align: 'center' });
+    // Underline
+    const nw = pdf.getTextWidth(story.child_name);
+    pdf.setDrawColor(...gold);
+    pdf.setLineWidth(0.6);
+    pdf.line(cx - nw/2, nameY + 12, cx + nw/2, nameY + 12);
+  }
+
+  // Bottom stars
+  pdf.setTextColor(...gold);
+  pdf.setFontSize(14);
+  pdf.text('✦  ✦  ✦  ✦  ✦  ✦  ✦', cx, PH - M - 6, { align: 'center' });
+
+  // ── SCENE PAGES ────────────────────────────────────────────────────────────
+  for (let i = 0; i < scenes.length; i++) {
+    const scene  = scenes[i];
+    const title  = (scene as any).title ?? (isRtl ? `الصفحة ${i+1}` : `Page ${i+1}`);
+    const text   = scene.description ?? (scene as any).text ?? '';
+    const imgB64 = b64[scene.scene_number];
+
+    pdf.addPage();
+    pdf.setFillColor(255, 248, 231);
+    pdf.rect(0, 0, PW, PH, 'F');
+    drawBorder(pdf, M, M, PW - 2*M, PH - 2*M, gold, 2);
+    drawBorder(pdf, M+3, M+3, PW - 2*M - 6, PH - 2*M - 6, gold, 0.3);
+
+    // Page title
+    pdf.setTextColor(...purple);
+    pdf.setFontSize(20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(title, cx, 36, { align: 'center' });
+    drawHR(pdf, cx, 42, 25, gold, 0.6);
+
+    // Scene image
+    const sImgY = 48;
+    const sImgH = 100;
+    const sImgW = 150;
+    if (imgB64) {
+      pdf.addImage(imgB64, 'JPEG', cx - sImgW/2, sImgY, sImgW, sImgH);
+      pdf.setDrawColor(...gold);
+      pdf.setLineWidth(1);
+      pdf.rect(cx - sImgW/2, sImgY, sImgW, sImgH, 'S');
+    }
+
+    // Story text
+    const textY = sImgY + sImgH + 12;
+    pdf.setTextColor(50, 50, 50);
+    pdf.setFontSize(13);
+    pdf.setFont('helvetica', 'normal');
+    const textLines = wrapText(pdf, text, PW - 2*M - 20);
+    const align = isRtl ? 'right' : 'center';
+    const textX = isRtl ? PW - M - 10 : cx;
+    pdf.text(textLines, textX, textY, { align, maxWidth: PW - 2*M - 20 });
+
+    // Page number
+    pdf.setTextColor(...grey);
+    pdf.setFontSize(9);
+    pdf.text(`— ${i+1} —`, cx, PH - M - 6, { align: 'center' });
+  }
+
+  // ── END PAGE ───────────────────────────────────────────────────────────────
+  pdf.addPage();
+  pdf.setFillColor(255, 248, 231);
+  pdf.rect(0, 0, PW, PH, 'F');
+  drawBorder(pdf, M, M, PW - 2*M, PH - 2*M, gold, 2.5);
+  drawBorder(pdf, M+4, M+4, PW - 2*M - 8, PH - 2*M - 8, gold, 0.5);
+
+  pdf.setTextColor(...gold);
+  pdf.setFontSize(20);
+  pdf.text('✦  ✦  ✦', cx, PH/2 - 28, { align: 'center' });
+
+  pdf.setTextColor(...purple);
+  pdf.setFontSize(36);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(isRtl ? 'النهاية' : 'The End', cx, PH/2 - 8, { align: 'center' });
+
+  drawHR(pdf, cx, PH/2, 30, gold, 0.8);
+
+  pdf.setTextColor(...grey);
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'italic');
+  pdf.text(
+    isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!',
+    cx, PH/2 + 14, { align: 'center' }
+  );
+
+  pdf.setTextColor(...gold);
+  pdf.setFontSize(20);
+  pdf.text('✦  ✦  ✦', cx, PH/2 + 28, { align: 'center' });
+
+  return pdf.output('blob');
+}
+
+// ─── Build coloring book PDF ──────────────────────────────────────────────────
+async function buildColoringBookPdf(
+  story: Story,
+  coloringAssets: StoryAsset[],
+  isRtl: boolean
+): Promise<Blob> {
+  const { jsPDF } = await import('jspdf');
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+  const b64: Record<number, string> = {};
+  await Promise.all(coloringAssets.map(async a => {
+    const d = await toDataUrl(a.url);
+    if (d) b64[a.scene_number] = d;
+  }));
+
+  const scenes = story.scenes ?? [];
+  const black: [number,number,number] = [30, 30, 30];
+  const grey:  [number,number,number] = [120, 120, 120];
+  const cx = PW / 2;
+
+  // ── COVER ──────────────────────────────────────────────────────────────────
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(0, 0, PW, PH, 'F');
+  drawBorder(pdf, M, M, PW - 2*M, PH - 2*M, black, 2);
+  drawBorder(pdf, M+5, M+5, PW - 2*M - 10, PH - 2*M - 10, grey, 0.4);
+
+  pdf.setTextColor(20, 20, 20);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('🖍️  🖍️  🖍️  🖍️  🖍️', cx, 38, { align: 'center' });
+
+  pdf.setFontSize(30);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(isRtl ? 'كتاب التلوين' : 'My Coloring Book', cx, 60, { align: 'center' });
+
+  drawHR(pdf, cx, 68, 35, black, 0.8);
+
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...grey);
+  const titleLines = wrapText(pdf, story.title, PW - 2*M - 20);
+  pdf.text(titleLines, cx, 78, { align: 'center' });
+
+  if (story.child_name) {
+    const nameBoxY = PH/2 + 20;
+    pdf.setFontSize(13);
+    pdf.setTextColor(...grey);
+    pdf.text(isRtl ? 'تلوين البطل:' : 'Coloring by:', cx, nameBoxY, { align: 'center' });
+    // Dashed name box
+    pdf.setDrawColor(...grey);
+    pdf.setLineWidth(0.5);
+    pdf.setLineDashPattern([2, 2], 0);
+    pdf.rect(cx - 50, nameBoxY + 5, 100, 16, 'S');
+    pdf.setLineDashPattern([], 0);
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(20, 20, 20);
+    pdf.text(story.child_name, cx, nameBoxY + 16, { align: 'center' });
+  }
+
+  // ── COLORING PAGES ─────────────────────────────────────────────────────────
+  for (let i = 0; i < scenes.length; i++) {
+    const scene  = scenes[i];
+    const title  = (scene as any).title ?? (isRtl ? `صفحة تلوين ${i+1}` : `Coloring Page ${i+1}`);
+    const imgB64 = b64[scene.scene_number];
+
+    pdf.addPage();
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, PW, PH, 'F');
+    drawBorder(pdf, M, M, PW - 2*M, PH - 2*M, black, 1.5);
+
+    // Title
+    pdf.setTextColor(20, 20, 20);
+    pdf.setFontSize(18);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(title, cx, 34, { align: 'center' });
+    drawHR(pdf, cx, 40, 20, black, 0.5);
+
+    // Line art image — large, centered
+    const imgW = 160;
+    const imgH = 140;
+    if (imgB64) {
+      pdf.addImage(imgB64, 'JPEG', cx - imgW/2, 48, imgW, imgH);
+      pdf.setDrawColor(...black);
+      pdf.setLineWidth(0.8);
+      pdf.rect(cx - imgW/2, 48, imgW, imgH, 'S');
+    } else {
+      // Placeholder box
+      pdf.setDrawColor(...grey);
+      pdf.setLineWidth(0.5);
+      pdf.setLineDashPattern([3, 3], 0);
+      pdf.rect(cx - 80, 48, 160, 140, 'S');
+      pdf.setLineDashPattern([], 0);
+      pdf.setFontSize(11);
+      pdf.setTextColor(...grey);
+      pdf.text(isRtl ? 'لا توجد صورة' : 'Image not available', cx, 125, { align: 'center' });
+    }
+
+    // Page number
+    pdf.setFontSize(9);
+    pdf.setTextColor(...grey);
+    pdf.text(`— ${i+1} —`, cx, PH - M - 6, { align: 'center' });
+  }
+
+  return pdf.output('blob');
 }
 
 export default function StoryViewPage() {
@@ -50,7 +365,7 @@ export default function StoryViewPage() {
   const [error, setError] = useState('');
   const [pdfGenerating, setPdfGenerating] = useState<string | null>(null);
 
-  // ─── PDF Generation (Next.js / html2pdf, all images embedded as base64) ─────
+  // ─── PDF Generation: delegates to jsPDF builders, then uploads to backend ──
   const generateAndUploadPdf = useCallback(async (
     outputType: 'story_book_pdf' | 'coloring_book_pdf'
   ) => {
@@ -59,211 +374,27 @@ export default function StoryViewPage() {
     setPdfGenerating(label);
 
     try {
-      // 1. Collect image URLs we need
-      const imageAssets = assets.filter(a => a.asset_type === 'image').sort((a, b) => a.scene_number - b.scene_number);
-      const coloringAssets = assets.filter(a => a.asset_type === 'coloring_page').sort((a, b) => a.scene_number - b.scene_number);
-
-      // 2. Resolve all images to base64 in parallel (bypasses CORS canvas block)
-      const urlsToFetch = outputType === 'story_book_pdf'
-        ? imageAssets.map(a => a.url)
-        : coloringAssets.map(a => a.url);
-
-      const base64Map: Record<string, string> = {};
-      await Promise.all(urlsToFetch.map(async url => {
-        base64Map[url] = await toDataUrl(url);
-      }));
-
-      // 3. Build HTML string for the PDF (NOT rendered to DOM — avoids layout side-effects)
       const isRtl = story.language === 'ar';
-      const dir = isRtl ? 'rtl' : 'ltr';
-      const scenes = story.scenes ?? [];
 
-      let html = '';
-      const page = (content: string, bg = '#FFF8E7', border = '#C8A96E') =>
-        `<div style="width:794px;min-height:1123px;box-sizing:border-box;padding:48px;
-          background:${bg};page-break-after:always;display:flex;flex-direction:column;
-          align-items:center;justify-content:space-between;
-          border:16px solid ${border};font-family:Georgia,serif;direction:${dir};">
-          ${content}
-        </div>`;
+      // Collect the correct asset list for this output type
+      const imageAssets    = assets
+        .filter(a => a.asset_type === 'image')
+        .sort((a, b) => a.scene_number - b.scene_number);
+      const coloringAssets = assets
+        .filter(a => a.asset_type === 'coloring_page')
+        .sort((a, b) => a.scene_number - b.scene_number);
 
-      const hr = (color = '#C8A96E') =>
-        `<div style="width:200px;height:3px;background:${color};margin:16px auto;border-radius:2px;"></div>`;
-
-      const starRow = (color = '#C8A96E', n = 5) =>
-        `<div style="color:${color};font-size:20px;letter-spacing:8px;margin:8px 0;">${'✦'.repeat(n)}</div>`;
-
+      // Build the PDF blob using the dedicated jsPDF builders.
+      // Each builder fetches its own images as base64 internally,
+      // so we don't need to pre-fetch here.
+      let pdfBlob: Blob;
       if (outputType === 'story_book_pdf') {
-        // ── Cover ──────────────────────────────────────────────────────────────
-        const coverB64 = base64Map[imageAssets[0]?.url ?? ''] ?? '';
-        html += page(`
-          <div style="text-align:center;width:100%;margin-top:32px;">
-            ${starRow('#D4AF37', 7)}
-            <div style="font-size:13px;font-weight:700;color:#6B3FA0;letter-spacing:4px;
-              text-transform:uppercase;margin-bottom:12px;">
-              ${isRtl ? 'قصة مصورة' : 'Story Hero'}
-            </div>
-            <h1 style="font-size:42px;color:#3D1F6E;margin:0;line-height:1.2;font-weight:bold;">
-              ${story.title}
-            </h1>
-            ${hr('#D4AF37')}
-          </div>
-          ${coverB64 ? `
-          <div style="width:580px;height:420px;border-radius:16px;overflow:hidden;
-            box-shadow:0 8px 30px rgba(0,0,0,0.25);border:5px solid #D4AF37;">
-            <img src="${coverB64}" style="width:100%;height:100%;object-fit:cover;" />
-          </div>` : '<div style="height:420px;"></div>'}
-          <div style="text-align:center;margin-bottom:32px;">
-            ${story.child_name ? `
-              <div style="font-size:15px;color:#888;font-style:italic;margin-bottom:6px;">
-                ${isRtl ? 'بطولة' : 'Starring'}
-              </div>
-              <div style="font-size:28px;color:#3D1F6E;font-weight:bold;
-                border:2px solid #D4AF37;display:inline-block;padding:8px 32px;
-                border-radius:8px;background:rgba(212,175,55,0.1);">
-                ${story.child_name}
-              </div>` : ''}
-            ${starRow('#D4AF37', 7)}
-          </div>
-        `);
-
-        // ── Scene pages ────────────────────────────────────────────────────────
-        for (let i = 0; i < scenes.length; i++) {
-          const scene = scenes[i];
-          const asset = imageAssets.find(a => a.scene_number === scene.scene_number);
-          const b64 = asset ? (base64Map[asset.url] ?? '') : '';
-          const title = (scene as any).title ?? (isRtl ? `الصفحة ${i + 1}` : `Page ${i + 1}`);
-          const text = scene.description ?? (scene as any).text ?? '';
-
-          html += page(`
-            <div style="text-align:center;width:100%;margin-top:8px;">
-              <h2 style="font-size:28px;color:#3D1F6E;margin:0;font-weight:bold;">
-                ${title}
-              </h2>
-              ${hr()}
-            </div>
-            ${b64 ? `
-            <div style="width:580px;height:400px;border-radius:12px;overflow:hidden;
-              box-shadow:0 6px 24px rgba(0,0,0,0.2);border:4px solid #C8A96E;">
-              <img src="${b64}" style="width:100%;height:100%;object-fit:cover;" />
-            </div>` : '<div style="height:400px;"></div>'}
-            <div style="width:100%;text-align:center;margin-bottom:8px;">
-              <p style="font-size:19px;color:#333;line-height:1.75;margin:0;
-                padding:0 16px;font-family:Georgia,serif;">
-                ${text}
-              </p>
-              <div style="margin-top:16px;font-size:13px;color:#AAA;">— ${i + 1} —</div>
-            </div>
-          `);
-        }
-
-        // ── End page ───────────────────────────────────────────────────────────
-        html += page(`
-          <div style="flex:1;display:flex;align-items:center;justify-content:center;
-            width:100%;text-align:center;">
-            <div>
-              ${starRow('#D4AF37', 7)}
-              <h1 style="font-size:52px;color:#3D1F6E;margin:16px 0;font-weight:bold;">
-                ${isRtl ? 'النهاية' : 'The End'}
-              </h1>
-              ${hr('#D4AF37')}
-              <p style="font-size:20px;color:#666;font-style:italic;margin-top:12px;">
-                ${isRtl
-                  ? 'شكراً لقراءة هذه القصة الرائعة!'
-                  : 'Thank you for reading this amazing story!'}
-              </p>
-              ${starRow('#D4AF37', 7)}
-            </div>
-          </div>
-        `);
-
+        pdfBlob = await buildStoryBookPdf(story, imageAssets, isRtl);
       } else {
-        // ── Coloring Book Cover ────────────────────────────────────────────────
-        html += page(`
-          <div style="text-align:center;width:100%;margin-top:40px;">
-            <div style="font-size:48px;margin-bottom:16px;">🖍️</div>
-            <h1 style="font-size:44px;color:#111;margin:0;font-weight:bold;">
-              ${isRtl ? 'كتاب التلوين' : 'My Coloring Book'}
-            </h1>
-            ${hr('#333')}
-            <h2 style="font-size:24px;color:#555;margin:8px 0;font-weight:normal;">
-              ${story.title}
-            </h2>
-          </div>
-          <div style="text-align:center;margin-bottom:40px;">
-            ${story.child_name ? `
-              <div style="font-size:18px;color:#777;margin-bottom:12px;">
-                ${isRtl ? 'تلوين البطل' : 'Coloring by'}
-              </div>
-              <div style="font-size:32px;color:#111;font-weight:bold;
-                border:3px dashed #333;display:inline-block;padding:10px 40px;
-                border-radius:12px;min-width:200px;">
-                ${story.child_name}
-              </div>` : ''}
-          </div>
-        `, '#FFFFFF', '#333333');
-
-        // ── Coloring pages ─────────────────────────────────────────────────────
-        for (let i = 0; i < scenes.length; i++) {
-          const scene = scenes[i];
-          const asset = coloringAssets.find(a => a.scene_number === scene.scene_number);
-          const b64 = asset ? (base64Map[asset.url] ?? '') : '';
-          const title = (scene as any).title ?? (isRtl ? `صفحة تلوين ${i + 1}` : `Coloring Page ${i + 1}`);
-
-          html += page(`
-            <div style="text-align:center;width:100%;margin-top:8px;">
-              <h2 style="font-size:26px;color:#111;margin:0;font-weight:bold;">
-                ${title}
-              </h2>
-              <div style="width:160px;height:2px;background:#333;margin:12px auto;"></div>
-            </div>
-            ${b64 ? `
-            <div style="width:600px;height:460px;border:2px solid #333;overflow:hidden;">
-              <img src="${b64}" style="width:100%;height:100%;object-fit:contain;" />
-            </div>` : `
-            <div style="width:600px;height:460px;border:2px dashed #ccc;
-              display:flex;align-items:center;justify-content:center;color:#bbb;font-size:18px;">
-              ${isRtl ? 'لا توجد صورة' : 'No image'}
-            </div>`}
-            <div style="width:100%;text-align:center;margin-bottom:8px;">
-              <div style="font-size:13px;color:#999;">— ${i + 1} —</div>
-            </div>
-          `, '#FFFFFF', '#333333');
-        }
+        pdfBlob = await buildColoringBookPdf(story, coloringAssets, isRtl);
       }
 
-      // 4. Create a temporary container and inject the page divs directly.
-      //    IMPORTANT: never set innerHTML to a full <!DOCTYPE html> string —
-      //    browsers silently strip <html>/<head>/<body> tags when assigned via
-      //    innerHTML, leaving the container empty and producing a blank PDF.
-      const container = document.createElement('div');
-      container.style.cssText = [
-        'position:fixed', 'left:-99999px', 'top:0',
-        'width:794px', 'background:white',
-        'font-family:Georgia,serif',
-      ].join(';');
-      // html is already just the inner page divs — no document wrapper needed
-      container.innerHTML = html;
-      document.body.appendChild(container);
-
-      // Give the browser one frame to finish layout before capture
-      await new Promise(r => requestAnimationFrame(r));
-
-      const html2pdf = (await import('html2pdf.js')).default;
-      const pdfBlob: Blob = await html2pdf()
-        .from(container)
-        .set({
-          margin: 0,
-          filename: `${outputType === 'story_book_pdf' ? 'story' : 'coloring'}_book.pdf`,
-          image: { type: 'jpeg', quality: 0.90 },
-          html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: false },
-          jsPDF: { unit: 'px', format: [794, 1123], orientation: 'portrait' },
-        })
-        .output('blob');
-
-      document.body.removeChild(container);
-
-      // 6. Upload to Laravel
+      // Upload the generated PDF to the backend
       const res = await apiUploadStoryPdf(story.id, pdfBlob, outputType);
       setOutputs(prev => ({ ...prev, [outputType]: res.output }));
 
