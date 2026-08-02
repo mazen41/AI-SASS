@@ -235,10 +235,14 @@ class User extends Authenticatable
         $result = [];
         
         foreach ($balances as $balance) {
+            // Guard against orphaned balance rows where the product was deleted
+            if (!$balance->product) {
+                continue;
+            }
             $result[$balance->product->slug] = [
-                'product_id' => $balance->product_id,
-                'product_name' => $balance->product->name,
-                'quantity' => $balance->quantity,
+                'product_id'       => $balance->product_id,
+                'product_name'     => $balance->product->name,
+                'quantity'         => $balance->quantity,
                 'initial_quantity' => $balance->initial_quantity,
             ];
         }

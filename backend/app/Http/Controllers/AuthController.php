@@ -183,11 +183,33 @@ class AuthController extends Controller
     public function user(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
+        // Resolve each field defensively so a corrupt balance/package row
+        // never causes a 500 on the entire /api/user endpoint.
+        $activePackage = null;
+        try {
+            $activePackage = $user->activeUserPackage();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to load activeUserPackage', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+
+        $balances = [];
+        try {
+            $balances = $user->getAllProductBalances();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to load product balances', [
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+
         return response()->json([
-            'user' => $user,
-            'active_package' => $user->activeUserPackage,
-            'balances' => $user->getAllProductBalances(),
+            'user'           => $user,
+            'active_package' => $activePackage,
+            'balances'       => $balances,
         ]);
     }
 }
