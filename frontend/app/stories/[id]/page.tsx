@@ -22,6 +22,8 @@ import {
 
   apiDeleteStory,
 
+  apiUploadStoryPdf,
+
   Story,
 
   StoryAsset,
@@ -73,6 +75,90 @@ export default function StoryViewPage() {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState('');
+
+  const [pdfGenerating, setPdfGenerating] = useState<string | null>(null);
+
+  const preloadImages = (urls: string[]) => {
+    return Promise.all(
+      urls.map((url) => {
+        return new Promise((resolve) => {
+          const img = new window.Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = resolve;
+          img.onerror = resolve; // resolve anyway to not block
+          img.src = url;
+        });
+      })
+    );
+  };
+
+  const generateAndUploadPdf = async (outputType: 'story_book_pdf' | 'coloring_book_pdf') => {
+    if (!story || pdfGenerating) return;
+
+    setPdfGenerating(outputType === 'story_book_pdf' ? 'Story Book' : 'Coloring Book');
+
+    try {
+      const imageUrls: string[] = [];
+      if (outputType === 'story_book_pdf') {
+        const coverImage = assets.find(a => a.scene_number === 1 && a.asset_type === 'image')?.url;
+        if (coverImage) imageUrls.push(coverImage);
+        story.scenes?.forEach(scene => {
+          const img = assets.find(a => a.scene_number === scene.scene_number && a.asset_type === 'image')?.url;
+          if (img) imageUrls.push(img);
+        });
+      } else {
+        story.scenes?.forEach(scene => {
+          const img = assets.find(a => a.scene_number === scene.scene_number && a.asset_type === 'coloring_page')?.url;
+          if (img) imageUrls.push(img);
+        });
+      }
+
+      await preloadImages(imageUrls);
+
+      const html2pdf = (await import('html2pdf.js')).default;
+      const elementId = outputType === 'story_book_pdf' ? 'story-book-pdf-template' : 'coloring-book-pdf-template';
+      const element = document.getElementById(elementId);
+      if (!element) {
+        throw new Error('Template element not found in DOM');
+      }
+
+      const opt = {
+        margin: 0,
+        filename: `${outputType === 'story_book_pdf' ? 'story' : 'coloring'}_book.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          logging: false,
+          allowTaint: true
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
+      const res = await apiUploadStoryPdf(story.id, pdfBlob, outputType);
+
+      setOutputs(prev => ({
+        ...prev,
+        [outputType]: res.output
+      }));
+
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+    } finally {
+      setPdfGenerating(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!story || pdfGenerating) return;
+
+    if (outputs.story_book_pdf?.status === 'planned') {
+      generateAndUploadPdf('story_book_pdf');
+    } else if (outputs.coloring_book_pdf?.status === 'planned') {
+      generateAndUploadPdf('coloring_book_pdf');
+    }
+  }, [story, outputs, pdfGenerating]);
 
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -421,13 +507,20 @@ export default function StoryViewPage() {
 
 
   const DownloadButton = ({ output, label }: { output?: StoryOutput; label: string }) => {
+    const isGenerating = output?.status === 'generating' || 
+                        output?.status === 'planned' || 
+                        (pdfGenerating && (
+                          (output?.output_type === 'story_book_pdf' && pdfGenerating === 'Story Book') ||
+                          (output?.output_type === 'coloring_book_pdf' && pdfGenerating === 'Coloring Book')
+                        ));
+
     if (output?.url && output.status === 'completed') {
       return <a className="btn btn-primary" href={output.url} download style={{ display: 'inline-block' }}>⬇️ {label}</a>;
     }
     if (output?.status === 'failed') {
       return <span className="btn btn-ghost" style={{ display: 'inline-block', opacity: 0.7, color: 'var(--k-pink)' }}>⚠️ PDF failed</span>;
     }
-    if (output?.status === 'generating' || output?.status === 'planned') {
+    if (isGenerating) {
       return <span className="btn btn-ghost" style={{ display: 'inline-block', opacity: 0.7 }}>⏳ PDF generating…</span>;
     }
     return null;
@@ -865,6 +958,88 @@ export default function StoryViewPage() {
 
           </motion.div>
 
+        </div>
+
+      </div>
+
+      {/* ── Hidden PDF render templates (off-screen, captured by html2pdf.js) ── */}
+      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
+
+        {/* Story Book Template */}
+        <div id="story-book-pdf-template" style={{ width: '210mm', fontFamily: 'Georgia, serif' }}>
+          {/* Cover */}
+          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFF8E7', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '15px solid #FFD700', boxShadow: 'inset 0 0 0 2px #4A0E4E, inset 0 0 0 6px #FFD700, inset 0 0 0 8px #4A0E4E', direction: isRtl ? 'rtl' : 'ltr' }}>
+            <div style={{ width: '100%', textAlign: 'center', marginTop: '15mm' }}>
+              <div style={{ fontSize: '14pt', fontWeight: 600, color: '#4A0E4E', letterSpacing: '2px', marginBottom: '5mm' }}>{isRtl ? '✦ قصة مصورة ✦' : '✦ STORY HERO ✦'}</div>
+              <h1 style={{ fontSize: '32pt', fontFamily: 'Georgia, serif', color: '#4A0E4E', margin: '0', fontWeight: 'bold', lineHeight: 1.2 }}>{story.title}</h1>
+              <div style={{ width: '30mm', height: '2px', backgroundColor: '#FFD700', margin: '6mm auto' }} />
+            </div>
+            {imageAssets[0] && (
+              <div style={{ width: '140mm', height: '105mm', border: '4px solid #FFD700', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 6px 15px rgba(0,0,0,0.15)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageAssets[0].url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Cover" crossOrigin="anonymous" />
+              </div>
+            )}
+            <div style={{ width: '100%', textAlign: 'center', marginBottom: '15mm' }}>
+              {story.child_name && (<><div style={{ fontSize: '14pt', color: '#666', marginBottom: '2mm', fontStyle: 'italic' }}>{isRtl ? 'بطولة' : 'Starring'}</div><div style={{ fontSize: '24pt', fontFamily: 'Georgia, serif', color: '#D4AF37', fontWeight: 'bold' }}>{story.child_name}</div></>)}
+            </div>
+          </div>
+          {/* Scene Pages */}
+          {story.scenes?.map((scene, index) => {
+            const sceneImg = imageAssets.find(a => a.scene_number === scene.scene_number)?.url;
+            return (
+              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFF8E7', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '12px solid #FFD700', boxShadow: 'inset 0 0 0 2px #4A0E4E, inset 0 0 0 5px #FFD700, inset 0 0 0 7px #4A0E4E', direction: isRtl ? 'rtl' : 'ltr' }}>
+                <div style={{ width: '100%', textAlign: 'center', marginTop: '5mm' }}>
+                  <h2 style={{ fontSize: '20pt', fontFamily: 'Georgia, serif', color: '#4A0E4E', margin: '0', fontWeight: 'bold' }}>{(scene as any).title || (isRtl ? `الصفحة ${index + 1}` : `Page ${index + 1}`)}</h2>
+                  <div style={{ width: '20mm', height: '1px', backgroundColor: '#FFD700', margin: '4mm auto' }} />
+                </div>
+                {sceneImg && (<div style={{ width: '150mm', height: '110mm', border: '3px solid #D4AF37', borderRadius: '6px', overflow: 'hidden' }}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={sceneImg} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Scene ${index + 1}`} crossOrigin="anonymous" /></div>)}
+                <div style={{ width: '100%', padding: '0 5mm', boxSizing: 'border-box', marginBottom: '15mm', textAlign: 'center' }}>
+                  <p style={{ fontSize: '15pt', lineHeight: 1.6, color: '#333', margin: '0', fontFamily: 'sans-serif' }}>{scene.description || (scene as any).text}</p>
+                </div>
+                <div style={{ position: 'absolute', bottom: '8mm', fontSize: '11pt', color: '#999', width: '100%', textAlign: 'center' }}>— {index + 1} —</div>
+              </div>
+            );
+          })}
+          {/* End Page */}
+          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFF8E7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '15px solid #FFD700', boxShadow: 'inset 0 0 0 2px #4A0E4E, inset 0 0 0 6px #FFD700, inset 0 0 0 8px #4A0E4E', direction: isRtl ? 'rtl' : 'ltr' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '36pt', color: '#FFA500', marginBottom: '8mm' }}>✦</div>
+              <h1 style={{ fontSize: '36pt', fontFamily: 'Georgia, serif', color: '#4A0E4E', fontWeight: 'bold', margin: '0 0 6mm 0' }}>{isRtl ? 'النهاية' : 'The End'}</h1>
+              <p style={{ fontSize: '18pt', color: '#555', margin: '0', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>{isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!'}</p>
+              <div style={{ fontSize: '36pt', color: '#FFA500', marginTop: '8mm' }}>✦</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Coloring Book Template */}
+        <div id="coloring-book-pdf-template" style={{ width: '210mm', fontFamily: 'Georgia, serif' }}>
+          {/* Cover */}
+          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFFFFF', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '15px double #333333', direction: isRtl ? 'rtl' : 'ltr' }}>
+            <div style={{ width: '100%', textAlign: 'center', marginTop: '20mm' }}>
+              <h1 style={{ fontSize: '36pt', fontFamily: 'Georgia, serif', color: '#111', margin: '0 0 4mm 0', fontWeight: 'bold' }}>{isRtl ? 'كتاب التلوين' : 'My Coloring Book'}</h1>
+              <h2 style={{ fontSize: '24pt', fontFamily: 'Georgia, serif', color: '#555', margin: '0', fontWeight: 'normal' }}>{story.title}</h2>
+              <div style={{ width: '40mm', height: '2px', backgroundColor: '#333', margin: '8mm auto' }} />
+            </div>
+            <div style={{ width: '100%', textAlign: 'center', marginBottom: '25mm' }}>
+              {story.child_name && (<><div style={{ fontSize: '16pt', color: '#777', marginBottom: '3mm' }}>{isRtl ? 'تلوين البطل' : 'Coloring by'}</div><div style={{ fontSize: '28pt', fontFamily: 'Georgia, serif', color: '#111', fontWeight: 'bold', border: '2px dashed #333', display: 'inline-block', padding: '4mm 10mm', borderRadius: '8px' }}>{story.child_name}</div></>)}
+            </div>
+          </div>
+          {/* Coloring Pages */}
+          {story.scenes?.map((scene, index) => {
+            const coloringImg = coloringAssets.find(a => a.scene_number === scene.scene_number)?.url;
+            return (
+              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFFFFF', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '10px double #333', direction: isRtl ? 'rtl' : 'ltr' }}>
+                <div style={{ width: '100%', textAlign: 'center', marginTop: '5mm' }}>
+                  <h2 style={{ fontSize: '20pt', fontFamily: 'Georgia, serif', color: '#111', margin: '0', fontWeight: 'bold' }}>{(scene as any).title || (isRtl ? `صفحة تلوين ${index + 1}` : `Coloring Page ${index + 1}`)}</h2>
+                  <div style={{ width: '25mm', height: '1px', backgroundColor: '#666', margin: '4mm auto' }} />
+                </div>
+                {coloringImg ? (<div style={{ width: '160mm', height: '120mm', border: '2px solid #333', overflow: 'hidden', backgroundColor: '#FFF' }}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={coloringImg} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={`Coloring ${index + 1}`} crossOrigin="anonymous" /></div>) : (<div style={{ width: '160mm', height: '120mm', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>No image</div>)}
+                <div style={{ width: '100%', height: '20mm' }} />
+                <div style={{ position: 'absolute', bottom: '8mm', fontSize: '11pt', color: '#666', width: '100%', textAlign: 'center' }}>— {index + 1} —</div>
+              </div>
+            );
+          })}
         </div>
 
       </div>

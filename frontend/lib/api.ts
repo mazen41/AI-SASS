@@ -796,3 +796,14 @@ export async function apiPurchaseProduct(data: { product_id: number; quantity: n
     body: JSON.stringify(data),
   });
 }
+
+export async function apiUploadStoryPdf(storyId: number, file: Blob, outputType: 'story_book_pdf' | 'coloring_book_pdf'): Promise<{ message: string; output: StoryOutput }> {
+  const formData = new FormData();
+  formData.append('file', file, `${outputType === 'story_book_pdf' ? 'story' : 'coloring'}_book.pdf`);
+  formData.append('output_type', outputType);
+
+  return apiFetch<{ message: string; output: StoryOutput }>(`/stories/${storyId}/upload-pdf`, {
+    method: 'POST',
+    body: formData,
+  }, true);
+}
