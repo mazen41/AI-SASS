@@ -91,7 +91,7 @@ export default function LoginPage() {
 
             <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1.75rem' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
+              <img src="/logo.png" alt="Logo" style={{ height: '72px', width: 'auto', objectFit: 'contain' }} />
             </Link>
 
             <motion.div variants={fadeUp} initial="hidden" animate="visible">

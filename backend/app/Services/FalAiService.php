@@ -108,13 +108,21 @@ class FalAiService
         $model = 'fal-ai/flux/schnell';
 
         $lineArtPrompt = trim($prompt)
-            . ', children\'s coloring book page, pure black ink outlines on solid white background,'
-            . ' NO color NO shading NO gray tones NO gradients NO fills,'
-            . ' thick bold clean outlines only, simple flat shapes,'
-            . ' professional printable coloring book illustration,'
-            . ' stark black and white, high contrast line art,'
-            . ' child-friendly cartoon style, clear open coloring areas,'
-            . ' monochrome pen and ink drawing style';
+            . ', kids coloring book page'
+            . ', pure black line art only'
+            . ', white background only'
+            . ', clean vector-style outlines'
+            . ', thick bold uniform strokes'
+            . ', no color, no grayscale, no shading, no gradients'
+            . ', no fill, no shadows, no textures'
+            . ', simple shapes, minimal details'
+            . ', clear open areas for coloring'
+            . ', smooth continuous lines, no sketch, no rough edges'
+            . ', high contrast black on white'
+            . ', printable coloring page quality'
+            . ', centered composition, no clutter'
+            . ', child-friendly illustration style'
+            . ', professional ink outline drawing';
 
         $payload = [
             'prompt'                => $lineArtPrompt,

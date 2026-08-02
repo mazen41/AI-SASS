@@ -571,9 +571,8 @@ export default function LandingPage() {
       <footer className="footer">
         <div className="footer-inner">
           <div className="footer-brand">
-            <span className="nav-logo-kido" style={{ fontSize: '1.4rem' }}>
-              <span className="nav-logo-star">✦</span>
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Logo" style={{ height: '64px', width: 'auto', objectFit: 'contain' }} />
             <p className="footer-brand-desc" style={{ color: 'var(--text-2)', fontSize: '0.9rem', lineHeight: 1.78, marginTop: '0.9rem', maxWidth: 280 }}>
               {t('footer_tagline')}
             </p>
