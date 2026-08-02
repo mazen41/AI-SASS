@@ -232,16 +232,22 @@ export default function StoryViewPage() {
         }
       }
 
-      // 4. Wrap in full HTML document
-      const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-        <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
-        </head><body>${html}</body></html>`;
-
-      // 5. Create a temporary container, render into it, capture with html2pdf
+      // 4. Create a temporary container and inject the page divs directly.
+      //    IMPORTANT: never set innerHTML to a full <!DOCTYPE html> string —
+      //    browsers silently strip <html>/<head>/<body> tags when assigned via
+      //    innerHTML, leaving the container empty and producing a blank PDF.
       const container = document.createElement('div');
-      container.style.cssText = 'position:fixed;left:-99999px;top:0;width:794px;background:white;';
-      container.innerHTML = fullHtml;
+      container.style.cssText = [
+        'position:fixed', 'left:-99999px', 'top:0',
+        'width:794px', 'background:white',
+        'font-family:Georgia,serif',
+      ].join(';');
+      // html is already just the inner page divs — no document wrapper needed
+      container.innerHTML = html;
       document.body.appendChild(container);
+
+      // Give the browser one frame to finish layout before capture
+      await new Promise(r => requestAnimationFrame(r));
 
       const html2pdf = (await import('html2pdf.js')).default;
       const pdfBlob: Blob = await html2pdf()
@@ -250,7 +256,7 @@ export default function StoryViewPage() {
           margin: 0,
           filename: `${outputType === 'story_book_pdf' ? 'story' : 'coloring'}_book.pdf`,
           image: { type: 'jpeg', quality: 0.90 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
+          html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: false },
           jsPDF: { unit: 'px', format: [794, 1123], orientation: 'portrait' },
         })
         .output('blob');
