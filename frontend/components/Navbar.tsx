@@ -50,9 +50,10 @@ export default function Navbar() {
         <nav className="nav-inner">
 
           {/* ── Logo ── */}
-          <Link href="/" className="nav-logo-kido" onClick={() => setMobileOpen(false)}>
-            <span className="nav-logo-star">✦</span>
-            StoryHero
+          <Link href="/" className="nav-logo-kido" onClick={() => setMobileOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="StoryHero Logo" style={{ height: '32px', width: 'auto', objectFit: 'contain' }} />
+            <span>StoryHero</span>
           </Link>
 
           {/* ── Desktop nav ── */}
@@ -155,8 +156,10 @@ export default function Navbar() {
           >
             {/* Drawer header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <Link href="/" className="nav-logo-kido" onClick={() => setMobileOpen(false)} style={{ fontSize: '1.35rem' }}>
-                <span className="nav-logo-star">✦</span>StoryHero
+              <Link href="/" className="nav-logo-kido" onClick={() => setMobileOpen(false)} style={{ fontSize: '1.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="StoryHero Logo" style={{ height: '28px', width: 'auto', objectFit: 'contain' }} />
+                <span>StoryHero</span>
               </Link>
               <button
                 onClick={() => setMobileOpen(false)}
