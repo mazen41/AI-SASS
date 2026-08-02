@@ -47,6 +47,45 @@ class StoryProductService
      * already-verified file removes that second, redundant, unguarded fetch
      * entirely.
      */
+    /**
+     * mPDF cannot accept multiple concatenated full HTML documents (each with
+     * their own <!DOCTYPE>, <html>, <head>, <body> tags) in a single WriteHTML()
+     * call — it causes "Undefined array key -1" from the internal table-level
+     * stack going out of sync.  This helper extracts the <style> from the first
+     * page and the <body> content from every page, then wraps them into one
+     * well-formed HTML document that mPDF is happy to process.
+     */
+    private function mergePagesForMpdf(string $concatenatedHtml): string
+    {
+        // Split on each full HTML document boundary
+        $pages = preg_split('/<!DOCTYPE html>/i', $concatenatedHtml, -1, PREG_SPLIT_NO_EMPTY);
+
+        $headCss   = '';
+        $bodyParts = [];
+
+        foreach ($pages as $i => $page) {
+            $page = '<!DOCTYPE html>' . $page;
+
+            // Collect <style> blocks only from the first page to avoid duplication
+            if ($i === 0 && preg_match_all('/<style[^>]*>(.*?)<\/style>/si', $page, $matches)) {
+                $headCss = implode("\n", $matches[1]);
+            }
+
+            // Extract the content inside <body>...</body>
+            if (preg_match('/<body[^>]*>(.*?)<\/body>/si', $page, $m)) {
+                $bodyParts[] = trim($m[1]);
+            }
+        }
+
+        return '<!DOCTYPE html>' .
+               '<html lang="ar" dir="rtl">' .
+               '<head><meta charset="UTF-8">' .
+               '<style>' . $headCss . '</style>' .
+               '</head>' .
+               '<body>' . implode("\n", $bodyParts) . '</body>' .
+               '</html>';
+    }
+
     private function cacheImageLocally(?string $url, string $tmpDir, string $name, bool $returnPath = false): ?string
     {
         if (!$url) {
@@ -271,7 +310,7 @@ class StoryProductService
                         ],
                     ]);
                     $mpdf->SetDirectionality('rtl');
-                    $mpdf->WriteHTML($allHtml);
+                    $mpdf->WriteHTML($this->mergePagesForMpdf($allHtml));
                     $pdfContent = $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
                 } else {
                     // Setup DomPDF for English/LTR
@@ -497,7 +536,7 @@ class StoryProductService
                         ],
                     ]);
                     $mpdf->SetDirectionality('rtl');
-                    $mpdf->WriteHTML($allHtml);
+                    $mpdf->WriteHTML($this->mergePagesForMpdf($allHtml));
                     $pdfContent = $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
                 } else {
                     // Setup DomPDF for English/LTR
