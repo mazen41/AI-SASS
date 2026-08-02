@@ -295,7 +295,7 @@ class StoryProductService
                         'mode' => 'utf-8',
                         'format' => 'A4',
                         'default_font_size' => 12,
-                        'default_font' => 'Noto Sans Arabic',
+                        'default_font' => 'notosansarabic',
                         'margin_left' => 0,
                         'margin_right' => 0,
                         'margin_top' => 0,
@@ -303,7 +303,7 @@ class StoryProductService
                         'tempDir' => $tmpDir,
                         'fontDir' => array_merge($fontDirs, $customFontDirs),
                         'fontdata' => $fontData + [
-                            'noto sans arabic' => [
+                            'notosansarabic' => [
                                 'R' => 'NotoSansArabic-Regular.ttf',
                                 'B' => 'NotoSansArabic-Bold.ttf',
                             ],
@@ -340,7 +340,8 @@ class StoryProductService
             } catch (\Throwable $e) {
                 Log::error("Failed to generate/save story book PDF", [
                     'story_id' => $story->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
                 throw new \RuntimeException("Story book PDF generation failed: " . $e->getMessage());
             }
@@ -521,7 +522,7 @@ class StoryProductService
                         'mode' => 'utf-8',
                         'format' => 'A4',
                         'default_font_size' => 12,
-                        'default_font' => 'Noto Sans Arabic',
+                        'default_font' => 'notosansarabic',
                         'margin_left' => 0,
                         'margin_right' => 0,
                         'margin_top' => 0,
@@ -529,7 +530,7 @@ class StoryProductService
                         'tempDir' => $tmpDir,
                         'fontDir' => array_merge($fontDirs, $customFontDirs),
                         'fontdata' => $fontData + [
-                            'noto sans arabic' => [
+                            'notosansarabic' => [
                                 'R' => 'NotoSansArabic-Regular.ttf',
                                 'B' => 'NotoSansArabic-Bold.ttf',
                             ],
@@ -566,7 +567,8 @@ class StoryProductService
             } catch (\Throwable $e) {
                 Log::error("Failed to generate/save coloring book PDF", [
                     'story_id' => $story->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
                 throw new \RuntimeException("Coloring book PDF generation failed: " . $e->getMessage());
             }
