@@ -331,10 +331,11 @@ class StoryProductService
 
             // Get the child's photo if available for character consistency
             $photoUrl = $story->child_photo_url ?? null;
+            $childAge = $story->child_age ?? null;
 
             // Generate line art image specifically for coloring book
             Log::info("Generating Fal.ai line art for scene {$sceneNumber}");
-            $lineArtUrl = $falAi->generateLineArtImage($scenePrompt, $photoUrl);
+            $lineArtUrl = $falAi->generateLineArtImage($scenePrompt, $photoUrl, $childAge);
             Log::info("Fal.ai line art generated for scene {$sceneNumber}: {$lineArtUrl}");
 
             // Download the line art image

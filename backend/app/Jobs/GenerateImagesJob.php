@@ -60,6 +60,7 @@ class GenerateImagesJob implements ShouldQueue
                 $sceneNum = $scene['scene_number'];
                 $prompt   = $scene['image_prompt'];
                 $photoUrl = $story->photo_url;
+                $childAge = $story->child_age;
 
                 // Only generate colored scene images if story_book_pdf is selected
                 // If only coloring_book_pdf is selected, generate black and white line art directly
@@ -68,7 +69,7 @@ class GenerateImagesJob implements ShouldQueue
                     $stylePrefix = 'Manga/comic style illustration, bold outlines, vibrant colors, dynamic composition, professional children\'s book art style. ';
                     $enhancedPrompt = $stylePrefix . $prompt;
 
-                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl);
+                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge);
                     $storedUrl = $fal->downloadAndStore(
                         $imageUrl,
                         "stories/{$story->id}/scene_{$sceneNum}.jpg"
@@ -85,7 +86,7 @@ class GenerateImagesJob implements ShouldQueue
                     $stylePrefix = 'Children\'s illustration with clean lines and shapes, coloring book friendly, clear boundaries, no shading or gradients, black and white line art only, pure black outlines on white background. ';
                     $enhancedPrompt = $stylePrefix . $prompt;
 
-                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl);
+                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge);
                     $storedUrl = $fal->downloadAndStore(
                         $imageUrl,
                         "stories/{$story->id}/scene_{$sceneNum}.jpg"
@@ -101,7 +102,7 @@ class GenerateImagesJob implements ShouldQueue
                     // Just story text - generate basic illustrations
                     $enhancedPrompt = $prompt;
 
-                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl);
+                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge);
                     $storedUrl = $fal->downloadAndStore(
                         $imageUrl,
                         "stories/{$story->id}/scene_{$sceneNum}.jpg"

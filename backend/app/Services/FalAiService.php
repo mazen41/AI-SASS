@@ -97,7 +97,7 @@ class FalAiService
      * The caller (StoryProductService) applies an additional hard-threshold
      * GD pass to guarantee truly pure black/white pixels.
      */
-    public function generateLineArtImage(string $prompt, ?string $photoUrl = null): string
+    public function generateLineArtImage(string $prompt, ?string $photoUrl = null, ?int $childAge = null): string
     {
         $this->ensureConfigured();
 
@@ -107,7 +107,23 @@ class FalAiService
         // so we cannot use it for a pure-B&W coloring book page.
         $model = 'fal-ai/flux/schnell';
 
+        // Add age to prompt if provided
+        $agePrompt = $childAge ? ", child aged exactly {$childAge} years old" : '';
+
         $lineArtPrompt = trim($prompt)
+            . ', SAME exact child protagonist as the reference image, DO NOT change identity,'
+            . ' identical face structure, identical facial proportions, identical eyes, nose, mouth,'
+            . ' identical hairstyle, identical hair texture, identical clothing and colors,'
+            . ' EXACT SAME AGE (no aging up or down), maintain child proportions strictly,'
+            . $agePrompt
+            . ', consistent height, body proportions, and facial maturity across ALL scenes,'
+            . ' no variation in age, no взросление, no stylization drift, same child identity locked,'
+            . ' strong character consistency, fixed identity seed, same person in every frame,'
+            . ' cinematic children\'s movie style, high-end Pixar/Disney-quality semi-realistic rendering,'
+            . ' soft warm cinematic lighting, global illumination, natural skin tones,'
+            . ' highly expressive eyes, detailed face but still childlike softness preserved,'
+            . ' vibrant magical storybook environment, family-friendly, rich colors, depth of field,'
+            . ' ultra-consistent character design, no randomness in face or age, no reinterpretation'
             . ', kids coloring book page'
             . ', pure black line art only'
             . ', white background only'
@@ -149,9 +165,12 @@ class FalAiService
         return $imageUrl;
     }
 
-    public function generateImage(string $prompt, ?string $photoUrl = null): string
+    public function generateImage(string $prompt, ?string $photoUrl = null, ?int $childAge = null): string
     {
         $this->ensureConfigured();
+
+        // Add age to prompt if provided
+        $agePrompt = $childAge ? ", child aged exactly {$childAge} years old" : '';
 
         if ($photoUrl) {
             // Always upload photos to Fal storage to avoid accessibility issues
@@ -170,12 +189,19 @@ class FalAiService
             $model   = 'fal-ai/flux-pulid';
             $payload = [
                 'prompt'                => $prompt
-                    . ', same exact child protagonist from the reference photo, identical facial features,'
-                    . ' identical hairstyle, identical clothing, identical eye color, same age appearance,'
-                    . ' strict character consistency across all scenes, consistent face identity, same child,'
-                    . ' cinematic children\'s movie style, movie-quality semi-realistic digital animation,'
-                    . ' warm cinematic lighting, detailed facial features, natural skin tone, expressive eyes,'
-                    . ' vibrant family-friendly storybook world',
+                    . ', SAME exact child protagonist as the reference image, DO NOT change identity,'
+                    . ' identical face structure, identical facial proportions, identical eyes, nose, mouth,'
+                    . ' identical hairstyle, identical hair texture, identical clothing and colors,'
+                    . ' EXACT SAME AGE (no aging up or down), maintain child proportions strictly,'
+                    . $agePrompt
+                    . ', consistent height, body proportions, and facial maturity across ALL scenes,'
+                    . ' no variation in age, no взросление, no stylization drift, same child identity locked,'
+                    . ' strong character consistency, fixed identity seed, same person in every frame,'
+                    . ' cinematic children\'s movie style, high-end Pixar/Disney-quality semi-realistic rendering,'
+                    . ' soft warm cinematic lighting, global illumination, natural skin tones,'
+                    . ' highly expressive eyes, detailed face but still childlike softness preserved,'
+                    . ' vibrant magical storybook environment, family-friendly, rich colors, depth of field,'
+                    . ' ultra-consistent character design, no randomness in face or age, no reinterpretation',
                 'reference_image_url'   => $photoUrl,
                 'num_images'            => 1,
                 'image_size'            => 'landscape_16_9',
@@ -189,10 +215,19 @@ class FalAiService
             $model   = $this->imageModel;
             $payload = [
                 'prompt'                => $prompt
-                    . ', same exact child protagonist, identical facial features, identical hairstyle,'
-                    . ' identical clothing, identical eye color, same age appearance, strict character consistency across all scenes,'
-                    . ' cinematic children\'s movie style, movie-quality semi-realistic digital animation,'
-                    . ' warm cinematic lighting, vibrant colors, safe for kids',
+                    . ', SAME exact child protagonist, DO NOT change identity,'
+                    . ' identical face structure, identical facial proportions, identical eyes, nose, mouth,'
+                    . ' identical hairstyle, identical hair texture, identical clothing and colors,'
+                    . ' EXACT SAME AGE (no aging up or down), maintain child proportions strictly,'
+                    . $agePrompt
+                    . ', consistent height, body proportions, and facial maturity across ALL scenes,'
+                    . ' no variation in age, no взросление, no stylization drift, same child identity locked,'
+                    . ' strong character consistency, fixed identity seed, same person in every frame,'
+                    . ' cinematic children\'s movie style, high-end Pixar/Disney-quality semi-realistic rendering,'
+                    . ' soft warm cinematic lighting, global illumination, natural skin tones,'
+                    . ' highly expressive eyes, detailed face but still childlike softness preserved,'
+                    . ' vibrant magical storybook environment, family-friendly, rich colors, depth of field,'
+                    . ' ultra-consistent character design, no randomness in face or age, no reinterpretation',
                 'num_images'            => 1,
                 'image_size'            => 'landscape_16_9',
                 'enable_safety_checker' => true,

@@ -86,9 +86,9 @@ class StorybookIllustrationService
                 'story_id' => $story->id,
                 'page_number' => $page->page_number
             ]);
-            
+
             try {
-                $this->generatePageIllustration($page, $photoUrl);
+                $this->generatePageIllustration($page, $photoUrl, $story->child_age);
                 
                 Log::info("BATCH PROCESSING: Completed illustration for page", [
                     'story_id' => $story->id,
@@ -108,7 +108,7 @@ class StorybookIllustrationService
     /**
      * Generate illustration for a single page
      */
-    public function generatePageIllustration(StorybookPage $page, ?string $photoUrl = null): void
+    public function generatePageIllustration(StorybookPage $page, ?string $photoUrl = null, ?int $childAge = null): void
     {
         try {
             Log::info("ILLUSTRATION START: generatePageIllustration()", [
@@ -131,7 +131,7 @@ class StorybookIllustrationService
             ]);
 
             // Generate image using Fal.ai
-            $imageUrl = $this->falAi->generateImage($prompt, $photoUrl);
+            $imageUrl = $this->falAi->generateImage($prompt, $photoUrl, $childAge);
 
             Log::info("ILLUSTRATION STEP 1 COMPLETE: FalAiService::generateImage() returned", [
                 'story_id' => $page->story_id,
@@ -201,7 +201,7 @@ class StorybookIllustrationService
                 'page_number' => $page->page_number
             ]);
 
-            $imageUrl = $this->falAi->generateImage($prompt, null);
+            $imageUrl = $this->falAi->generateImage($prompt, null, null);
 
             Log::info("BACKGROUND STEP 1 COMPLETE: FalAiService::generateImage() returned", [
                 'story_id' => $page->story_id,
@@ -288,7 +288,7 @@ class StorybookIllustrationService
                     'element_index' => $i
                 ]);
 
-                $imageUrl = $this->falAi->generateImage($prompt, null);
+                $imageUrl = $this->falAi->generateImage($prompt, null, null);
 
                 Log::info("DECORATIVE STEP 1.{$i}.1 COMPLETE: FalAiService::generateImage() returned", [
                     'story_id' => $page->story_id,
