@@ -58,7 +58,7 @@ class ClaudeService implements StoryTextGeneratorInterface
         $sceneCount = VideoTimelinePlanner::sceneCountForMaxDuration($maxDuration);
 
         $langInstruction = $language === 'ar'
-            ? 'Write entirely in Arabic.'
+            ? 'Write the title, story_text, and all scene descriptions entirely in Arabic. The image_prompt values MUST remain in English so that the image generator can understand them.'
             : 'Write in English.';
 
         $customPart = $customPrompt
@@ -286,8 +286,8 @@ Respond ONLY with valid JSON, no markdown, no code fences, no trailing text afte
   "scenes": [
     {
       "scene_number": 1,
-      "description": "what happens (1-2 sentences). Include specific camera motion: e.g. slow zoom in, gentle pan left, pull back to wide shot.",
-      "image_prompt": "Describe the scene visually. Always refer to the child as '{$faceDesc}'. Enforce: same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, strict character consistency across all scenes, cinematic children's movie style. Include what the child is doing, the environment, lighting, mood, vibrant colors, detailed background."
+      "description": "what happens in this scene (1-2 sentences). Translate this description to the requested story language (Arabic if language is Arabic). Include specific camera motion: e.g. slow zoom in, gentle pan left, pull back to wide shot.",
+      "image_prompt": "Describe the scene visually. MUST ALWAYS be written in English so the image generator can understand it. Always refer to the child as '{$faceDesc}'. Enforce: same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, strict character consistency across all scenes, cinematic children's movie style. Include what the child is doing, the environment, lighting, mood, vibrant colors, detailed background."
     }
   ]
 }

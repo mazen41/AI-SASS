@@ -35,7 +35,7 @@ class OpenAIService
         $sceneCount   = $testImageCount > 0 ? $testImageCount : 6;
 
         $langInstruction = $language === 'ar'
-            ? 'Write entirely in Arabic.'
+            ? 'Write the title, story_text, and all scene descriptions entirely in Arabic. The image_prompt values MUST remain in English so that the image generator can understand them.'
             : 'Write in English.';
 
         $customPart = $customPrompt
@@ -54,8 +54,8 @@ Respond ONLY with valid JSON, no markdown:
   "scenes": [
     {
       "scene_number": 1,
-      "description": "what happens (1 sentence). Include specific realistic camera motion: e.g. slow zoom in, gentle pan left, pull back to wide shot.",
-      "image_prompt": "detailed visual prompt for image generation with {$childName} as the same exact child protagonist; identical facial features; identical hairstyle; identical clothing; identical eye color; same age appearance; strict character consistency across all scenes; cinematic children's movie style; vivid colors; warm lighting; family-friendly mood"
+      "description": "what happens in this scene (1 sentence). Translate this description to the requested story language (Arabic if language is Arabic). Include specific realistic camera motion: e.g. slow zoom in, gentle pan left, pull back to wide shot.",
+      "image_prompt": "detailed visual prompt for image generation. MUST ALWAYS be written in English. Always use {$childName} as the same exact child protagonist; identical facial features; identical hairstyle; identical clothing; identical eye color; same age appearance; strict character consistency across all scenes; cinematic children's movie style; vivid colors; warm lighting; family-friendly mood"
     }
   ]
 }
