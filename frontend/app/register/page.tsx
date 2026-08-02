@@ -108,8 +108,9 @@ function RegisterForm() {
         <div className="auth-form-side">
           <motion.div className="auth-card" initial={{ opacity: 0, x: 36 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
 
-            <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1.75rem', fontFamily: 'Fredoka, sans-serif', fontSize: '1.4rem', fontWeight: 700, background: 'var(--grad-magic)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              ✦ StoryHero
+            <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1.75rem' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
             </Link>
 
             <motion.div variants={fadeUp} initial="hidden" animate="visible">

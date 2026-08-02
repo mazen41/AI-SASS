@@ -78,7 +78,7 @@ export const translations = {
     footer_blog: 'Blog',
     footer_privacy: 'Privacy Policy',
     footer_terms: 'Terms of Service',
-    footer_rights: '© 2025 StoryHero. All rights reserved.',
+    footer_rights: '© 2025. All rights reserved.',
 
     // Auth - Login
     login_title: 'Welcome back',
@@ -187,7 +187,7 @@ export const translations = {
     footer_blog: 'المدونة',
     footer_privacy: 'سياسة الخصوصية',
     footer_terms: 'شروط الخدمة',
-    footer_rights: '© 2025 StoryHero. جميع الحقوق محفوظة.',
+    footer_rights: '© 2025. جميع الحقوق محفوظة.',
 
     // Auth - Login
     login_title: 'مرحباً بعودتك',

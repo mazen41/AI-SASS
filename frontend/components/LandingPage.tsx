@@ -83,12 +83,12 @@ export default function LandingPage() {
   ];
 
   const faqs = locale === 'ar' ? [
-    { q: 'ما هو StoryHero؟', a: 'منصة ذكاء اصطناعي لتحويل صور أطفالك إلى قصص ومقاطع فيديو سينمائية رائعة.' },
+    { q: 'ما هو هذا التطبيق؟', a: 'منصة ذكاء اصطناعي لتحويل صور أطفالك إلى قصص ومقاطع فيديو سينمائية رائعة.' },
     { q: 'كم من الوقت يستغرق إنشاء القصة؟', a: 'بضع دقائق فقط! يعالج الذكاء الاصطناعي صورتك وينتج قصة كاملة مع مقطع فيديو.' },
     { q: 'هل هو آمن للأطفال؟', a: 'نعم! نحن نضع سلامة الأطفال في المقام الأول. جميع المحتويات مناسبة للأعمار وخاضعة للمراجعة.' },
     { q: 'هل يمكنني تنزيل القصص؟', a: 'نعم، يمكن لمشتركي الخطة الاحترافية والمميزة تنزيل القصص بجودة عالية.' },
   ] : [
-    { q: 'What is StoryHero?', a: 'An AI platform that transforms photos of your children into breathtaking cinematic stories and videos.' },
+    { q: 'What is this app?', a: 'An AI platform that transforms photos of your children into breathtaking cinematic stories and videos.' },
     { q: 'How long does it take to create a story?', a: 'Just a few minutes! Our AI processes your photo and produces a complete story with a video.' },
     { q: 'Is it safe for kids?', a: 'Absolutely! We prioritize child safety. All content is age-appropriate and reviewed.' },
     { q: 'Can I download the stories?', a: 'Yes, Pro and Premium subscribers can download stories in high quality.' },
@@ -572,7 +572,7 @@ export default function LandingPage() {
         <div className="footer-inner">
           <div className="footer-brand">
             <span className="nav-logo-kido" style={{ fontSize: '1.4rem' }}>
-              <span className="nav-logo-star">✦</span> StoryHero
+              <span className="nav-logo-star">✦</span>
             </span>
             <p className="footer-brand-desc" style={{ color: 'var(--text-2)', fontSize: '0.9rem', lineHeight: 1.78, marginTop: '0.9rem', maxWidth: 280 }}>
               {t('footer_tagline')}
