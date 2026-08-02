@@ -39,7 +39,7 @@ class FalAiService
         $filename = basename($localPath);
 
         // Step 1: Initiate upload — get presigned upload_url + final file_url
-        $initResponse = Http::withHeaders([
+        $initResponse = Http::retry(3, 1000)->withHeaders([
             'Authorization' => 'Key ' . $this->apiKey,
             'Content-Type'  => 'application/json',
         ])->timeout(30)->post('https://rest.fal.ai/storage/upload/initiate', [
@@ -59,7 +59,7 @@ class FalAiService
         }
 
         // Step 2: PUT the raw file bytes to the presigned URL
-        $putResponse = Http::withHeaders([
+        $putResponse = Http::retry(3, 1000)->withHeaders([
             'Content-Type' => $mime,
         ])->timeout(60)->withBody(file_get_contents($localPath), $mime)->put($uploadUrl);
 
