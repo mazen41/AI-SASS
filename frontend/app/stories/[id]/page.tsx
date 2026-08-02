@@ -125,9 +125,9 @@ export default function StoryViewPage() {
       const opt = {
         margin: 0,
         filename: `${outputType === 'story_book_pdf' ? 'story' : 'coloring'}_book.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg', quality: 0.82 },
         html2canvas: { 
-          scale: 2, 
+          scale: 1.5, 
           useCORS: true, 
           logging: false,
           allowTaint: true
