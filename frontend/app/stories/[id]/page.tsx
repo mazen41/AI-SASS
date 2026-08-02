@@ -133,6 +133,21 @@ export default function StoryViewPage() {
   };
 
   useEffect(() => {
+    // Load Amiri font programmatically for native browser RTL shaping
+    const loadFonts = async () => {
+      try {
+        const fontReg = new FontFace('AmiriCustom', "url('/Amiri/Amiri-Regular.ttf')");
+        const fontBold = new FontFace('AmiriCustom', "url('/Amiri/Amiri-Bold.ttf')", { weight: 'bold' });
+        await Promise.all([fontReg.load(), fontBold.load()]);
+        document.fonts.add(fontReg);
+        document.fonts.add(fontBold);
+        console.log('Amiri Custom fonts loaded programmatically');
+      } catch (err) {
+        console.error('Failed to load Amiri Custom fonts programmatically:', err);
+      }
+    };
+    loadFonts();
+
     if (authLoading) return;
     if (!isLoggedIn) { router.push('/login'); return; }
     if (!id) return;
@@ -473,46 +488,57 @@ export default function StoryViewPage() {
         {/* Story Book Template */}
         <div id="story-book-pdf-template" style={{ width: '210mm' }} className="storybook-pdf-text">
           {/* Cover */}
-          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFF8E7', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '15px solid #FFD700', boxShadow: 'inset 0 0 0 2px #4A0E4E, inset 0 0 0 6px #FFD700, inset 0 0 0 8px #4A0E4E', direction: isRtl ? 'rtl' : 'ltr' }}>
-            <div style={{ width: '100%', textAlign: 'center', marginTop: '15mm' }}>
-              <div style={{ fontSize: '14pt', fontWeight: 600, color: '#4A0E4E', letterSpacing: '2px', marginBottom: '5mm' }}>{isRtl ? '✦ قصة مصورة ✦' : '✦ STORY HERO ✦'}</div>
-              <h1 style={{ fontSize: '32pt', color: '#4A0E4E', margin: '0', fontWeight: 'bold', lineHeight: 1.2 }}>{story.title}</h1>
-              <div style={{ width: '30mm', height: '2px', backgroundColor: '#FFD700', margin: '6mm auto' }} />
-            </div>
-            {imageAssets[0] && (
-              <div style={{ width: '140mm', height: '105mm', border: '4px solid #FFD700', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 6px 15px rgba(0,0,0,0.15)' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/proxy-image?url=${encodeURIComponent(imageAssets[0].url)}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Cover" />
+          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: 'linear-gradient(135deg, #22D3EE, #1E90FF, #7C3AED, #FF2E93)', pageBreakAfter: 'always' }}>
+            <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '16mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
+              <div style={{ width: '100%', textAlign: 'center', marginTop: '5mm' }}>
+                <div style={{ fontSize: '12pt', fontWeight: 'bold', color: '#1E90FF', letterSpacing: '2px', marginBottom: '4mm' }}>{isRtl ? '✦ قصة مصورة ✦' : '✦ STORY HERO ✦'}</div>
+                <h1 style={{ fontSize: '28pt', color: '#0F172A', margin: '0', fontWeight: 'bold', lineHeight: 1.25, fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{story.title}</h1>
+                <div style={{ width: '25mm', height: '3px', background: 'linear-gradient(90deg, #22D3EE, #1E90FF)', margin: '5mm auto 0' }} />
               </div>
-            )}
-            <div style={{ width: '100%', textAlign: 'center', marginBottom: '15mm' }}>
-              {story.child_name && (<><div style={{ fontSize: '14pt', color: '#666', marginBottom: '2mm', fontStyle: 'italic' }}>{isRtl ? 'بطولة' : 'Starring'}</div><div style={{ fontSize: '24pt', color: '#D4AF37', fontWeight: 'bold' }}>{story.child_name}</div></>)}
+              {imageAssets[0] && (
+                <div style={{ width: '144mm', height: '108mm', border: '5px solid #1E90FF', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(30,144,255,0.2)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/api/proxy-image?url=${encodeURIComponent(imageAssets[0].url)}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Cover" />
+                </div>
+              )}
+              <div style={{ width: '100%', textAlign: 'center', marginBottom: '5mm' }}>
+                {story.child_name && (<><div style={{ fontSize: '12pt', color: '#94A3B8', marginBottom: '2mm', fontStyle: 'italic' }}>{isRtl ? 'بطولة' : 'Starring'}</div><div style={{ fontSize: '22pt', color: '#7C3AED', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{story.child_name}</div></>)}
+              </div>
             </div>
           </div>
           {/* Scene Pages */}
           {story.scenes?.map((scene, index) => {
             const sceneImg = imageAssets.find(a => a.scene_number === scene.scene_number)?.url;
             return (
-              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFF8E7', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '12px solid #FFD700', boxShadow: 'inset 0 0 0 2px #4A0E4E, inset 0 0 0 5px #FFD700, inset 0 0 0 7px #4A0E4E', direction: isRtl ? 'rtl' : 'ltr' }}>
-                <div style={{ width: '100%', textAlign: 'center', marginTop: '5mm' }}>
-                  <h2 style={{ fontSize: '20pt', color: '#4A0E4E', margin: '0', fontWeight: 'bold' }}>{(scene as any).title || (isRtl ? `الصفحة ${index + 1}` : `Page ${index + 1}`)}</h2>
-                  <div style={{ width: '20mm', height: '1px', backgroundColor: '#FFD700', margin: '4mm auto' }} />
+              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: 'linear-gradient(135deg, #22D3EE, #1E90FF, #7C3AED, #FF2E93)', pageBreakAfter: 'always' }}>
+                <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '14mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
+                  <div style={{ width: '100%', textAlign: 'center' }}>
+                    <h2 style={{ fontSize: '18pt', color: '#0F172A', margin: '0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{(scene as any).title || (isRtl ? `الصفحة ${index + 1}` : `Page ${index + 1}`)}</h2>
+                    <div style={{ width: '20mm', height: '2px', backgroundColor: '#7C3AED', margin: '3mm auto 0' }} />
+                  </div>
+                  {sceneImg && (
+                    <div style={{ width: '148mm', height: '108mm', border: '3px solid #1E90FF', borderRadius: '8px', overflow: 'hidden' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/api/proxy-image?url=${encodeURIComponent(sceneImg)}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Scene ${index + 1}`} />
+                    </div>
+                  )}
+                  <div style={{ width: '100%', padding: '0 4mm', boxSizing: 'border-box', marginBottom: '8mm', textAlign: isRtl ? 'right' : 'center' }}>
+                    <p style={{ fontSize: '14pt', lineHeight: 1.6, color: '#475569', margin: '0', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif' }}>{scene.description || (scene as any).text}</p>
+                  </div>
+                  <div style={{ position: 'absolute', bottom: '6mm', fontSize: '10pt', color: '#94A3B8', width: '100%', textAlign: 'center' }}>— {index + 1} —</div>
                 </div>
-                {sceneImg && (<div style={{ width: '150mm', height: '110mm', border: '3px solid #D4AF37', borderRadius: '6px', overflow: 'hidden' }}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={`/api/proxy-image?url=${encodeURIComponent(sceneImg)}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Scene ${index + 1}`} /></div>)}
-                <div style={{ width: '100%', padding: '0 5mm', boxSizing: 'border-box', marginBottom: '15mm', textAlign: 'center' }}>
-                  <p style={{ fontSize: '15pt', lineHeight: 1.6, color: '#333', margin: '0' }}>{scene.description || (scene as any).text}</p>
-                </div>
-                <div style={{ position: 'absolute', bottom: '8mm', fontSize: '11pt', color: '#999', width: '100%', textAlign: 'center' }}>— {index + 1} —</div>
               </div>
             );
           })}
           {/* End Page */}
-          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFF8E7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '15px solid #FFD700', boxShadow: 'inset 0 0 0 2px #4A0E4E, inset 0 0 0 6px #FFD700, inset 0 0 0 8px #4A0E4E', direction: isRtl ? 'rtl' : 'ltr' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '36pt', color: '#FFA500', marginBottom: '8mm' }}>✦</div>
-              <h1 style={{ fontSize: '36pt', color: '#4A0E4E', fontWeight: 'bold', margin: '0 0 6mm 0' }}>{isRtl ? 'النهاية' : 'The End'}</h1>
-              <p style={{ fontSize: '18pt', color: '#555', margin: '0', fontStyle: 'italic' }}>{isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!'}</p>
-              <div style={{ fontSize: '36pt', color: '#FFA500', marginTop: '8mm' }}>✦</div>
+          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: 'linear-gradient(135deg, #22D3EE, #1E90FF, #7C3AED, #FF2E93)' }}>
+            <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '16mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '30pt', color: '#FF2E93', marginBottom: '6mm' }}>✦</div>
+                <h1 style={{ fontSize: '32pt', color: '#0F172A', fontWeight: 'bold', margin: '0 0 4mm 0', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{isRtl ? 'النهاية' : 'The End'}</h1>
+                <p style={{ fontSize: '16pt', color: '#475569', margin: '0', fontStyle: 'italic', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!'}</p>
+                <div style={{ fontSize: '30pt', color: '#22D3EE', marginTop: '6mm' }}>✦</div>
+              </div>
             </div>
           </div>
         </div>
@@ -520,28 +546,44 @@ export default function StoryViewPage() {
         {/* Coloring Book Template */}
         <div id="coloring-book-pdf-template" style={{ width: '210mm' }} className="storybook-pdf-text">
           {/* Cover */}
-          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFFFFF', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '15px double #333333', direction: isRtl ? 'rtl' : 'ltr' }}>
-            <div style={{ width: '100%', textAlign: 'center', marginTop: '20mm' }}>
-              <h1 style={{ fontSize: '36pt', color: '#111', margin: '0 0 4mm 0', fontWeight: 'bold' }}>{isRtl ? 'كتاب التلوين' : 'My Coloring Book'}</h1>
-              <h2 style={{ fontSize: '24pt', color: '#55', margin: '0', fontWeight: 'normal' }}>{story.title}</h2>
-              <div style={{ width: '40mm', height: '2px', backgroundColor: '#33', margin: '8mm auto' }} />
-            </div>
-            <div style={{ width: '100%', textAlign: 'center', marginBottom: '25mm' }}>
-              {story.child_name && (<><div style={{ fontSize: '16pt', color: '#77', marginBottom: '3mm' }}>{isRtl ? 'تلوين البطل' : 'Coloring by'}</div><div style={{ fontSize: '28pt', color: '#111', fontWeight: 'bold', border: '2px dashed #33', display: 'inline-block', padding: '4mm 10mm', borderRadius: '8px' }}>{story.child_name}</div></>)}
+          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: '#000000', pageBreakAfter: 'always' }}>
+            <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '20mm 15mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
+              <div style={{ width: '100%', textAlign: 'center', marginTop: '10mm' }}>
+                <h1 style={{ fontSize: '32pt', color: '#000000', margin: '0 0 3mm 0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{isRtl ? 'كتاب التلوين' : 'My Coloring Book'}</h1>
+                <h2 style={{ fontSize: '20pt', color: '#333333', margin: '0', fontWeight: 'normal', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{story.title}</h2>
+                <div style={{ width: '35mm', height: '3px', backgroundColor: '#000000', margin: '6mm auto 0' }} />
+              </div>
+              <div style={{ width: '100%', textAlign: 'center', marginBottom: '20mm' }}>
+                {story.child_name && (
+                  <>
+                    <div style={{ fontSize: '14pt', color: '#666666', marginBottom: '3mm' }}>{isRtl ? 'تلوين البطل' : 'Coloring by'}</div>
+                    <div style={{ fontSize: '24pt', color: '#000000', fontWeight: 'bold', border: '3px dashed #000000', display: 'inline-block', padding: '3mm 8mm', borderRadius: '6px', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{story.child_name}</div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           {/* Coloring Pages */}
           {story.scenes?.map((scene, index) => {
             const coloringImg = coloringAssets.find(a => a.scene_number === scene.scene_number)?.url;
             return (
-              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '20mm', backgroundColor: '#FFFFFF', position: 'relative', pageBreakAfter: 'always', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', border: '10px double #333', direction: isRtl ? 'rtl' : 'ltr' }}>
-                <div style={{ width: '100%', textAlign: 'center', marginTop: '5mm' }}>
-                  <h2 style={{ fontSize: '20pt', color: '#111', margin: '0', fontWeight: 'bold' }}>{(scene as any).title || (isRtl ? `صفحة تلوين ${index + 1}` : `Coloring Page ${index + 1}`)}</h2>
-                  <div style={{ width: '25mm', height: '1px', backgroundColor: '#66', margin: '4mm auto' }} />
+              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: '#000000', pageBreakAfter: 'always' }}>
+                <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '14mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
+                  <div style={{ width: '100%', textAlign: 'center' }}>
+                    <h2 style={{ fontSize: '18pt', color: '#000000', margin: '0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit' }}>{isRtl ? `صفحة تلوين ${index + 1}` : `Coloring Page ${index + 1}`}</h2>
+                    <div style={{ width: '20mm', height: '1.5px', backgroundColor: '#000000', margin: '3mm auto 0' }} />
+                  </div>
+                  {coloringImg ? (
+                    <div style={{ width: '156mm', height: '116mm', border: '3px solid #000000', overflow: 'hidden', backgroundColor: '#FFFFFF' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`/api/proxy-image?url=${encodeURIComponent(coloringImg)}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={`Coloring ${index + 1}`} />
+                    </div>
+                  ) : (
+                    <div style={{ width: '156mm', height: '116mm', border: '3px dashed #CCCCCC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999999' }}>No image</div>
+                  )}
+                  <div style={{ width: '100%', height: '10mm' }} />
+                  <div style={{ position: 'absolute', bottom: '6mm', fontSize: '10pt', color: '#000000', width: '100%', textAlign: 'center' }}>— {index + 1} —</div>
                 </div>
-                {coloringImg ? (<div style={{ width: '160mm', height: '120mm', border: '2px solid #333', overflow: 'hidden', backgroundColor: '#FFF' }}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={`/api/proxy-image?url=${encodeURIComponent(coloringImg)}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt={`Coloring ${index + 1}`} /></div>) : (<div style={{ width: '160mm', height: '120mm', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa' }}>No image</div>)}
-                <div style={{ width: '100%', height: '20mm' }} />
-                <div style={{ position: 'absolute', bottom: '8mm', fontSize: '11pt', color: '#66', width: '100%', textAlign: 'center' }}>— {index + 1} —</div>
               </div>
             );
           })}
