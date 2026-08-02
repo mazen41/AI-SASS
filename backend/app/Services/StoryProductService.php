@@ -162,202 +162,21 @@ class StoryProductService
 
     public function generateStoryBook(Story $story): StoryOutput
     {
-        $output = $this->markGenerating($story, StoryOutput::TYPE_STORY_BOOK_PDF);
-        $tmpDir = storage_path('app/tmp/storybook_' . $story->id . '_' . uniqid());
-        @mkdir($tmpDir, 0755, true);
+        $output = StoryOutput::updateOrCreate(
+            ['story_id' => $story->id, 'output_type' => StoryOutput::TYPE_STORY_BOOK_PDF],
+            [
+                'status' => 'planned',
+                'url' => null,
+                'path' => null,
+                'error_message' => null,
+                'metadata' => [
+                    'planned_at' => now()->toDateTimeString(),
+                    'message' => 'Waiting for frontend-driven PDF generation',
+                ]
+            ]
+        );
 
-        try {
-            $story->loadMissing('assets');
-            $scenes   = collect($story->scenes ?? [])->keyBy('scene_number');
-            $images   = $story->imageAssets()->get()->keyBy('scene_number');
-            $isRtl    = ($story->language ?? 'en') === 'ar';
-            $language = $story->language ?? 'en';
-
-            // Determine font based on language
-            $font = 'DejaVu Sans'; // DomPDF works best with DejaVu
-
-            // PDF engines will be initialized dynamically based on RTL requirements at output time.
-
-            // Build complete HTML for all pages
-            $allHtml = '';
-
-            // Generate cover page HTML
-            // mPDF (Arabic) needs local file paths; DomPDF (English) needs base64
-            $coverImage = $images->first();
-            $coverImageUrl = $this->cacheImageLocally($coverImage?->url, $tmpDir, 'cover', $isRtl);
-
-            // Skip cover if image caching failed
-            if (!$coverImageUrl) {
-                Log::warning("Failed to cache cover image for story #{$story->id}");
-                $coverImageUrl = null;
-            }
-
-            try {
-                // Use dedicated mPDF-safe template for Arabic, premium DomPDF template for English
-                $coverView = $isRtl ? 'pdf.storybook-cover-ar' : 'pdf.storybook-cover';
-                $coverHtml = view($coverView, [
-                    'title' => $story->title ?? 'Story Book',
-                    'childName' => $story->child_name,
-                    'imageUrl' => $coverImageUrl,
-                    'rtl' => $isRtl,
-                    'language' => $language,
-                    'font' => $font
-                ])->render();
-                $allHtml .= $coverHtml;
-            } catch (\Throwable $e) {
-                Log::error("Failed to render cover page", [
-                    'story_id' => $story->id,
-                    'error' => $e->getMessage()
-                ]);
-                throw new \RuntimeException("Cover page rendering failed: " . $e->getMessage());
-            }
-
-            // Generate scene pages HTML
-            $pageNum = 1;
-            
-            // Limit to TEST_IMAGE_COUNT for testing
-            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
-            $scenesToProcess = $testImageCount > 0 ? $scenes->sortKeys()->take($testImageCount) : $scenes->sortKeys();
-            
-            foreach ($scenesToProcess as $sceneNumber => $scene) {
-                $asset = $images->get($sceneNumber);
-                $sceneImageUrl = $this->cacheImageLocally($asset?->url, $tmpDir, "scene_{$sceneNumber}", $isRtl);
-
-                // Skip scene if image caching failed
-                if (!$sceneImageUrl) {
-                    Log::warning("Failed to cache scene image {$sceneNumber} for story #{$story->id}");
-                    $sceneImageUrl = null;
-                }
-
-                try {
-                    // Use dedicated mPDF-safe template for Arabic, premium DomPDF template for English
-                    $pageView = $isRtl ? 'pdf.storybook-page-ar' : 'pdf.storybook-page';
-                    $pageHtml = view($pageView, [
-                        'title' => $scene['title'] ?? ($isRtl ? 'الصفحة ' . $sceneNumber : 'Page ' . $sceneNumber),
-                        'text' => $scene['text'] ?? $scene['description'] ?? '',
-                        'imageUrl' => $sceneImageUrl,
-                        'pageNumber' => $pageNum,
-                        'rtl' => $isRtl,
-                        'language' => $language,
-                        'font' => $font
-                    ])->render();
-                    $allHtml .= $pageHtml;
-                } catch (\Throwable $e) {
-                    Log::error("Failed to render scene page {$sceneNumber}", [
-                        'story_id' => $story->id,
-                        'error' => $e->getMessage()
-                    ]);
-                    throw new \RuntimeException("Scene page {$sceneNumber} rendering failed: " . $e->getMessage());
-                }
-                $pageNum++;
-            }
-
-            // Generate ending page HTML
-            try {
-                // Use dedicated mPDF-safe template for Arabic ending page
-                $endView = $isRtl ? 'pdf.storybook-page-ar' : 'pdf.storybook-page';
-                $endingHtml = view($endView, [
-                    'title' => $isRtl ? 'النهاية' : 'The End',
-                    'text' => $isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!',
-                    'imageUrl' => null,
-                    'pageNumber' => $pageNum,
-                    'rtl' => $isRtl,
-                    'language' => $language,
-                    'font' => $font
-                ])->render();
-                $allHtml .= $endingHtml;
-            } catch (\Throwable $e) {
-                Log::error("Failed to render ending page", [
-                    'story_id' => $story->id,
-                    'error' => $e->getMessage()
-                ]);
-                throw new \RuntimeException("Ending page rendering failed: " . $e->getMessage());
-            }
-
-            // Generate PDF content using the appropriate engine
-            try {
-                if ($isRtl) {
-                    // Setup mPDF for native Arabic shaping and directionality
-                    $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
-                    $fontDirs = $defaultConfig['fontDir'];
-                    $defaultFontConfig = (new \Mpdf\Config\FontVariables())->getDefaults();
-                    $fontData = $defaultFontConfig['fontdata'];
-
-                    $customFontDirs = [];
-                    if (file_exists('/usr/share/fonts/truetype/noto')) {
-                        $customFontDirs[] = '/usr/share/fonts/truetype/noto';
-                    }
-                    if (file_exists('/usr/share/fonts/truetype/dejavu')) {
-                        $customFontDirs[] = '/usr/share/fonts/truetype/dejavu';
-                    }
-
-                    $mpdf = new \Mpdf\Mpdf([
-                        'mode' => 'utf-8',
-                        'format' => 'A4',
-                        'default_font_size' => 12,
-                        'default_font' => 'notosansarabic',
-                        'margin_left' => 0,
-                        'margin_right' => 0,
-                        'margin_top' => 0,
-                        'margin_bottom' => 0,
-                        'tempDir' => $tmpDir,
-                        'fontDir' => array_merge($fontDirs, $customFontDirs),
-                        'fontdata' => $fontData + [
-                            'notosansarabic' => [
-                                'R' => 'NotoSansArabic-Regular.ttf',
-                                'B' => 'NotoSansArabic-Bold.ttf',
-                            ],
-                        ],
-                    ]);
-                    $mpdf->SetDirectionality('rtl');
-                    $mpdf->WriteHTML($this->mergePagesForMpdf($allHtml));
-                    $pdfContent = $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
-                } else {
-                    // Setup DomPDF for English/LTR
-                    $fontCachePath = storage_path('fonts');
-                    if (!is_dir($fontCachePath)) {
-                        @mkdir($fontCachePath, 0755, true);
-                    }
-
-                    $pdf = app('dompdf.wrapper');
-                    $pdf->setPaper('a4', 'portrait');
-                    $pdf->setOptions([
-                        'isHtml5ParserEnabled' => true,
-                        'isRemoteEnabled' => true,
-                        'isPhpEnabled' => true,
-                        'defaultFont' => 'DejaVu Sans',
-                        'tempDir' => $tmpDir,
-                        'fontDir' => $fontCachePath,
-                        'fontCache' => $fontCachePath,
-                    ]);
-
-                    $pdf->loadHTML($allHtml);
-                    $pdfContent = $pdf->output();
-                }
-
-                $path = "stories/{$story->id}/books/story_book.pdf";
-                Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
-            } catch (\Throwable $e) {
-                Log::error("Failed to generate/save story book PDF", [
-                    'story_id' => $story->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                throw new \RuntimeException("Story book PDF generation failed: " . $e->getMessage());
-            }
-
-            return $this->markCompleted($output, $path, [
-                'page_count' => $pageNum,
-                'format' => 'Professional PDF with Arabic/English support',
-                'viewer' => 'web_story_book',
-                'rtl' => $isRtl,
-                'url' => Storage::disk($this->disk)->url($path),
-            ]);
-        } catch (\Throwable $e) {
-            return $this->markFailed($output, $e);
-        } finally {
-            $this->cleanupDirectory($tmpDir);
-        }
+        return $output;
     }
 
     // -------------------------------------------------------------------------
@@ -442,144 +261,20 @@ class StoryProductService
                 $images = $coloringAssets->sortBy('scene_number');
             }
             
-            // Apply TEST_IMAGE_COUNT limit for PDF generation
-            if ($testImageCount > 0) {
-                $images = $images->take($testImageCount);
-            }
-
-            // Determine font based on language
-            $font = 'DejaVu Sans'; // DomPDF works best with DejaVu
-
-            // PDF engines will be initialized dynamically based on RTL requirements at output time.
-
-            // Build complete HTML for all pages
-            $allHtml = '';
-
-            // Generate cover page HTML
-            $coverHtml = view('pdf.coloring-page', [
-                'title' => $story->title ?? 'Coloring Book',
-                'childName' => $story->child_name,
-                'rtl' => $isRtl,
-                'language' => $language,
-                'font' => $font,
-                'isCover' => true
-            ])->render();
-            $allHtml .= $coverHtml;
-
-            // Limit to TEST_IMAGE_COUNT for testing in PDF generation
-            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
-            $imagesToProcess = $testImageCount > 0 ? $images->take($testImageCount) : $images;
-
-            // Generate coloring pages HTML (using line art images)
-            $pageNum = 1;
-            
-            foreach ($imagesToProcess as $asset) {
-                $scene = $scenes->get($asset->scene_number);
-                $sceneCaption = $scene['title'] ?? ($isRtl ? 'صفحة تلوين ' . $pageNum : 'Coloring Page ' . $pageNum);
-
-                // Use the line art image URL instead of colored image
-                $lineArtUrl = Storage::disk($this->disk)->url("stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg");
-                $lineArtLocal = $this->cacheImageLocally($lineArtUrl, $tmpDir, "coloring_page_{$asset->scene_number}", $isRtl);
-                
-                // Skip page if image caching failed
-                if (!$lineArtLocal) {
-                    Log::warning("Failed to cache coloring page image {$asset->scene_number} for story #{$story->id}");
-                    $lineArtLocal = null;
-                }
-
-                $pageHtml = view('pdf.coloring-page', [
-                    'title' => $sceneCaption,
-                    'imageUrl' => $lineArtLocal,
-                    'pageNumber' => $pageNum,
-                    'rtl' => $isRtl,
-                    'language' => $language,
-                    'font' => $font,
-                    'isCover' => false
-                ])->render();
-                $allHtml .= $pageHtml;
-
-                $pageNum++;
-            }
-
-            // Generate PDF content using the appropriate engine
-            try {
-                if ($isRtl) {
-                    // Setup mPDF for native Arabic shaping and directionality
-                    $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
-                    $fontDirs = $defaultConfig['fontDir'];
-                    $defaultFontConfig = (new \Mpdf\Config\FontVariables())->getDefaults();
-                    $fontData = $defaultFontConfig['fontdata'];
-
-                    $customFontDirs = [];
-                    if (file_exists('/usr/share/fonts/truetype/noto')) {
-                        $customFontDirs[] = '/usr/share/fonts/truetype/noto';
-                    }
-                    if (file_exists('/usr/share/fonts/truetype/dejavu')) {
-                        $customFontDirs[] = '/usr/share/fonts/truetype/dejavu';
-                    }
-
-                    $mpdf = new \Mpdf\Mpdf([
-                        'mode' => 'utf-8',
-                        'format' => 'A4',
-                        'default_font_size' => 12,
-                        'default_font' => 'notosansarabic',
-                        'margin_left' => 0,
-                        'margin_right' => 0,
-                        'margin_top' => 0,
-                        'margin_bottom' => 0,
-                        'tempDir' => $tmpDir,
-                        'fontDir' => array_merge($fontDirs, $customFontDirs),
-                        'fontdata' => $fontData + [
-                            'notosansarabic' => [
-                                'R' => 'NotoSansArabic-Regular.ttf',
-                                'B' => 'NotoSansArabic-Bold.ttf',
-                            ],
-                        ],
-                    ]);
-                    $mpdf->SetDirectionality('rtl');
-                    $mpdf->WriteHTML($this->mergePagesForMpdf($allHtml));
-                    $pdfContent = $mpdf->Output('', \Mpdf\Output\Destination::STRING_RETURN);
-                } else {
-                    // Setup DomPDF for English/LTR
-                    $fontCachePath = storage_path('fonts');
-                    if (!is_dir($fontCachePath)) {
-                        @mkdir($fontCachePath, 0755, true);
-                    }
-
-                    $pdf = app('dompdf.wrapper');
-                    $pdf->setPaper('a4', 'portrait');
-                    $pdf->setOptions([
-                        'isHtml5ParserEnabled' => true,
-                        'isRemoteEnabled' => true,
-                        'isPhpEnabled' => true,
-                        'defaultFont' => 'DejaVu Sans',
-                        'tempDir' => $tmpDir,
-                        'fontDir' => $fontCachePath,
-                        'fontCache' => $fontCachePath,
-                    ]);
-
-                    $pdf->loadHTML($allHtml);
-                    $pdfContent = $pdf->output();
-                }
-
-                $path = "stories/{$story->id}/coloring/coloring_book.pdf";
-                Storage::disk($this->disk)->put($path, $pdfContent, ['visibility' => 'public']);
-            } catch (\Throwable $e) {
-                Log::error("Failed to generate/save coloring book PDF", [
-                    'story_id' => $story->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                throw new \RuntimeException("Coloring book PDF generation failed: " . $e->getMessage());
-            }
-
-            return $this->markCompleted($output, $path, [
-                'page_count' => $pageNum,
-                'format' => 'Professional coloring book PDF with Arabic/English support + Fal.ai line art',
-                'viewer' => 'web_coloring_book',
-                'rtl' => $isRtl,
-                'url' => Storage::disk($this->disk)->url($path),
+            // B&W images generated. Now mark the output as planned for frontend PDF generation.
+            $output->update([
+                'status' => 'planned',
+                'url' => null,
+                'path' => null,
+                'error_message' => null,
+                'metadata' => [
+                    'planned_at' => now()->toDateTimeString(),
+                    'message' => 'Waiting for frontend-driven PDF generation',
+                    'page_count' => $images->count() + 1 // +1 for cover
+                ]
             ]);
+
+            return $output;
         } catch (\Throwable $e) {
             return $this->markFailed($output, $e);
         } finally {

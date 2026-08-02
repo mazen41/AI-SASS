@@ -38,8 +38,8 @@ class GenerateStoryBookJob implements ShouldQueue
             Log::info("Starting story book generation", ['story_id' => $this->storyId]);
             $result = $service->generateStoryBook($story);
 
-            if ($result->status === 'completed') {
-                Log::info("StoryBook generated for story #{$this->storyId}", ['path' => $result->storage_path]);
+            if ($result->status === 'completed' || $result->status === 'planned') {
+                Log::info("StoryBook generated/planned for story #{$this->storyId}", ['status' => $result->status]);
             } else {
                 throw new \RuntimeException($result->error_message ?? 'Story book generation returned non-completed status.');
             }

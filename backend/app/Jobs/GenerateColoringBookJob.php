@@ -37,8 +37,8 @@ class GenerateColoringBookJob implements ShouldQueue
         try {
             $result = $service->generateColoringBook($story);
 
-            if ($result->status === 'completed') {
-                Log::info("ColoringBook generated for story #{$this->storyId}", ['path' => $result->storage_path]);
+            if ($result->status === 'completed' || $result->status === 'planned') {
+                Log::info("ColoringBook generated/planned for story #{$this->storyId}", ['status' => $result->status]);
             } else {
                 throw new \RuntimeException($result->error_message ?? 'Coloring book generation returned non-completed status.');
             }
