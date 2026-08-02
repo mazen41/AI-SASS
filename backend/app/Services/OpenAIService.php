@@ -42,29 +42,34 @@ class OpenAIService
             ? "The parent's special idea: \"{$customPrompt}\". Incorporate this."
             : '';
 
+        $targetPageCount = max(8, min(12, $sceneCount));
+
         $prompt = <<<PROMPT
-You are a children's movie story writer. Create a complete short cinematic story for a {$childAge}-year-old child named {$childName}.
+You are a children's book author. Create a magical children's storybook and a corresponding video narration script for a {$childAge}-year-old child named {$childName}.
 Theme: {$theme}. {$customPart}
 {$langInstruction}
 
 Respond ONLY with valid JSON, no markdown:
 {
-  "title": "story title",
-  "story_text": "full story 220-320 words written as narration for a 6-scene children's movie",
+  "title": "Story Book Title",
+  "story_text": "A concise, warm narration script in the chosen language (220 to 300 words total) to be read aloud as video narration for 60 to 90 seconds.",
   "scenes": [
     {
       "scene_number": 1,
-      "description": "what happens in this scene (1 sentence). Translate this description to the requested story language (Arabic if language is Arabic). Include specific realistic camera motion: e.g. slow zoom in, gentle pan left, pull back to wide shot.",
-      "image_prompt": "detailed visual prompt for image generation. MUST ALWAYS be written in English. Always use {$childName} as the same exact child protagonist; identical facial features; identical hairstyle; identical clothing; identical eye color; same age appearance; strict character consistency across all scenes; cinematic children's movie style; vivid colors; warm lighting; family-friendly mood"
+      "title": "Creative Page Title",
+      "description": "The rich, long, and detailed storybook text for this page (MUST be between 120 and 180+ words). Write in a magical, emotional bedtime storybook style. NO camera movements or filmmaking instructions.",
+      "image_prompt": "detailed visual prompt for illustration. MUST ALWAYS be written in English. Always use {$childName} as the same exact child protagonist; identical facial features; identical hairstyle; identical clothing; identical eye color; same age appearance; strict character consistency across all pages; cinematic children's book illustration style; vivid colors; warm lighting; family-friendly mood"
     }
   ]
 }
 
-Generate exactly {$sceneCount} scenes.
-The {$sceneCount} scenes MUST form a complete beginning, middle, climax, and ending:
-1. opening setup, 2. invitation or discovery, 3. rising action, 4. challenge, 5. climax, 6. warm resolution.
-Every scene description MUST include camera movement. Every image_prompt MUST enforce same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, character consistency across all scenes, same age appearance, and cinematic children's movie style.
-Make it magical, complete, and age-appropriate.
+Rules:
+1. Generate exactly {$targetPageCount} pages in the "scenes" array.
+2. Each element in "scenes" represents a STORYBOOK PAGE (not a movie scene).
+3. Do NOT include camera movements or movie directions in page descriptions.
+4. Each page's "description" MUST be a long, rich paragraph of 120-180+ words.
+5. The language of "title", "story_text", page "title", and page "description" must strictly match the chosen story language (Arabic if language is Arabic).
+6. The "image_prompt" fields must remain in English.
 PROMPT;
 
         $response = Http::withHeaders([

@@ -267,37 +267,38 @@ class ClaudeService implements StoryTextGeneratorInterface
         int $minDuration, int $maxDuration, int $targetDuration, int $attempt
     ): string {
         $retryNote = $attempt > 1
-            ? "CRITICAL RETRY #{$attempt}: Your previous draft was TOO SHORT. You MUST write at least {$minWords} words in story_text. Do NOT summarize. Expand every story beat."
+            ? "CRITICAL RETRY #{$attempt}: Your previous draft was invalid. Make sure each page description contains at least 120 words."
             : '';
 
+        $targetPageCount = max(8, min(12, $sceneCount));
+
         return <<<PROMPT
-You are a children's movie story writer. Create a complete LONG-FORM cinematic story for a {$childAge}-year-old child named {$childName}.
+You are a children's book author. Create a magical children's storybook and a corresponding video narration script for a {$childAge}-year-old child named {$childName}.
 Theme: {$theme}. {$customPart}
 {$langInstruction}
 {$retryNote}
 
-This story will be read aloud as professional narration for {$minDuration} to {$maxDuration} seconds (target ~{$targetDuration}s).
-Write a FULL expanded story — not a summary, not bullet points, not a teaser.
-
-Respond ONLY with valid JSON, no markdown, no code fences, no trailing text after the closing brace:
+Respond ONLY with a valid JSON object. Do not include markdown formatting or code fences:
 {
-  "title": "story title",
-  "story_text": "FULL narration script, {$minWords} to {$maxWords} words. Long-form storytelling with opening, rising action, challenge, climax, and warm resolution. Include dialogue and vivid descriptions suitable for read-aloud narration.",
+  "title": "Story Book Title",
+  "story_text": "A concise, warm narration script in the chosen language (220 to 300 words total) to be read aloud as video narration for {$minDuration} to {$maxDuration} seconds (target ~{$targetDuration}s). Summarize the story arc beautifully for a video narration.",
   "scenes": [
     {
       "scene_number": 1,
-      "description": "what happens in this scene (1-2 sentences). Translate this description to the requested story language (Arabic if language is Arabic). Include specific camera motion: e.g. slow zoom in, gentle pan left, pull back to wide shot.",
-      "image_prompt": "Describe the scene visually. MUST ALWAYS be written in English so the image generator can understand it. Always refer to the child as '{$faceDesc}'. Enforce: same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, strict character consistency across all scenes, cinematic children's movie style. Include what the child is doing, the environment, lighting, mood, vibrant colors, detailed background."
+      "title": "Creative Page Title",
+      "description": "The rich, long, and detailed storybook text for this page (MUST be between 120 and 180+ words). Write in a magical, emotional bedtime storybook style. Absolutely NO filmmaking terms or camera instructions (no 'zoom', 'pan', 'wide shot', etc.). Focus entirely on the characters, environment, thoughts, and feelings.",
+      "image_prompt": "Describe the page illustration visually. MUST ALWAYS be written in English so the image generator can understand it. Always refer to the child as '{$faceDesc}'. Enforce: same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, same age appearance, strict character consistency across all pages, cinematic children's book illustration style. Include what the child is doing, the environment, lighting, mood, vibrant colors, detailed background."
     }
   ]
 }
 
-Generate exactly {$sceneCount} scenes.
-The scenes MUST form a complete story arc: opening setup, discovery, rising action, challenge, climax, resolution.
-Every scene description MUST include a specific realistic camera movement instruction.
-Every image_prompt MUST explicitly include: same exact child protagonist, identical facial features, identical hairstyle, identical clothing, identical eye color, character consistency across all scenes, same age appearance, cinematic children's movie style.
-story_text MUST be between {$minWords} and {$maxWords} words — mandatory for {$minDuration}-{$maxDuration} second narration.
-Make it magical, complete, emotionally engaging, and age-appropriate.
+Rules:
+1. Generate exactly {$targetPageCount} pages in the "scenes" array.
+2. Each element in "scenes" represents a STORYBOOK PAGE (not a movie scene).
+3. Do NOT include camera movements or movie directions in page descriptions.
+4. Each page's "description" MUST be a long, rich paragraph of 120-180+ words.
+5. The language of "title", "story_text", page "title", and page "description" must strictly match the chosen story language (Arabic if language is Arabic).
+6. The "image_prompt" fields must remain in English.
 IMPORTANT: Output ONLY the JSON object. Do not add any text before or after it.
 PROMPT;
     }
