@@ -101,54 +101,43 @@ class FalAiService
     {
         $this->ensureConfigured();
 
-        // Always use schnell for line art — it honours style prompts correctly.
-        // We intentionally ignore $photoUrl here: PuLID (the photo-consistency
-        // model) always generates full-colour images regardless of the prompt,
-        // so we cannot use it for a pure-B&W coloring book page.
-        $model = 'fal-ai/flux/schnell';
+        // Use flux/dev for line art — more capable of following detailed style instructions.
+        // schnell (4-step distilled) ignores nuanced style prompts and produces coloured images.
+        // We intentionally ignore $photoUrl here: photo-consistency models always generate
+        // full-colour images regardless of the prompt.
+        $model = 'fal-ai/flux/dev';
 
-        // Add age to prompt if provided
-        $agePrompt = $childAge ? ", child aged exactly {$childAge} years old" : '';
+        // Keep the scene description short and put style keywords up front
+        $sceneDescription = mb_substr(trim($prompt), 0, 120); // cap scene text
+        $ageText = $childAge ? "a {$childAge}-year-old child" : 'a young child';
 
-        $lineArtPrompt = trim($prompt)
-            . ', SAME exact child protagonist as the reference image, DO NOT change identity,'
-            . ' identical face structure, identical facial proportions, identical eyes, nose, mouth,'
-            . ' identical hairstyle, identical hair texture, identical clothing and colors,'
-            . ' EXACT SAME AGE (no aging up or down), maintain child proportions strictly,'
-            . $agePrompt
-            . ', consistent height, body proportions, and facial maturity across ALL scenes,'
-            . ' no variation in age, no взросление, no stylization drift, same child identity locked,'
-            . ' strong character consistency, fixed identity seed, same person in every frame,'
-            . ' cinematic children\'s movie style, high-end Pixar/Disney-quality semi-realistic rendering,'
-            . ' soft warm cinematic lighting, global illumination, natural skin tones,'
-            . ' highly expressive eyes, detailed face but still childlike softness preserved,'
-            . ' vibrant magical storybook environment, family-friendly, rich colors, depth of field,'
-            . ' ultra-consistent character design, no randomness in face or age, no reinterpretation'
-            . ', kids coloring book page'
-            . ', pure black line art only'
-            . ', white background only'
-            . ', clean vector-style outlines'
-            . ', thick bold uniform strokes'
-            . ', no color, no grayscale, no shading, no gradients'
-            . ', no fill, no shadows, no textures'
-            . ', simple shapes, minimal details'
-            . ', clear open areas for coloring'
-            . ', smooth continuous lines, no sketch, no rough edges'
-            . ', high contrast black on white'
-            . ', printable coloring page quality'
-            . ', centered composition, no clutter'
-            . ', child-friendly illustration style'
-            . ', professional ink outline drawing';
+        $lineArtPrompt =
+            'children coloring book page, black and white line art only, '
+            . 'thick bold black outlines on pure white background, '
+            . 'no color, no shading, no gradients, no gray tones, '
+            . 'large open areas for coloring, simple clean cartoon style, '
+            . 'cute friendly characters, '
+            . "{$ageText}, "
+            . $sceneDescription . ', '
+            . 'professional printable coloring book illustration, '
+            . 'high contrast pure black ink on white paper';
+
+        $negativePrompt =
+            'color, coloured, shading, gradients, gray, grey, photograph, photo, '
+            . 'realistic, 3d render, watercolor, painting, dark background, '
+            . 'filled areas, textures, noise, blurry, sketch lines, cross-hatching';
 
         $payload = [
             'prompt'                => $lineArtPrompt,
+            'negative_prompt'       => $negativePrompt,
             'num_images'            => 1,
-            'image_size'            => 'landscape_16_9',
-            'num_inference_steps'   => 4,   // schnell is distilled — 4 steps is optimal
+            'image_size'            => 'portrait_4_3',
+            'num_inference_steps'   => 28,  // dev needs more steps for quality
+            'guidance_scale'        => 7.5, // higher guidance = better prompt adherence
             'enable_safety_checker' => true,
         ];
 
-        Log::info('Fal.ai line art: submitting to flux/schnell', [
+        Log::info('Fal.ai line art: submitting to flux/dev', [
             'prompt_preview' => substr($lineArtPrompt, 0, 120),
         ]);
 

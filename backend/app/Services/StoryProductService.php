@@ -365,48 +365,80 @@ class StoryProductService
      * full resolution; only an explicit hard threshold guarantees the
      * "pure black and white only" requirement actually holds.
      */
-    private function convertToPureLineArt(\GdImage $source, int $workingWidth = 800): \GdImage
+    private function convertToPureLineArt(\GdImage $source, int $workingWidth = 1024): \GdImage
     {
-        // Pure GD implementation - no Intervention Image to avoid API issues
-        $sourceWidth = imagesx($source);
+        $sourceWidth  = imagesx($source);
         $sourceHeight = imagesy($source);
 
         if ($sourceWidth <= 0 || $sourceHeight <= 0) {
-            throw new \RuntimeException("Invalid image dimensions ({$sourceWidth}x{$sourceHeight}) — cannot convert to line art.");
+            throw new \RuntimeException("Invalid image dimensions ({$sourceWidth}x{$sourceHeight}).");
         }
 
-        // Create working canvas at smaller resolution for performance
-        $scale = $workingWidth / $sourceWidth;
+        // Step 1: Resize to working resolution
+        $scale         = $workingWidth / $sourceWidth;
         $workingHeight = (int)($sourceHeight * $scale);
 
         $working = imagecreatetruecolor($workingWidth, $workingHeight);
         imagecopyresampled($working, $source, 0, 0, 0, 0, $workingWidth, $workingHeight, $sourceWidth, $sourceHeight);
 
-        // Convert to grayscale using proper luminance formula
-        $width = imagesx($working);
+        $width  = imagesx($working);
         $height = imagesy($working);
 
+        // Step 2: Build grayscale luminance array
+        $luma = [];
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++) {
-                $color = imagecolorat($working, $x, $y);
-                $r = ($color >> 16) & 0xFF;
-                $g = ($color >> 8) & 0xFF;
-                $b = $color & 0xFF;
-
-                // Proper luminance formula (NTSC standard)
-                $luminance = (0.299 * $r) + (0.587 * $g) + (0.114 * $b);
-
-                // Hard threshold: pure black or white
-                $gray = $luminance > 128 ? 255 : 0;
-
-                imagesetpixel($working, $x, $y, ($gray << 16) | ($gray << 8) | $gray);
+                $c = imagecolorat($working, $x, $y);
+                $r = ($c >> 16) & 0xFF;
+                $g = ($c >> 8)  & 0xFF;
+                $b = $c & 0xFF;
+                $luma[$y][$x] = (int)(0.299 * $r + 0.587 * $g + 0.114 * $b);
             }
         }
 
-        // Optional: Dilate to make lines thicker
-        $this->dilateImage($working);
+        // Step 3: Adaptive thresholding with local mean (11×11 window)
+        // This handles images that are mostly light OR mostly dark — the
+        // main reason the old fixed-128 threshold produced all-black pages.
+        $windowHalf = 5;
+        $output = imagecreatetruecolor($width, $height);
+        $white  = imagecolorallocate($output, 255, 255, 255);
+        $black  = imagecolorallocate($output, 0, 0, 0);
+        imagefill($output, 0, 0, $white);
 
-        return $working;
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                // Compute local mean in the window
+                $sum   = 0;
+                $count = 0;
+                for ($dy = -$windowHalf; $dy <= $windowHalf; $dy++) {
+                    for ($dx = -$windowHalf; $dx <= $windowHalf; $dx++) {
+                        $ny = $y + $dy;
+                        $nx = $x + $dx;
+                        if ($ny >= 0 && $ny < $height && $nx >= 0 && $nx < $width) {
+                            $sum += $luma[$ny][$nx];
+                            $count++;
+                        }
+                    }
+                }
+                $localMean = $count > 0 ? $sum / $count : 128;
+
+                // Pixel is "ink" (black) if it is noticeably darker than its neighborhood.
+                // Offset of -15 means we only mark pixels that are meaningfully darker,
+                // avoiding noise in bright/white regions.
+                $pixel = $luma[$y][$x];
+                if ($pixel < $localMean - 15) {
+                    imagesetpixel($output, $x, $y, $black);
+                }
+                // else stays white (already filled)
+            }
+        }
+
+        imagedestroy($working);
+
+        // Step 4: Dilate once to thicken lines (makes them bold enough for coloring book)
+        $this->dilateImage($output);
+
+        return $output;
     }
 
     /**
