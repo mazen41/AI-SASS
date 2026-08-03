@@ -20,7 +20,7 @@ class FalAiService
     {
         $this->apiKey               = (string) config('services.fal.key', '');
         $this->imageModel           = config('services.fal.image_model', 'fal-ai/flux-pro/v1.1');
-        $this->videoModel           = config('services.fal.video_model', 'fal-ai/kling-video/v2.6/pro/image-to-video');
+        $this->videoModel           = config('services.fal.video_model', 'fal-ai/wan-pro/image-to-video');
         $this->lineArtModel         = config('services.fal.lineart_model', 'fal-ai/nano-banana/edit');
         $this->lineArtFallbackModel = config('services.fal.lineart_fallback_model', 'fal-ai/nano-banana-pro/edit');
         $this->pollInterval         = (int) config('services.fal.poll_interval', 5);
@@ -331,27 +331,44 @@ class FalAiService
 
     /**
      * Generate a scene video clip from an image.
-     * $durationSeconds: desired clip length. Kling only supports 5 or 10 seconds;
-     * values >= 8 request a 10s clip, anything lower requests 5s.
+     * $durationSeconds: desired clip length. Wan Pro supports flexible durations.
+     * Different models have different duration constraints.
      */
     public function generateVideo(string $imageUrl, string $prompt, int $durationSeconds = 5): string
     {
         $this->ensureConfigured();
 
-        // Kling supports '5' or '10' second clips — clamp to nearest valid value.
-        $falDuration = $durationSeconds >= 8 ? '10' : '5';
+        // Adjust prompt and parameters based on model
+        $isWanPro = str_contains($this->videoModel, 'wan-pro');
+        $isKling = str_contains($this->videoModel, 'kling');
 
-        $payload = [
-            'image_url'       => $imageUrl,
-            'prompt'          => $prompt
-                . ', smooth cinematic motion, natural body movement, expressive facial animation,'
-                . ' consistent character identity, realistic camera movement, movie-quality animation,'
-                . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
-                . ' polished children\'s movie sequence',
-            'duration'        => $falDuration,
-            'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
-            'generate_audio'  => false,
-        ];
+        if ($isKling) {
+            // Kling supports '5' or '10' second clips — clamp to nearest valid value.
+            $falDuration = $durationSeconds >= 8 ? '10' : '5';
+            $payload = [
+                'image_url'       => $imageUrl,
+                'prompt'          => $prompt
+                    . ', smooth cinematic motion, natural body movement, expressive facial animation,'
+                    . ' consistent character identity, realistic camera movement, movie-quality animation,'
+                    . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
+                    . ' polished children\'s movie sequence',
+                'duration'        => $falDuration,
+                'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
+                'generate_audio'  => false,
+            ];
+        } else {
+            // Wan Pro and other models support flexible durations
+            $payload = [
+                'image_url'       => $imageUrl,
+                'prompt'          => $prompt
+                    . ', smooth cinematic motion, natural body movement, expressive facial animation,'
+                    . ' consistent character identity, realistic camera movement, movie-quality animation,'
+                    . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
+                    . ' polished children\'s movie sequence',
+                'duration'        => $durationSeconds,
+                'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
+            ];
+        }
 
         [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($this->videoModel, $payload);
         $result = $this->pollForResult($this->videoModel, $requestId, $statusUrl, $responseUrl);
@@ -421,10 +438,22 @@ class FalAiService
         $responseUrl = $responseUrl ?? "https://queue.fal.run/{$model}/requests/{$requestId}";
 
         // How long to wait before the first poll:
-        //   - Video models are very slow → wait 60s before even trying
+        //   - Wan Pro is fast → wait 10s before first poll
+        //   - Kling video is slow → wait 60s before first poll
         //   - Image models (PuLID included) wait 20s
+        $isWanPro    = str_contains($model, 'wan-pro');
+        $isKling     = str_contains($model, 'kling');
         $isVideo     = str_contains($model, 'video');
-        $initialWait = $isVideo ? 60 : 20;
+        
+        if ($isWanPro) {
+            $initialWait = 10; // Wan Pro is fast
+        } elseif ($isKling) {
+            $initialWait = 60; // Kling is slow
+        } elseif ($isVideo) {
+            $initialWait = 30; // Other video models
+        } else {
+            $initialWait = 20; // Image models
+        }
         Log::info('Fal.ai polling start', [
             'model'        => $model,
             'request_id'   => $requestId,

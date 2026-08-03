@@ -67,7 +67,7 @@ return [
         'key'                    => env('FAL_API_KEY'),
         'image_model'            => env('FAL_IMAGE_MODEL', 'fal-ai/flux-pro/v1.1'),
         'img2img_model'          => env('FAL_IMG2IMG_MODEL', 'fal-ai/flux/dev/image-to-image'),
-        'video_model'            => env('FAL_VIDEO_MODEL', 'fal-ai/kling-video/v2.6/pro/image-to-video'),
+        'video_model'            => env('FAL_VIDEO_MODEL', 'fal-ai/wan-pro/image-to-video'),
         // Line art / coloring-book conversion. nano-banana (Gemini 2.5 Flash
         // Image) is the fast/cheap primary (~$0.039/image); nano-banana-pro
         // (Gemini 3 Pro Image) is the higher-fidelity fallback (~$0.15/image)
