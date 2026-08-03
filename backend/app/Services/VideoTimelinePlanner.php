@@ -9,9 +9,9 @@ namespace App\Services;
  */
 class VideoTimelinePlanner
 {
-    public const MIN_NARRATION_SECONDS = 60;
-    public const MAX_NARRATION_SECONDS = 90;
-    public const TARGET_NARRATION_SECONDS = 75;
+    public const MIN_NARRATION_SECONDS = 55;
+    public const MAX_NARRATION_SECONDS = 65;
+    public const TARGET_NARRATION_SECONDS = 60;
     public const WORDS_PER_MINUTE = 110;
 
     public static function wordCountBounds(

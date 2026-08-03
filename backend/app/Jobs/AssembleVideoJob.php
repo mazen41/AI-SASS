@@ -175,16 +175,31 @@ class AssembleVideoJob implements ShouldQueue
             $videoForMix = $outputConcat;
         }
 
-        $audioFilter = "[1:a]apad,atrim=duration={$durStr}[audio_out]";
+        $bgMusicPath = storage_path('app/public/audio/background_lullaby.mp3');
+        $hasBgMusic = file_exists($bgMusicPath);
 
-        $cmd2 = "\"{$ffmpeg}\" -y"
-            . " -i \"{$videoForMix}\""
-            . " -i \"{$narrationLocal}\""
-            . " -filter_complex \"{$audioFilter}\""
-            . " -map 0:v -map \"[audio_out]\""
-            . " -t {$durStr}"
-            . " -c:v copy -c:a aac -b:a 128k"
-            . " \"{$finalOutput}\" 2>&1";
+        if ($hasBgMusic) {
+            $audioFilter = "[1:a]volume=1.0,apad[narr]; [2:a]volume=0.12,atrim=end={$durStr}[bgm]; [narr][bgm]amix=inputs=2:duration=first:dropout_transition=2[audio_out]";
+            $cmd2 = "\"{$ffmpeg}\" -y"
+                . " -i \"{$videoForMix}\""
+                . " -i \"{$narrationLocal}\""
+                . " -i \"{$bgMusicPath}\""
+                . " -filter_complex \"{$audioFilter}\""
+                . " -map 0:v -map \"[audio_out]\""
+                . " -t {$durStr}"
+                . " -c:v copy -c:a aac -b:a 128k"
+                . " \"{$finalOutput}\" 2>&1";
+        } else {
+            $audioFilter = "[1:a]apad,atrim=duration={$durStr}[audio_out]";
+            $cmd2 = "\"{$ffmpeg}\" -y"
+                . " -i \"{$videoForMix}\""
+                . " -i \"{$narrationLocal}\""
+                . " -filter_complex \"{$audioFilter}\""
+                . " -map 0:v -map \"[audio_out]\""
+                . " -t {$durStr}"
+                . " -c:v copy -c:a aac -b:a 128k"
+                . " \"{$finalOutput}\" 2>&1";
+        }
 
         exec($cmd2, $out2, $code2);
 
