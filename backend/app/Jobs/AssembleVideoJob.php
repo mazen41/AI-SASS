@@ -101,147 +101,152 @@ class AssembleVideoJob implements ShouldQueue
 
     private function assembleVideo($story, $videoAssets, string $narrationUrl, MediaDurationService $mediaDuration): string
     {
-        // Hardcoded 'public' — see StoryProductService::__construct() for
-        // why config('filesystems.default') must never be used here (it can
-        // resolve to 'local' from .env, whose disk has no `url` resolver).
         $disk   = 'public';
         $tmpDir = storage_path('app/tmp/story_' . $story->id . '_' . time());
         @mkdir($tmpDir, 0755, true);
 
-        $ffmpeg = $this->findFfmpeg();
-
-        $listFile = "{$tmpDir}/concat.txt";
-        $lines    = [];
-
-        foreach ($videoAssets as $asset) {
-            $localPath = $mediaDuration->resolveLocalPath($asset->url, $disk);
-            if (!file_exists($localPath)) {
-                throw new \RuntimeException("Video clip not found: {$localPath}");
-            }
-            $escaped = str_replace("'", "'\\''", $localPath);
-            $lines[] = "file '{$escaped}'";
-        }
-
-        file_put_contents($listFile, implode("\n", $lines) . "\n");
-
+        $listFile     = "{$tmpDir}/concat.txt";
         $outputConcat = "{$tmpDir}/concat.mp4";
         $finalOutput  = "{$tmpDir}/final.mp4";
 
-        $cmd1 = "\"{$ffmpeg}\" -y -f concat -safe 0 -i \"{$listFile}\" -c:v libx264 -crf 20 -preset fast -an \"{$outputConcat}\" 2>&1";
-        exec($cmd1, $out1, $code1);
+        try {
+            $ffmpeg = $this->findFfmpeg();
 
-        if ($code1 !== 0 || !file_exists($outputConcat)) {
-            throw new \RuntimeException('FFmpeg concat failed (exit ' . $code1 . '): ' . implode("\n", array_slice($out1, -20)));
-        }
-
-        $videoDuration = $mediaDuration->getDurationSeconds($outputConcat);
-
-        $narrationLocal = $mediaDuration->resolveLocalPath($narrationUrl, $disk);
-        if (!file_exists($narrationLocal)) {
-            throw new \RuntimeException("Narration audio file not found: {$narrationLocal}");
-        }
-
-        $narrationDuration = $story->duration_seconds
-            ? (float) $story->duration_seconds
-            : $mediaDuration->getDurationSeconds($narrationLocal);
-
-        Log::info('AssembleVideoJob: durations before final mix', [
-            'story_id'             => $story->id,
-            'scene_count'          => $videoAssets->count(),
-            'video_concat_s'       => round($videoDuration, 3),
-            'narration_duration_s' => round($narrationDuration, 3),
-        ]);
-
-        if ($videoDuration + 0.25 < $narrationDuration) {
-            throw new \RuntimeException(
-                'Concatenated scene video (' . round($videoDuration, 1) . 's) is shorter than narration ('
-                . round($narrationDuration, 1) . 's). Scene clips must be planned from measured narration duration.'
-            );
-        }
-
-        $durStr = number_format($narrationDuration, 3, '.', '');
-
-        if ($videoDuration > $narrationDuration + 0.25) {
-            $trimmedConcat = "{$tmpDir}/trimmed.mp4";
-            $cmdTrim = "\"{$ffmpeg}\" -y -i \"{$outputConcat}\" -t {$durStr}"
-                . " -c:v libx264 -crf 20 -preset fast -an"
-                . " \"{$trimmedConcat}\" 2>&1";
-            exec($cmdTrim, $outTrim, $codeTrim);
-            if ($codeTrim !== 0 || !file_exists($trimmedConcat)) {
-                throw new \RuntimeException('FFmpeg video trim failed (exit ' . $codeTrim . '): ' . implode("\n", array_slice($outTrim, -20)));
+            $lines = [];
+            foreach ($videoAssets as $asset) {
+                $localPath = $mediaDuration->resolveLocalPath($asset->url, $disk);
+                if (!file_exists($localPath)) {
+                    throw new \RuntimeException("Video clip not found: {$localPath}");
+                }
+                $escaped = str_replace("'", "'\\''", $localPath);
+                $lines[] = "file '{$escaped}'";
             }
-            $videoForMix = $trimmedConcat;
-        } else {
-            $videoForMix = $outputConcat;
+
+            file_put_contents($listFile, implode("\n", $lines) . "\n");
+
+            $cmd1 = "\"{$ffmpeg}\" -y -f concat -safe 0 -i \"{$listFile}\" -c:v libx264 -crf 20 -preset fast -an \"{$outputConcat}\" 2>&1";
+            exec($cmd1, $out1, $code1);
+
+            if ($code1 !== 0 || !file_exists($outputConcat)) {
+                throw new \RuntimeException('FFmpeg concat failed (exit ' . $code1 . '): ' . implode("\n", array_slice($out1, -20)));
+            }
+
+            $videoDuration = $mediaDuration->getDurationSeconds($outputConcat);
+
+            $narrationLocal = $mediaDuration->resolveLocalPath($narrationUrl, $disk);
+            if (!file_exists($narrationLocal)) {
+                throw new \RuntimeException("Narration audio file not found: {$narrationLocal}");
+            }
+
+            $narrationDuration = $story->duration_seconds
+                ? (float) $story->duration_seconds
+                : $mediaDuration->getDurationSeconds($narrationLocal);
+
+            Log::info('AssembleVideoJob: durations before final mix', [
+                'story_id'             => $story->id,
+                'scene_count'          => $videoAssets->count(),
+                'video_concat_s'       => round($videoDuration, 3),
+                'narration_duration_s' => round($narrationDuration, 3),
+            ]);
+
+            if ($videoDuration + 0.25 < $narrationDuration) {
+                throw new \RuntimeException(
+                    'Concatenated scene video (' . round($videoDuration, 1) . 's) is shorter than narration ('
+                    . round($narrationDuration, 1) . 's). Scene clips must be planned from measured narration duration.'
+                );
+            }
+
+            $durStr = number_format($narrationDuration, 3, '.', '');
+
+            if ($videoDuration > $narrationDuration + 0.25) {
+                $trimmedConcat = "{$tmpDir}/trimmed.mp4";
+                $cmdTrim = "\"{$ffmpeg}\" -y -i \"{$outputConcat}\" -t {$durStr}"
+                    . " -c:v libx264 -crf 20 -preset fast -an"
+                    . " \"{$trimmedConcat}\" 2>&1";
+                exec($cmdTrim, $outTrim, $codeTrim);
+                if ($codeTrim !== 0 || !file_exists($trimmedConcat)) {
+                    throw new \RuntimeException('FFmpeg video trim failed (exit ' . $codeTrim . '): ' . implode("\n", array_slice($outTrim, -20)));
+                }
+                $videoForMix = $trimmedConcat;
+            } else {
+                $videoForMix = $outputConcat;
+            }
+
+            $bgMusicPath = storage_path('app/public/audio/background_lullaby.mp3');
+            $hasBgMusic = file_exists($bgMusicPath);
+
+            if ($hasBgMusic) {
+                // Calculate dynamic fade out start time (last 2 seconds of narration)
+                $fadeStart = max(0.0, $narrationDuration - 2.0);
+                $fadeStartStr = number_format($fadeStart, 3, '.', '');
+
+                // normalize=0 forces amix to preserve original narration volume at 100% (preventing halving)
+                $audioFilter = "[1:a]volume=1.0,apad[narr]; [2:a]volume=0.12,atrim=end={$durStr},afade=t=out:st={$fadeStartStr}:d=2.0[bgm]; [narr][bgm]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[audio_out]";
+                $cmd2 = "\"{$ffmpeg}\" -y"
+                    . " -i \"{$videoForMix}\""
+                    . " -i \"{$narrationLocal}\""
+                    . " -i \"{$bgMusicPath}\""
+                    . " -filter_complex \"{$audioFilter}\""
+                    . " -map 0:v -map \"[audio_out]\""
+                    . " -t {$durStr}"
+                    . " -c:v copy -c:a aac -b:a 128k"
+                    . " \"{$finalOutput}\" 2>&1";
+            } else {
+                $audioFilter = "[1:a]apad,atrim=duration={$durStr}[audio_out]";
+                $cmd2 = "\"{$ffmpeg}\" -y"
+                    . " -i \"{$videoForMix}\""
+                    . " -i \"{$narrationLocal}\""
+                    . " -filter_complex \"{$audioFilter}\""
+                    . " -map 0:v -map \"[audio_out]\""
+                    . " -t {$durStr}"
+                    . " -c:v copy -c:a aac -b:a 128k"
+                    . " \"{$finalOutput}\" 2>&1";
+            }
+
+            exec($cmd2, $out2, $code2);
+
+            if ($code2 !== 0 || !file_exists($finalOutput) || filesize($finalOutput) <= 1000) {
+                throw new \RuntimeException(
+                    'FFmpeg audio mix failed (exit ' . $code2 . '): ' . implode("\n", array_slice($out2, -20))
+                );
+            }
+
+            $finalDuration = $mediaDuration->getDurationSeconds($finalOutput);
+            $delta = abs($finalDuration - $narrationDuration);
+
+            Log::info('AssembleVideoJob: final video duration', [
+                'story_id'             => $story->id,
+                'final_duration_s'     => round($finalDuration, 3),
+                'narration_duration_s' => round($narrationDuration, 3),
+                'delta_s'              => round($delta, 3),
+            ]);
+
+            if ($delta > 0.5) {
+                throw new \RuntimeException(
+                    'Final video duration (' . round($finalDuration, 2) . 's) does not match narration ('
+                    . round($narrationDuration, 2) . 's).'
+                );
+            }
+
+            $bytes = file_get_contents($finalOutput);
+
+            if ($bytes === false || strlen($bytes) < 1000) {
+                throw new \RuntimeException("Final video file is empty: {$finalOutput}");
+            }
+
+            $storedPath = "stories/{$story->id}/final.mp4";
+            Storage::disk($disk)->put($storedPath, $bytes);
+            $finalUrl = Storage::disk($disk)->url($storedPath);
+
+            return $finalUrl;
+
+        } finally {
+            // Clean up temporary files under all circumstances to prevent server disk bloat
+            foreach ([$listFile, $outputConcat, $finalOutput, "{$tmpDir}/trimmed.mp4"] as $f) {
+                if ($f && file_exists($f)) @unlink($f);
+            }
+            @rmdir($tmpDir);
         }
-
-        $bgMusicPath = storage_path('app/public/audio/background_lullaby.mp3');
-        $hasBgMusic = file_exists($bgMusicPath);
-
-        if ($hasBgMusic) {
-            $audioFilter = "[1:a]volume=1.0,apad[narr]; [2:a]volume=0.12,atrim=end={$durStr}[bgm]; [narr][bgm]amix=inputs=2:duration=first:dropout_transition=2[audio_out]";
-            $cmd2 = "\"{$ffmpeg}\" -y"
-                . " -i \"{$videoForMix}\""
-                . " -i \"{$narrationLocal}\""
-                . " -i \"{$bgMusicPath}\""
-                . " -filter_complex \"{$audioFilter}\""
-                . " -map 0:v -map \"[audio_out]\""
-                . " -t {$durStr}"
-                . " -c:v copy -c:a aac -b:a 128k"
-                . " \"{$finalOutput}\" 2>&1";
-        } else {
-            $audioFilter = "[1:a]apad,atrim=duration={$durStr}[audio_out]";
-            $cmd2 = "\"{$ffmpeg}\" -y"
-                . " -i \"{$videoForMix}\""
-                . " -i \"{$narrationLocal}\""
-                . " -filter_complex \"{$audioFilter}\""
-                . " -map 0:v -map \"[audio_out]\""
-                . " -t {$durStr}"
-                . " -c:v copy -c:a aac -b:a 128k"
-                . " \"{$finalOutput}\" 2>&1";
-        }
-
-        exec($cmd2, $out2, $code2);
-
-        if ($code2 !== 0 || !file_exists($finalOutput) || filesize($finalOutput) <= 1000) {
-            throw new \RuntimeException(
-                'FFmpeg audio mix failed (exit ' . $code2 . '): ' . implode("\n", array_slice($out2, -20))
-            );
-        }
-
-        $finalDuration = $mediaDuration->getDurationSeconds($finalOutput);
-        $delta = abs($finalDuration - $narrationDuration);
-
-        Log::info('AssembleVideoJob: final video duration', [
-            'story_id'             => $story->id,
-            'final_duration_s'     => round($finalDuration, 3),
-            'narration_duration_s' => round($narrationDuration, 3),
-            'delta_s'              => round($delta, 3),
-        ]);
-
-        if ($delta > 0.5) {
-            throw new \RuntimeException(
-                'Final video duration (' . round($finalDuration, 2) . 's) does not match narration ('
-                . round($narrationDuration, 2) . 's).'
-            );
-        }
-
-        $bytes = file_get_contents($finalOutput);
-
-        if ($bytes === false || strlen($bytes) < 1000) {
-            throw new \RuntimeException("Final video file is empty: {$finalOutput}");
-        }
-
-        $storedPath = "stories/{$story->id}/final.mp4";
-        Storage::disk($disk)->put($storedPath, $bytes);
-        $finalUrl = Storage::disk($disk)->url($storedPath);
-
-        foreach ([$listFile, $outputConcat, $finalOutput] as $f) {
-            if ($f && file_exists($f)) @unlink($f);
-        }
-        @rmdir($tmpDir);
-
-        return $finalUrl;
     }
 
     private function findFfmpeg(): string
