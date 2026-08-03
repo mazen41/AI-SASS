@@ -127,7 +127,7 @@ class AssembleVideoJob implements ShouldQueue
         $outputConcat = "{$tmpDir}/concat.mp4";
         $finalOutput  = "{$tmpDir}/final.mp4";
 
-        $cmd1 = "\"{$ffmpeg}\" -y -f concat -safe 0 -i \"{$listFile}\" -c:v libx264 -crf 23 -preset fast -an \"{$outputConcat}\" 2>&1";
+        $cmd1 = "\"{$ffmpeg}\" -y -f concat -safe 0 -i \"{$listFile}\" -c:v libx264 -crf 20 -preset fast -an \"{$outputConcat}\" 2>&1";
         exec($cmd1, $out1, $code1);
 
         if ($code1 !== 0 || !file_exists($outputConcat)) {
@@ -164,7 +164,7 @@ class AssembleVideoJob implements ShouldQueue
         if ($videoDuration > $narrationDuration + 0.25) {
             $trimmedConcat = "{$tmpDir}/trimmed.mp4";
             $cmdTrim = "\"{$ffmpeg}\" -y -i \"{$outputConcat}\" -t {$durStr}"
-                . " -c:v libx264 -crf 23 -preset fast -an"
+                . " -c:v libx264 -crf 20 -preset fast -an"
                 . " \"{$trimmedConcat}\" 2>&1";
             exec($cmdTrim, $outTrim, $codeTrim);
             if ($codeTrim !== 0 || !file_exists($trimmedConcat)) {
