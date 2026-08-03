@@ -539,7 +539,7 @@ export default function StoryViewPage() {
             const sceneImg = imageAssets.find(a => a.scene_number === scene.scene_number)?.url;
             const isLastScene = index === (story.scenes?.length || 0) - 1;
             return (
-              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: 'linear-gradient(135deg, #22D3EE, #1E90FF, #7C3AED, #FF2E93)', pageBreakAfter: isLastScene ? 'avoid' : 'always' }}>
+              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: 'linear-gradient(135deg, #22D3EE, #1E90FF, #7C3AED, #FF2E93)', pageBreakAfter: isLastScene ? 'auto' : 'always' }}>
                 <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '12mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
                   {/* Title Section */}
                   <div style={{ width: '100%', textAlign: 'center', marginBottom: '5mm', direction: isRtl ? 'rtl' : 'ltr' }}>
@@ -567,7 +567,7 @@ export default function StoryViewPage() {
             );
           })}
           {/* End Page */}
-          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: 'linear-gradient(135deg, #22D3EE, #1E90FF, #7C3AED, #FF2E93)', pageBreakAfter: 'avoid' }}>
+          <div style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: 'linear-gradient(135deg, #22D3EE, #1E90FF, #7C3AED, #FF2E93)', pageBreakAfter: 'auto' }}>
             <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '16mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '30pt', color: '#FF2E93', marginBottom: '6mm' }}>✦</div>
@@ -604,7 +604,7 @@ export default function StoryViewPage() {
             const coloringImg = coloringAssets.find(a => a.scene_number === scene.scene_number)?.url;
             const isLastColoringPage = index === (story.scenes?.length || 0) - 1;
             return (
-              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: '#000000', pageBreakAfter: isLastColoringPage ? 'avoid' : 'always' }}>
+              <div key={index} style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '6mm', background: '#000000', pageBreakAfter: isLastColoringPage ? 'auto' : 'always' }}>
                 <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '12mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
                   {/* Title Section */}
                   <div style={{ width: '100%', textAlign: 'center', marginBottom: '6mm', direction: isRtl ? 'rtl' : 'ltr' }}>
