@@ -16,7 +16,7 @@ class StoryProductService
 
     public function __construct()
     {
-        // IMPORTANT: scene images (FalAiService::downloadAndStore) and every
+        // IMPORTANT: scene images and every
         // page/PDF built here are only ever retrievable via the 'public' disk
         // (storage/app/public + the public/storage symlink), which is the
         // only disk with a configured `url` resolver. Historically this used
@@ -212,46 +212,59 @@ class StoryProductService
             $needsConversion = $coloringAssets->isEmpty();
 
             if ($needsConversion) {
-                // Generate black and white line art images using Fal.ai
-                $falAi = app(FalAiService::class);
+                // Convert existing story book images to line art using Gemini
+                $gemini = app(GeminiService::class);
                 
                 // Limit to TEST_IMAGE_COUNT for testing
                 $imagesToProcess = $testImageCount > 0 ? $originalImages->take($testImageCount) : $originalImages;
 
                 foreach ($imagesToProcess as $asset) {
                     $scene = $scenes->get($asset->scene_number);
-                    $sceneCaption = $scene['title'] ?? ('Scene ' . $asset->scene_number);
-
-                    // Generate line art using Fal.ai
-                    $rawFalImage = $this->createLineArtPageViaFal($tmpDir, $asset, $falAi, $sceneCaption);
-
-                    // Load the image as GD resource
-                    $gdImage = imagecreatefromstring(file_get_contents($rawFalImage));
-                    if (!$gdImage) {
-                        throw new \RuntimeException("Failed to load image for B&W conversion: {$rawFalImage}");
+                    
+                    // Get the local path of the story book image
+                    $localPath = $this->resolveLocalPath($asset->url);
+                    if (!$localPath || !file_exists($localPath)) {
+                        Log::warning("Story book image not found locally for line art conversion", ['url' => $asset->url]);
+                        continue;
                     }
 
-                    // Convert to pure black and white line art
-                    $lineArtGd = $this->convertToPureLineArt($gdImage);
+                    try {
+                        // Convert to line art using Gemini
+                        Log::info("Converting story book image to line art using Gemini", ['scene_number' => $asset->scene_number]);
+                        $lineArtDataUri = $gemini->convertToLineArt($localPath);
+                        
+                        // Extract base64 data from data URI
+                        if (preg_match('/^data:image\/(\w+);base64,(.+)$/', $lineArtDataUri, $matches)) {
+                            $imageData = base64_decode($matches[2]);
+                            
+                            // Save line art image to temp file
+                            $lineArtPath = "{$tmpDir}/bw_lineart_{$asset->scene_number}.jpg";
+                            file_put_contents($lineArtPath, $imageData);
+                            
+                            // Store the line art as the coloring page asset
+                            $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
+                            Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
 
-                    // Save B&W image to temp file
-                    $lineArtPath = "{$tmpDir}/bw_lineart_{$asset->scene_number}.jpg";
-                    imagejpeg($lineArtGd, $lineArtPath, 95);
-                    imagedestroy($gdImage);
-                    imagedestroy($lineArtGd);
+                            StoryAsset::updateOrCreate(
+                                ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
+                                ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => 'Gemini line art conversion']
+                            );
 
-                    // Store the black and white line art as the coloring page asset
-                    $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
-                    Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
-
-                    StoryAsset::updateOrCreate(
-                        ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
-                        ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => self::COLORING_PROMPT]
-                    );
-
-                    // Clean up temp files
-                    if (file_exists($rawFalImage)) unlink($rawFalImage);
-                    if (file_exists($lineArtPath)) unlink($lineArtPath);
+                            // Clean up temp file
+                            if (file_exists($lineArtPath)) unlink($lineArtPath);
+                            
+                            Log::info("Line art conversion completed for scene", ['scene_number' => $asset->scene_number]);
+                        } else {
+                            throw new \RuntimeException("Invalid data URI format from Gemini");
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error("Failed to convert image to line art using Gemini", [
+                            'scene_number' => $asset->scene_number,
+                            'error' => $e->getMessage()
+                        ]);
+                        // Continue with other images even if one fails
+                        continue;
+                    }
                 }
 
                 // Refresh images to use the new coloring_page assets
@@ -315,163 +328,8 @@ class StoryProductService
     }
 
     // =========================================================================
-    // Coloring Book — Fal.ai Line Art Generation
+    // Coloring Book — Gemini Line Art Conversion
     // =========================================================================
-
-    private function createLineArtPageViaFal(string $tmpDir, StoryAsset $asset, FalAiService $falAi, string $caption): string
-    {
-        try {
-            // Generate a new line art image directly from fal.ai instead of converting existing image
-            $story = $asset->story;
-            $sceneNumber = $asset->scene_number;
-
-            // Build the scene-specific prompt
-            $scene = collect($story->scenes ?? [])->firstWhere('scene_number', $sceneNumber);
-            $scenePrompt = $scene['text'] ?? $scene['description'] ?? $caption;
-
-            // Get the child's photo if available for character consistency
-            $photoUrl = $story->child_photo_url ?? null;
-            $childAge = $story->child_age ?? null;
-
-            // Generate line art image specifically for coloring book
-            Log::info("Generating Fal.ai line art for scene {$sceneNumber}");
-            $lineArtUrl = $falAi->generateLineArtImage($scenePrompt, $photoUrl, $childAge);
-            Log::info("Fal.ai line art generated for scene {$sceneNumber}: {$lineArtUrl}");
-
-            // Download the line art image
-            $response = \Illuminate\Support\Facades\Http::timeout(120)->get($lineArtUrl);
-            if (!$response->successful()) {
-                throw new \RuntimeException("Failed to download Fal.ai line art result for scene {$sceneNumber}");
-            }
-
-            // Save the raw Fal.ai image for later B&W conversion
-            $path = "{$tmpDir}/coloring_fal_raw_{$sceneNumber}.jpg";
-            file_put_contents($path, $response->body());
-            return $path;
-        } catch (\Throwable $e) {
-            Log::error("Fal.ai line art generation failed for scene {$asset->scene_number}", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            // Don't fall back to GD - fail the whole coloring book generation
-            throw new \RuntimeException("Line art generation failed for scene {$asset->scene_number}: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Converts any source image (photo, illustration, or an AI img2img
-     * result) into genuine pure-black-and-white coloring-book line art:
-     * no gray tones, no shading, bold thickened outlines.
-     *
-     * This runs unconditionally — even on Fal.ai output — because a
-     * diffusion model's "line art" still contains anti-aliased grays at
-     * full resolution; only an explicit hard threshold guarantees the
-     * "pure black and white only" requirement actually holds.
-     */
-    private function convertToPureLineArt(\GdImage $source, int $workingWidth = 1024): \GdImage
-    {
-        $sourceWidth  = imagesx($source);
-        $sourceHeight = imagesy($source);
-
-        if ($sourceWidth <= 0 || $sourceHeight <= 0) {
-            throw new \RuntimeException("Invalid image dimensions ({$sourceWidth}x{$sourceHeight}).");
-        }
-
-        // Step 1: Resize to working resolution
-        $scale         = $workingWidth / $sourceWidth;
-        $workingHeight = (int)($sourceHeight * $scale);
-
-        $working = imagecreatetruecolor($workingWidth, $workingHeight);
-        imagecopyresampled($working, $source, 0, 0, 0, 0, $workingWidth, $workingHeight, $sourceWidth, $sourceHeight);
-
-        $width  = imagesx($working);
-        $height = imagesy($working);
-
-        // Step 2: Build grayscale luminance array
-        $luma = [];
-        for ($y = 0; $y < $height; $y++) {
-            for ($x = 0; $x < $width; $x++) {
-                $c = imagecolorat($working, $x, $y);
-                $r = ($c >> 16) & 0xFF;
-                $g = ($c >> 8)  & 0xFF;
-                $b = $c & 0xFF;
-                $luma[$y][$x] = (int)(0.299 * $r + 0.587 * $g + 0.114 * $b);
-            }
-        }
-
-        // Step 3: Adaptive thresholding with local mean (11×11 window)
-        // This handles images that are mostly light OR mostly dark — the
-        // main reason the old fixed-128 threshold produced all-black pages.
-        $windowHalf = 5;
-        $output = imagecreatetruecolor($width, $height);
-        $white  = imagecolorallocate($output, 255, 255, 255);
-        $black  = imagecolorallocate($output, 0, 0, 0);
-        imagefill($output, 0, 0, $white);
-
-        for ($y = 0; $y < $height; $y++) {
-            for ($x = 0; $x < $width; $x++) {
-                // Compute local mean in the window
-                $sum   = 0;
-                $count = 0;
-                for ($dy = -$windowHalf; $dy <= $windowHalf; $dy++) {
-                    for ($dx = -$windowHalf; $dx <= $windowHalf; $dx++) {
-                        $ny = $y + $dy;
-                        $nx = $x + $dx;
-                        if ($ny >= 0 && $ny < $height && $nx >= 0 && $nx < $width) {
-                            $sum += $luma[$ny][$nx];
-                            $count++;
-                        }
-                    }
-                }
-                $localMean = $count > 0 ? $sum / $count : 128;
-
-                // Pixel is "ink" (black) if it is noticeably darker than its neighborhood.
-                // Offset of -15 means we only mark pixels that are meaningfully darker,
-                // avoiding noise in bright/white regions.
-                $pixel = $luma[$y][$x];
-                if ($pixel < $localMean - 15) {
-                    imagesetpixel($output, $x, $y, $black);
-                }
-                // else stays white (already filled)
-            }
-        }
-
-        imagedestroy($working);
-
-        // Step 4: Dilate once to thicken lines (makes them bold enough for coloring book)
-        $this->dilateImage($output);
-
-        return $output;
-    }
-
-    /**
-     * Dilate image to make lines thicker
-     */
-    private function dilateImage(\GdImage $image): void
-    {
-        $width = imagesx($image);
-        $height = imagesy($image);
-        $temp = imagecreatetruecolor($width, $height);
-
-        for ($y = 1; $y < $height - 1; $y++) {
-            for ($x = 1; $x < $width - 1; $x++) {
-                $neighbors = 0;
-                for ($dy = -1; $dy <= 1; $dy++) {
-                    for ($dx = -1; $dx <= 1; $dx++) {
-                        $color = imagecolorat($image, $x + $dx, $y + $dy);
-                        $gray = ($color >> 8) & 0xFF;
-                        if ($gray < 128) $neighbors++;
-                    }
-                }
-
-                if ($neighbors >= 5) {
-                    imagesetpixel($temp, $x, $y, 0);
-                } else {
-                    imagesetpixel($temp, $x, $y, 0xFFFFFF);
-                }
-            }
-        }
-
-        imagecopy($image, $temp, 0, 0, 0, 0, $width, $height);
-        imagedestroy($temp);
-    }
 
     // =========================================================================
     // Image Resolution Helpers

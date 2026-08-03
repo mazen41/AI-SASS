@@ -607,4 +607,83 @@ PROMPT;
         return $data;
     }
 
+    /**
+     * Convert an image to line art using Gemini's image-to-image capabilities
+     */
+    public function convertToLineArt(string $imageUrl): string
+    {
+        if ($this->apiKey === '') {
+            throw new \RuntimeException('GEMINI_API_KEY is not configured.');
+        }
+
+        $lineArtPrompt = "Convert this image into a children's coloring book page.
+PURE black and white line art only.
+White background, clean black outlines.
+NO color, NO shading, NO gradients, NO gray tones, NO shadows.
+Use thick, bold, smooth outlines.
+Simplify all details to be kid-friendly and easy to color.
+Remove unnecessary textures and small details.
+Keep the main subject clearly recognizable.
+Maintain original composition and proportions.
+Style: simple cartoon line art, coloring book style, vector-like clean ink drawing.
+High resolution, crisp edges, print-ready.";
+
+        $models = array_unique(array_merge([$this->model], $this->fallbackModels));
+        $lastError = null;
+
+        foreach ($models as $model) {
+            try {
+                $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$this->apiKey}";
+
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                ])->withOptions([
+                    'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4],
+                ])->timeout(120)->post($url, [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                [
+                                    'text' => $lineArtPrompt,
+                                    'inline_data' => [
+                                        'mime_type' => 'image/jpeg',
+                                        'data' => base64_encode(file_get_contents($imageUrl))
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ],
+                    'generationConfig' => [
+                        'temperature' => 0.3,
+                        'maxOutputTokens' => 8192,
+                    ],
+                ]);
+
+                if (!$response->successful()) {
+                    throw new \RuntimeException('Gemini line art conversion failed: ' . $response->body());
+                }
+
+                $result = $response->json();
+                
+                // Extract the generated image from the response
+                if (isset($result['candidates'][0]['content']['parts'][0]['inline_data']['data'])) {
+                    $imageData = $result['candidates'][0]['content']['parts'][0]['inline_data']['data'];
+                    return 'data:image/jpeg;base64,' . $imageData;
+                }
+
+                throw new \RuntimeException('No image data in Gemini response');
+
+            } catch (\Throwable $e) {
+                $lastError = $e;
+                Log::warning("Gemini model {$model} failed for line art conversion, trying fallback", [
+                    'model' => $model,
+                    'error' => substr($e->getMessage(), 0, 300)
+                ]);
+                continue;
+            }
+        }
+
+        throw new \RuntimeException('All Gemini models failed for line art conversion. Last error: ' . $lastError?->getMessage());
+    }
+
 }

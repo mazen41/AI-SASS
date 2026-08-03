@@ -82,22 +82,9 @@ class GenerateImagesJob implements ShouldQueue
 
                     Log::info("Colored image stored for scene {$sceneNum}", ['story_id' => $story->id]);
                 } elseif (in_array('coloring_book_pdf', $selected, true)) {
-                    // Generate black and white line art directly for coloring book
-                    $stylePrefix = 'Children\'s illustration with clean lines and shapes, coloring book friendly, clear boundaries, no shading or gradients, black and white line art only, pure black outlines on white background. ';
-                    $enhancedPrompt = $stylePrefix . $prompt;
-
-                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge);
-                    $storedUrl = $fal->downloadAndStore(
-                        $imageUrl,
-                        "stories/{$story->id}/scene_{$sceneNum}.jpg"
-                    );
-
-                    StoryAsset::updateOrCreate(
-                        ['story_id' => $story->id, 'scene_number' => $sceneNum, 'asset_type' => 'coloring_page'],
-                        ['url' => $storedUrl, 'prompt' => $prompt]
-                    );
-
-                    Log::info("Black and white line art stored for scene {$sceneNum}", ['story_id' => $story->id]);
+                    // Skip coloring book generation here - it will be handled by StoryProductService
+                    // using Gemini to convert the story book images to line art
+                    Log::info("Skipping coloring book image generation in GenerateImagesJob - will be handled by StoryProductService", ['story_id' => $story->id]);
                 } else {
                     // Just story text - generate basic illustrations
                     $enhancedPrompt = $prompt;
