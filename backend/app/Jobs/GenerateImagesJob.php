@@ -51,9 +51,13 @@ class GenerateImagesJob implements ShouldQueue
                 throw new \RuntimeException('No scenes available for image generation.');
             }
 
-            // Use TEST_IMAGE_COUNT from .env for testing, otherwise process all scenes
-            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
-            $scenesToProcess = $testImageCount > 0 ? array_slice($scenes, 0, $testImageCount) : $scenes;
+            // TEST_IMAGE_COUNT only applies to non-video outputs (PDF/coloring only).
+            // Video always requires ALL scenes so clip durations can cover the full narration.
+            $testImageCount  = (int)env('TEST_IMAGE_COUNT', 0);
+            $needsAllScenes  = in_array('video', $this->selectedOutputs, true);
+            $scenesToProcess = ($testImageCount > 0 && !$needsAllScenes)
+                ? array_slice($scenes, 0, $testImageCount)
+                : $scenes;
             $selected        = $this->selectedOutputs;
 
             foreach ($scenesToProcess as $scene) {
@@ -62,11 +66,14 @@ class GenerateImagesJob implements ShouldQueue
                 $photoUrl = $story->photo_url;
                 $childAge = $story->child_age;
 
-                // Only generate colored scene images if story_book_pdf is selected
-                // If only coloring_book_pdf is selected, generate black and white line art directly
-                if (in_array('story_book_pdf', $selected, true)) {
-                    // Add style prefix for story book
-                    $stylePrefix = 'Manga/comic style illustration, bold outlines, vibrant colors, dynamic composition, professional children\'s book art style. ';
+                // Always generate images when story_book_pdf OR video is selected.
+                // coloring_book_pdf alone defers to StoryProductService line-art conversion.
+                // But if video is also selected, we must generate images now (video needs them).
+                $needsImages = in_array('story_book_pdf', $selected, true)
+                    || in_array('video', $selected, true);
+
+                if ($needsImages) {
+                    $stylePrefix    = 'Manga/comic style illustration, bold outlines, vibrant colors, dynamic composition, professional children\'s book art style. ';
                     $enhancedPrompt = $stylePrefix . $prompt;
 
                     $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge);
@@ -80,27 +87,10 @@ class GenerateImagesJob implements ShouldQueue
                         ['url' => $storedUrl, 'prompt' => $prompt]
                     );
 
-                    Log::info("Colored image stored for scene {$sceneNum}", ['story_id' => $story->id]);
-                } elseif (in_array('coloring_book_pdf', $selected, true)) {
-                    // Skip coloring book generation here - it will be handled by StoryProductService
-                    // using Gemini to convert the story book images to line art
-                    Log::info("Skipping coloring book image generation in GenerateImagesJob - will be handled by StoryProductService", ['story_id' => $story->id]);
+                    Log::info("Image stored for scene {$sceneNum}", ['story_id' => $story->id]);
                 } else {
-                    // Just story text - generate basic illustrations
-                    $enhancedPrompt = $prompt;
-
-                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge);
-                    $storedUrl = $fal->downloadAndStore(
-                        $imageUrl,
-                        "stories/{$story->id}/scene_{$sceneNum}.jpg"
-                    );
-
-                    StoryAsset::updateOrCreate(
-                        ['story_id' => $story->id, 'scene_number' => $sceneNum, 'asset_type' => 'image'],
-                        ['url' => $storedUrl, 'prompt' => $prompt]
-                    );
-
-                    Log::info("Basic image stored for scene {$sceneNum}", ['story_id' => $story->id]);
+                    // coloring_book_pdf only — StoryProductService converts colored images to line art.
+                    Log::info("Skipping image for scene {$sceneNum} (coloring-only path, handled by StoryProductService)", ['story_id' => $story->id]);
                 }
             }
 
