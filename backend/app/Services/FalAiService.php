@@ -209,6 +209,7 @@ class FalAiService
                 $payload = [
                     'prompt'     => $lineArtPrompt,
                     'image_urls' => [$imageUrl],
+                    'strength'   => 0.95,
                 ];
 
                 [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($model, $payload);
