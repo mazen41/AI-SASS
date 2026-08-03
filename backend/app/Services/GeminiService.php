@@ -643,13 +643,11 @@ High resolution, crisp edges, print-ready.";
                     'contents' => [
                         [
                             'parts' => [
-                                [
-                                    'text' => $lineArtPrompt,
-                                    'inline_data' => [
-                                        'mime_type' => 'image/jpeg',
-                                        'data' => base64_encode(file_get_contents($imageUrl))
-                                    ]
-                                ]
+                                ['text' => $lineArtPrompt],
+                                ['inline_data' => [
+                                    'mime_type' => 'image/jpeg',
+                                    'data' => base64_encode(file_get_contents($imageUrl))
+                                ]]
                             ]
                         ]
                     ],

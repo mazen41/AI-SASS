@@ -212,8 +212,11 @@ class StoryProductService
             $needsConversion = $coloringAssets->isEmpty();
 
             if ($needsConversion) {
-                // Convert existing story book images to line art using Gemini
-                $gemini = app(GeminiService::class);
+                // Convert existing story book images to line art using Fal.ai
+                // (nano-banana / nano-banana-pro image-edit models). Gemini's
+                // plain chat models never returned image data, only text, so
+                // this path always failed silently under GeminiService.
+                $falAi = app(FalAiService::class);
                 
                 // Limit to TEST_IMAGE_COUNT for testing
                 $imagesToProcess = $testImageCount > 0 ? $originalImages->take($testImageCount) : $originalImages;
@@ -229,9 +232,9 @@ class StoryProductService
                     }
 
                     try {
-                        // Convert to line art using Gemini
-                        Log::info("Converting story book image to line art using Gemini", ['scene_number' => $asset->scene_number]);
-                        $lineArtDataUri = $gemini->convertToLineArt($localPath);
+                        // Convert to line art using Fal.ai
+                        Log::info("Converting story book image to line art using Fal.ai", ['scene_number' => $asset->scene_number]);
+                        $lineArtDataUri = $falAi->convertToLineArt($localPath);
                         
                         // Extract base64 data from data URI
                         if (preg_match('/^data:image\/(\w+);base64,(.+)$/', $lineArtDataUri, $matches)) {
@@ -247,7 +250,7 @@ class StoryProductService
 
                             StoryAsset::updateOrCreate(
                                 ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
-                                ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => 'Gemini line art conversion']
+                                ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => 'Fal.ai (nano-banana) line art conversion']
                             );
 
                             // Clean up temp file
@@ -255,10 +258,10 @@ class StoryProductService
                             
                             Log::info("Line art conversion completed for scene", ['scene_number' => $asset->scene_number]);
                         } else {
-                            throw new \RuntimeException("Invalid data URI format from Gemini");
+                            throw new \RuntimeException("Invalid data URI format from Fal.ai");
                         }
                     } catch (\Throwable $e) {
-                        Log::error("Failed to convert image to line art using Gemini", [
+                        Log::error("Failed to convert image to line art using Fal.ai", [
                             'scene_number' => $asset->scene_number,
                             'error' => $e->getMessage()
                         ]);

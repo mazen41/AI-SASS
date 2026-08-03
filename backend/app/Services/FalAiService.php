@@ -11,16 +11,20 @@ class FalAiService
     private string $apiKey;
     private string $imageModel;
     private string $videoModel;
+    private string $lineArtModel;
+    private string $lineArtFallbackModel;
     private int $pollInterval;
     private int $pollMaxAttempts;
 
     public function __construct()
     {
-        $this->apiKey          = (string) config('services.fal.key', '');
-        $this->imageModel      = config('services.fal.image_model', 'fal-ai/flux-pro/v1.1');
-        $this->videoModel      = config('services.fal.video_model', 'fal-ai/kling-video/v2.6/pro/image-to-video');
-        $this->pollInterval    = (int) config('services.fal.poll_interval', 5);
-        $this->pollMaxAttempts = (int) config('services.fal.poll_max_attempts', 60);
+        $this->apiKey               = (string) config('services.fal.key', '');
+        $this->imageModel           = config('services.fal.image_model', 'fal-ai/flux-pro/v1.1');
+        $this->videoModel           = config('services.fal.video_model', 'fal-ai/kling-video/v2.6/pro/image-to-video');
+        $this->lineArtModel         = config('services.fal.lineart_model', 'fal-ai/nano-banana/edit');
+        $this->lineArtFallbackModel = config('services.fal.lineart_fallback_model', 'fal-ai/nano-banana-pro/edit');
+        $this->pollInterval         = (int) config('services.fal.poll_interval', 5);
+        $this->pollMaxAttempts      = (int) config('services.fal.poll_max_attempts', 60);
     }
 
     // --- File Upload to Fal.ai storage ------------------------------------
@@ -152,6 +156,93 @@ class FalAiService
 
         Log::info('Fal.ai line art: image received', ['url' => $imageUrl]);
         return $imageUrl;
+    }
+
+    /**
+     * Convert an existing image into a black-and-white coloring-book line
+     * art page using fal.ai's image-editing models.
+     *
+     * Replaces the old Gemini-based convertToLineArt(): Gemini's plain chat
+     * models (gemini-2.0-flash and friends) never return inline_data images,
+     * only text — so that path always failed silently. nano-banana/edit and
+     * nano-banana-pro/edit are true image-to-image edit models and reliably
+     * return a generated image.
+     *
+     * Tries the cheap/fast model first (fal-ai/nano-banana/edit, ~$0.039/img)
+     * and falls back to the higher-fidelity model (fal-ai/nano-banana-pro/edit,
+     * ~$0.15/img) if the primary fails or returns no image.
+     *
+     * Returns a base64 data URI (same contract as the old Gemini method) so
+     * existing callers (e.g. StoryProductService::generateColoringBook)
+     * don't need to change how they consume the result.
+     */
+    public function convertToLineArt(string $localImagePath): string
+    {
+        $this->ensureConfigured();
+
+        if (!file_exists($localImagePath)) {
+            throw new \RuntimeException("File not found for line art conversion: {$localImagePath}");
+        }
+
+        // Upload the source photo so fal's workers can fetch it.
+        $imageUrl = $this->uploadFileToFal($localImagePath);
+
+        $lineArtPrompt = "Convert this image into a children's coloring book page. "
+            . 'PURE black and white line art only. '
+            . 'White background, clean black outlines. '
+            . 'NO color, NO shading, NO gradients, NO gray tones, NO shadows. '
+            . 'Use thick, bold, smooth outlines. '
+            . 'Simplify all details to be kid-friendly and easy to color. '
+            . 'Remove unnecessary textures and small details. '
+            . 'Keep the main subject clearly recognizable. '
+            . 'Maintain original composition and proportions. '
+            . 'Style: simple cartoon line art, coloring book style, vector-like clean ink drawing. '
+            . 'High resolution, crisp edges, print-ready.';
+
+        $models    = [$this->lineArtModel, $this->lineArtFallbackModel];
+        $lastError = null;
+
+        foreach ($models as $model) {
+            try {
+                Log::info('Fal.ai line art conversion: submitting', ['model' => $model]);
+
+                $payload = [
+                    'prompt'     => $lineArtPrompt,
+                    'image_urls' => [$imageUrl],
+                ];
+
+                [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($model, $payload);
+                $result = $this->pollForResult($model, $requestId, $statusUrl, $responseUrl);
+
+                $resultImageUrl = $result['images'][0]['url'] ?? null;
+                if (!$resultImageUrl) {
+                    throw new \RuntimeException("No image URL in {$model} response: " . json_encode($result));
+                }
+
+                // Download the result and re-encode as a data URI so the
+                // return contract matches the old Gemini-based method.
+                $imageResponse = Http::timeout(60)->get($resultImageUrl);
+                if (!$imageResponse->successful()) {
+                    throw new \RuntimeException("Failed to download line art result from {$model}: " . $imageResponse->status());
+                }
+
+                $mime   = $imageResponse->header('Content-Type') ?: 'image/jpeg';
+                $base64 = base64_encode($imageResponse->body());
+
+                Log::info('Fal.ai line art conversion completed', ['model' => $model]);
+
+                return "data:{$mime};base64,{$base64}";
+            } catch (\Throwable $e) {
+                $lastError = $e;
+                Log::warning("Fal.ai model {$model} failed for line art conversion, trying fallback", [
+                    'model' => $model,
+                    'error' => substr($e->getMessage(), 0, 300),
+                ]);
+                continue;
+            }
+        }
+
+        throw new \RuntimeException('All Fal.ai models failed for line art conversion. Last error: ' . $lastError?->getMessage());
     }
 
     public function generateImage(string $prompt, ?string $photoUrl = null, ?int $childAge = null): string
