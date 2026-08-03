@@ -253,17 +253,31 @@ class AssembleVideoJob implements ShouldQueue
     {
         $candidates = [
             'ffmpeg',
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
             'C:\\ffmpeg\\bin\\ffmpeg.exe',
             'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe',
             'C:\\tools\\ffmpeg\\bin\\ffmpeg.exe',
         ];
         foreach ($candidates as $c) {
             if (str_contains($c, '\\') && !file_exists($c)) continue;
-            exec("\"{$c}\" -version 2>&1", $out, $code);
+            if (str_contains($c, '/') && !file_exists($c)) continue;
+
+            $cmd = str_contains($c, ' ') ? "\"{$c}\"" : $c;
+            exec("{$cmd} -version 2>&1", $out, $code);
             if ($code === 0) return $c;
         }
+
+        // Try Linux/macOS 'which'
+        exec('which ffmpeg 2>&1', $whichOut, $whichCode);
+        if ($whichCode === 0 && !empty($whichOut[0])) {
+            return trim($whichOut[0]);
+        }
+
+        // Try Windows 'where'
         exec('where ffmpeg 2>&1', $whereOut, $whereCode);
         if ($whereCode === 0 && !empty($whereOut[0])) return trim($whereOut[0]);
-        throw new \RuntimeException('FFmpeg not found. Run: winget install ffmpeg');
+
+        throw new \RuntimeException('FFmpeg not found. Run: winget install ffmpeg or apt-get install ffmpeg');
     }
 }

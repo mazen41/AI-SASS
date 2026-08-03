@@ -61,6 +61,8 @@ class MediaDurationService
     {
         $candidates = [
             'ffmpeg',
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
             'C:\\ffmpeg\\bin\\ffmpeg.exe',
             'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe',
             'C:\\tools\\ffmpeg\\bin\\ffmpeg.exe',
@@ -70,13 +72,25 @@ class MediaDurationService
             if (str_contains($candidate, '\\') && !file_exists($candidate)) {
                 continue;
             }
+            if (str_contains($candidate, '/') && !file_exists($candidate)) {
+                continue;
+            }
 
-            exec("\"{$candidate}\" -version 2>&1", $out, $code);
+            // Avoid double quoting unless candidate has spaces
+            $cmd = str_contains($candidate, ' ') ? "\"{$candidate}\"" : $candidate;
+            exec("{$cmd} -version 2>&1", $out, $code);
             if ($code === 0) {
                 return $candidate;
             }
         }
 
+        // Try Linux/macOS 'which'
+        exec('which ffmpeg 2>&1', $whichOut, $whichCode);
+        if ($whichCode === 0 && !empty($whichOut[0])) {
+            return trim($whichOut[0]);
+        }
+
+        // Try Windows 'where'
         exec('where ffmpeg 2>&1', $whereOut, $whereCode);
         if ($whereCode === 0 && !empty($whereOut[0])) {
             return trim($whereOut[0]);
