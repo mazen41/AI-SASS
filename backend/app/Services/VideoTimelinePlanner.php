@@ -9,8 +9,8 @@ namespace App\Services;
  */
 class VideoTimelinePlanner
 {
-    public const MIN_NARRATION_SECONDS = 55;
-    public const MAX_NARRATION_SECONDS = 65;
+    public const MIN_NARRATION_SECONDS = 40;
+    public const MAX_NARRATION_SECONDS = 90;
     public const TARGET_NARRATION_SECONDS = 60;
     public const WORDS_PER_MINUTE = 110;
 
@@ -94,7 +94,7 @@ class VideoTimelinePlanner
 
     public static function isNarrationDurationValid(float $seconds): bool
     {
-        return $seconds >= self::MIN_NARRATION_SECONDS - 3
-            && $seconds <= self::MAX_NARRATION_SECONDS + 5;
+        // More lenient validation - allow 30s minimum for shorter languages like Arabic
+        return $seconds >= 30 && $seconds <= self::MAX_NARRATION_SECONDS + 10;
     }
 }

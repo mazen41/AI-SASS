@@ -64,11 +64,11 @@ class GenerateNarrationJob implements ShouldQueue
             $narrationDuration = $mediaDuration->getDurationSeconds($narrationLocal);
 
             if (!$testMode && !VideoTimelinePlanner::isNarrationDurationValid($narrationDuration)) {
+                // More lenient error message for different languages
                 throw new \RuntimeException(
-                    'Narration audio is ' . round($narrationDuration, 1) . 's but must be '
-                    . VideoTimelinePlanner::MIN_NARRATION_SECONDS . '-'
-                    . VideoTimelinePlanner::MAX_NARRATION_SECONDS . 's. '
-                    . "Story had {$wordCount} words — regenerate story text with more content."
+                    'Narration audio is ' . round($narrationDuration, 1) . 's but should be 30-100s. '
+                    . "Story had {$wordCount} words. Language: {$story->language}. "
+                    . "Consider regenerating with more content or accepting shorter duration."
                 );
             }
 
