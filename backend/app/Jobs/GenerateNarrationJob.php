@@ -73,8 +73,8 @@ class GenerateNarrationJob implements ShouldQueue
             }
 
             $story->update([
-                'narration_url'      => $narrationUrl,
-                'duration_seconds'   => (int) round($narrationDuration),
+                'narration_url'    => $narrationUrl,
+                'duration_seconds' => round($narrationDuration, 3), // float precision for exact video trim
             ]);
 
             StoryOutput::updateOrCreate(

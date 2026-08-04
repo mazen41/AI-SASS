@@ -9,6 +9,7 @@ use App\Services\FalAiService;
 use App\Services\MediaDurationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -137,18 +138,31 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
     private function checkAndTriggerAssembly(Story $story): void
     {
         $totalScenes = $story->imageAssets()->count();
-        $completedScenes = $story->videoAssets()->count();
+
+        // Atomic increment: only the worker that pushes completed_video_scenes
+        // to exactly $totalScenes will dispatch assembly — preventing double-dispatch
+        // when multiple parallel workers finish at the same time.
+        $newCount = DB::table('stories')
+            ->where('id', $story->id)
+            ->whereColumn('completed_video_scenes', '<', 'total_video_scenes')
+            ->limit(1)
+            ->update(['completed_video_scenes' => DB::raw('completed_video_scenes + 1')]);
+
+        // Re-read the current count after our atomic update
+        $completedScenes = DB::table('stories')
+            ->where('id', $story->id)
+            ->value('completed_video_scenes') ?? 0;
 
         Log::info("Barrier check: video progress", [
-            'story_id' => $story->id,
+            'story_id'         => $story->id,
             'completed_scenes' => $completedScenes,
-            'total_scenes' => $totalScenes,
+            'total_scenes'     => $totalScenes,
         ]);
 
-        // If all scenes are complete, trigger assembly
+        // Only the worker whose increment pushed the count to exactly totalScenes dispatches assembly
         if ($completedScenes >= $totalScenes && $totalScenes > 0) {
             Log::info("Barrier reached: all scenes complete, triggering assembly", [
-                'story_id' => $story->id,
+                'story_id'    => $story->id,
                 'scene_count' => $totalScenes,
             ]);
 

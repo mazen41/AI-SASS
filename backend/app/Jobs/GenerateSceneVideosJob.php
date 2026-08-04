@@ -75,6 +75,12 @@ class GenerateSceneVideosJob implements ShouldQueue
             // Clear any existing video assets for this story (in case of retry)
             $story->assets()->where('asset_type', 'video')->delete();
 
+            // Initialize barrier counters atomically before dispatching parallel jobs
+            $story->update([
+                'total_video_scenes'     => $sceneCount,
+                'completed_video_scenes' => 0,
+            ]);
+
             // Dispatch parallel jobs for each scene
             $clipIndex = 0;
             foreach ($imageAssets as $asset) {
