@@ -339,35 +339,24 @@ class FalAiService
         $this->ensureConfigured();
 
         // Adjust prompt and parameters based on model
-        $isWanPro = str_contains($this->videoModel, 'wan-pro');
-        $isKling = str_contains($this->videoModel, 'kling');
+        $isKling     = str_contains($this->videoModel, 'kling');
+        $falDuration = $isKling
+            ? ($durationSeconds >= 8 ? '10' : '5')
+            : ($durationSeconds >= 6 ? '8'  : '5');
+
+        $payload = [
+            'image_url'       => $imageUrl,
+            'prompt'          => $prompt
+                . ', smooth cinematic motion, natural body movement, expressive facial animation,'
+                . ' consistent character identity, realistic camera movement, movie-quality animation,'
+                . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
+                . ' polished children\'s movie sequence',
+            'duration'        => $falDuration,
+            'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
+        ];
 
         if ($isKling) {
-            // Kling supports '5' or '10' second clips — clamp to nearest valid value.
-            $falDuration = $durationSeconds >= 8 ? '10' : '5';
-            $payload = [
-                'image_url'       => $imageUrl,
-                'prompt'          => $prompt
-                    . ', smooth cinematic motion, natural body movement, expressive facial animation,'
-                    . ' consistent character identity, realistic camera movement, movie-quality animation,'
-                    . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
-                    . ' polished children\'s movie sequence',
-                'duration'        => $falDuration,
-                'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
-                'generate_audio'  => false,
-            ];
-        } else {
-            // Wan Pro and other models support flexible durations
-            $payload = [
-                'image_url'       => $imageUrl,
-                'prompt'          => $prompt
-                    . ', smooth cinematic motion, natural body movement, expressive facial animation,'
-                    . ' consistent character identity, realistic camera movement, movie-quality animation,'
-                    . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
-                    . ' polished children\'s movie sequence',
-                'duration'        => $durationSeconds,
-                'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
-            ];
+            $payload['generate_audio'] = false;
         }
 
         [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($this->videoModel, $payload);

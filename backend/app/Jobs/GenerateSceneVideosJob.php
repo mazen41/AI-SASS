@@ -72,13 +72,14 @@ class GenerateSceneVideosJob implements ShouldQueue
                 'video_model'          => config('services.fal.video_model'),
             ]);
 
-            // Clear any existing video assets for this story (in case of retry)
-            $story->assets()->where('asset_type', 'video')->delete();
+            // Clear any existing video and video_failed assets for this story (in case of retry)
+            $story->assets()->whereIn('asset_type', ['video', 'video_failed'])->delete();
 
             // Initialize barrier counters atomically before dispatching parallel jobs
             $story->update([
-                'total_video_scenes'     => $sceneCount,
-                'completed_video_scenes' => 0,
+                'total_video_scenes'        => $sceneCount,
+                'completed_video_scenes'    => 0,
+                'video_assembly_triggered'  => false,
             ]);
 
             // Dispatch parallel jobs for each scene

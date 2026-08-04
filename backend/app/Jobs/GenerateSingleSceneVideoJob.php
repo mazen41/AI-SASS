@@ -79,10 +79,21 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
                 "stories/{$story->id}/scene_{$this->sceneNumber}.mp4"
             );
 
+            // Clear any previously saved video_failed status if this is a retry that succeeded
+            $story->assets()
+                ->where('scene_number', $this->sceneNumber)
+                ->where('asset_type', 'video_failed')
+                ->delete();
+
             StoryAsset::updateOrCreate(
                 ['story_id' => $story->id, 'scene_number' => $this->sceneNumber, 'asset_type' => 'video'],
                 ['url' => $storedUrl, 'prompt' => $prompt]
             );
+
+            // Increment the counter atomically for this successful scene
+            DB::table('stories')
+                ->where('id', $story->id)
+                ->update(['completed_video_scenes' => DB::raw('completed_video_scenes + 1')]);
 
             $log->complete();
             
@@ -104,9 +115,6 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
                 'scene_number' => $this->sceneNumber,
                 'error' => $e->getMessage(),
             ]);
-
-            // Still check barrier - maybe other scenes succeeded
-            $this->checkAndTriggerAssembly($story);
             
             throw $e;
         }
@@ -116,13 +124,25 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
     {
         $story = Story::find($this->storyId);
         if ($story) {
+            // Write a video_failed asset record to mark this scene as permanently failed
+            StoryAsset::updateOrCreate(
+                ['story_id' => $story->id, 'scene_number' => $this->sceneNumber, 'asset_type' => 'video_failed'],
+                ['url' => '', 'prompt' => substr($exception->getMessage(), 0, 500)]
+            );
+
+            // Increment the counter atomically for the failed scene
+            DB::table('stories')
+                ->where('id', $story->id)
+                ->update(['completed_video_scenes' => DB::raw('completed_video_scenes + 1')]);
+
+            // Trigger assembly check since this scene is now permanently failed
+            $this->checkAndTriggerAssembly($story);
+
             $user = $story->user;
             if ($user) {
-                // Only refund if this failure makes the video impossible
+                // If we have less than 80% of scenes, refund
                 $videoAssets = $story->videoAssets()->count();
                 $totalScenes = $story->imageAssets()->count();
-                
-                // If we have less than 80% of scenes, refund
                 if ($videoAssets < ($totalScenes * 0.8)) {
                     $user->refundProductByOutputType('video', $story->id);
                     $story->decrementPendingOutputs();
@@ -138,35 +158,38 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
     private function checkAndTriggerAssembly(Story $story): void
     {
         $totalScenes = $story->imageAssets()->count();
-
-        // Atomic increment: only the worker that pushes completed_video_scenes
-        // to exactly $totalScenes will dispatch assembly — preventing double-dispatch
-        // when multiple parallel workers finish at the same time.
-        $newCount = DB::table('stories')
-            ->where('id', $story->id)
-            ->whereColumn('completed_video_scenes', '<', 'total_video_scenes')
-            ->limit(1)
-            ->update(['completed_video_scenes' => DB::raw('completed_video_scenes + 1')]);
-
-        // Re-read the current count after our atomic update
-        $completedScenes = DB::table('stories')
-            ->where('id', $story->id)
-            ->value('completed_video_scenes') ?? 0;
+        
+        // Count how many scenes have finished processing (either successfully as 'video' or failed as 'video_failed')
+        $finishedScenes = $story->assets()
+            ->whereIn('asset_type', ['video', 'video_failed'])
+            ->count();
 
         Log::info("Barrier check: video progress", [
             'story_id'         => $story->id,
-            'completed_scenes' => $completedScenes,
+            'completed_scenes' => $story->videoAssets()->count(),
+            'finished_scenes'  => $finishedScenes,
             'total_scenes'     => $totalScenes,
         ]);
 
-        // Only the worker whose increment pushed the count to exactly totalScenes dispatches assembly
-        if ($completedScenes >= $totalScenes && $totalScenes > 0) {
-            Log::info("Barrier reached: all scenes complete, triggering assembly", [
-                'story_id'    => $story->id,
-                'scene_count' => $totalScenes,
-            ]);
+        if ($finishedScenes >= $totalScenes && $totalScenes > 0) {
+            // Atomic update to ensure AssembleVideoJob is dispatched exactly once
+            $affected = DB::table('stories')
+                ->where('id', $story->id)
+                ->where('video_assembly_triggered', false)
+                ->update(['video_assembly_triggered' => true]);
 
-            AssembleVideoJob::dispatch($story->id, $this->selectedOutputs);
+            if ($affected > 0) {
+                Log::info("Barrier reached: all scenes complete, triggering assembly", [
+                    'story_id'    => $story->id,
+                    'scene_count' => $totalScenes,
+                ]);
+
+                AssembleVideoJob::dispatch($story->id, $this->selectedOutputs);
+            } else {
+                Log::info("Barrier already triggered by another worker, skipping duplicate dispatch", [
+                    'story_id' => $story->id,
+                ]);
+            }
         }
     }
 
