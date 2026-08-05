@@ -159,14 +159,20 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
     {
         $totalScenes = $story->imageAssets()->count();
         
-        // Count how many scenes have finished processing (either successfully as 'video' or failed as 'video_failed')
+        // Count how many unique scene numbers have finished processing (either as 'video' or 'video_failed')
         $finishedScenes = $story->assets()
             ->whereIn('asset_type', ['video', 'video_failed'])
-            ->count();
+            ->distinct('scene_number')
+            ->count('scene_number');
+
+        $completedScenes = $story->assets()
+            ->where('asset_type', 'video')
+            ->distinct('scene_number')
+            ->count('scene_number');
 
         Log::info("Barrier check: video progress", [
             'story_id'         => $story->id,
-            'completed_scenes' => $story->videoAssets()->count(),
+            'completed_scenes' => $completedScenes,
             'finished_scenes'  => $finishedScenes,
             'total_scenes'     => $totalScenes,
         ]);
