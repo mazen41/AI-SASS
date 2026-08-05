@@ -55,19 +55,17 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
         $totalScenes = count($this->clipPlan);
 
         try {
-            // ── 1. Get scene prompt from story's image asset ────────────────
-            $asset = $story->assets()
-                ->where('asset_type', 'image')
-                ->where('scene_number', $this->sceneNumber)
-                ->first();
+            // ── 1. Get scene prompt from story scenes array ─────────────────
+            $scene  = collect($story->scenes ?? [])->firstWhere('scene_number', $this->sceneNumber);
+            $prompt = $scene['image_prompt'] ?? $scene['description'] ?? null;
 
-            if (!$asset) {
-                throw new \RuntimeException("No image asset found for scene {$this->sceneNumber}");
+            if (!$prompt) {
+                $asset = $story->assets()
+                    ->where('asset_type', 'image')
+                    ->where('scene_number', $this->sceneNumber)
+                    ->first();
+                $prompt = $asset?->prompt ?? "scene {$this->sceneNumber} from a children's story";
             }
-
-            $prompt = $asset->prompt
-                ?? (collect($story->scenes ?? [])->firstWhere('scene_number', $this->sceneNumber)['description'] ?? null)
-                ?? "scene {$this->sceneNumber} from a children's story";
 
             Log::info("GenerateSingleSceneVideoJob: starting scene {$this->sceneNumber}", [
                 'story_id'     => $story->id,
