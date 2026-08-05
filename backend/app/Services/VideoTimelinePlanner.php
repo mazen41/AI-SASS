@@ -115,8 +115,8 @@ class VideoTimelinePlanner
 
     public static function isNarrationDurationValid(float $seconds, string $language = 'en'): bool
     {
-        // Very lenient validation during transition - allow 20-90s range
+        // Enforce a strict minimum of 30 seconds for all languages (including Arabic)
         $maxSeconds = 90;
-        return $seconds >= 20 && $seconds <= $maxSeconds;
+        return $seconds >= 30.0 && $seconds <= $maxSeconds;
     }
 }
