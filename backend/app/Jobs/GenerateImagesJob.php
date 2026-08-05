@@ -51,14 +51,39 @@ class GenerateImagesJob implements ShouldQueue
                 throw new \RuntimeException('No scenes available for image generation.');
             }
 
-            // TEST_IMAGE_COUNT only applies to non-video outputs (PDF/coloring only).
-            // Video always requires ALL scenes so clip durations can cover the full narration.
-            $testImageCount  = (int)env('TEST_IMAGE_COUNT', 0);
-            $needsAllScenes  = in_array('video', $this->selectedOutputs, true);
-            $scenesToProcess = ($testImageCount > 0 && !$needsAllScenes)
-                ? array_slice($scenes, 0, $testImageCount)
-                : $scenes;
             $selected        = $this->selectedOutputs;
+            $needsStoryBook  = in_array('story_book_pdf',   $selected, true);
+            $needsColorBook  = in_array('coloring_book_pdf', $selected, true);
+            $needsVideo      = in_array('video',             $selected, true);
+
+            // ── How many scenes to generate images for ──────────────────────
+            // With sequential frame-chaining, video only needs Scene 1's image.
+            // Scenes 2–N use the last frame of the previous clip as input.
+            // PDFs (storybook / coloring book) still need all scenes.
+            //
+            // Priority:
+            //  • story_book_pdf or coloring_book_pdf selected → all scenes
+            //  • video only → Scene 1 only (saves ~$0.55 per video)
+            //  • TEST_IMAGE_COUNT env var → respected for non-video PDF paths
+
+            if ($needsStoryBook || $needsColorBook) {
+                // PDFs need every scene image
+                $testImageCount  = (int)env('TEST_IMAGE_COUNT', 0);
+                $scenesToProcess = ($testImageCount > 0)
+                    ? array_slice($scenes, 0, $testImageCount)
+                    : $scenes;
+            } elseif ($needsVideo) {
+                // Video-only: only generate Scene 1 image (frame chaining handles the rest)
+                $scenesToProcess = array_slice($scenes, 0, 1);
+                Log::info('GenerateImagesJob: video-only path — generating Scene 1 image only (frame chaining handles scenes 2-N)', [
+                    'story_id'    => $story->id,
+                    'total_scenes'=> count($scenes),
+                    'generating'  => 1,
+                    'saving'      => count($scenes) - 1 . ' image API calls (~$' . round((count($scenes) - 1) * 0.05, 2) . ')',
+                ]);
+            } else {
+                $scenesToProcess = $scenes;
+            }
 
             foreach ($scenesToProcess as $scene) {
                 $sceneNum = $scene['scene_number'];
@@ -69,8 +94,7 @@ class GenerateImagesJob implements ShouldQueue
                 // Always generate images when story_book_pdf OR video is selected.
                 // coloring_book_pdf alone defers to StoryProductService line-art conversion.
                 // But if video is also selected, we must generate images now (video needs them).
-                $needsImages = in_array('story_book_pdf', $selected, true)
-                    || in_array('video', $selected, true);
+                $needsImages = $needsStoryBook || $needsVideo;
 
                 if ($needsImages) {
                     $stylePrefix    = 'Manga/comic style illustration, bold outlines, vibrant colors, dynamic composition, professional children\'s book art style. ';
