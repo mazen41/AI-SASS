@@ -15,36 +15,47 @@ use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * Single scene video generation - runs in parallel for each scene.
- * Triggered by GenerateSceneVideosJob which dispatches one job per scene.
- * Uses a barrier pattern to track completion and trigger assembly when all scenes are done.
+ * Sequential Scene Video Generator — Frame Chaining
+ *
+ * Flow per scene:
+ *  1. Receive inputImageUrl (Fal-ready URL): for Scene 1 this is the story image;
+ *     for Scenes 2–N it is the LAST FRAME extracted from the previous scene's video.
+ *  2. Generate video clip from inputImageUrl via Wan Pro.
+ *  3. Store the video clip.
+ *  4. Extract the LAST FRAME of the clip using FFmpeg.
+ *  5. Upload that frame to Fal.ai storage.
+ *  6a. If more scenes remain → dispatch next GenerateSingleSceneVideoJob with that frame URL.
+ *  6b. If last scene → dispatch AssembleVideoJob.
+ *
+ * This guarantees that every scene visually begins at the exact pixel where
+ * the previous scene ended — no random jumps, no character repositioning.
  */
 class GenerateSingleSceneVideoJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 600; // 10 minutes per scene (Wan Pro is fast)
+    /** 10 minutes per scene (Wan Pro typically completes in 2–4 min) */
+    public int $timeout = 600;
     public int $tries   = 2;
-    public array $backoff = [60, 120];
+    public array $backoff = [30, 60];
 
     public function __construct(
-        public int   $storyId,
-        public int   $sceneNumber,
-        public int   $clipDuration,
-        public array $selectedOutputs
+        public int    $storyId,
+        public int    $sceneNumber,
+        public int    $clipDuration,
+        public string $inputImageUrl,   // Fal-ready URL: story image (scene 1) OR last frame (scene 2..N)
+        public array  $clipPlan,        // [scene_number => clip_duration] for the whole story
+        public array  $selectedOutputs
     ) {}
 
     public function handle(FalAiService $fal, MediaDurationService $mediaDuration): void
     {
-        $story = Story::findOrFail($this->storyId);
-        $log   = AiJobLog::start($story->id, 'generate_scene_video_' . $this->sceneNumber);
-        
-        try {
-            $scene = collect($story->scenes ?? [])->firstWhere('scene_number', $this->sceneNumber);
-            if (!$scene) {
-                throw new \RuntimeException("Scene {$this->sceneNumber} not found in story data");
-            }
+        $story   = Story::findOrFail($this->storyId);
+        $log     = AiJobLog::start($story->id, 'generate_scene_video_' . $this->sceneNumber);
+        $totalScenes = count($this->clipPlan);
 
+        try {
+            // ── 1. Get scene prompt from story's image asset ────────────────
             $asset = $story->assets()
                 ->where('asset_type', 'image')
                 ->where('scene_number', $this->sceneNumber)
@@ -54,32 +65,27 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
                 throw new \RuntimeException("No image asset found for scene {$this->sceneNumber}");
             }
 
-            $prompt = $scene['description'] ?? 'a scene from a children\'s story';
-            $imageUrlForFal = $asset->url;
-
-            // Upload to Fal.ai if not public
-            if (!$this->isPublicFalUrl($imageUrlForFal)) {
-                $disk      = 'public';
-                $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
-                $relative  = ltrim(substr($imageUrlForFal, strlen($baseUrl)), '/');
-                $localPath = Storage::disk($disk)->path($relative);
-                $imageUrlForFal = $fal->uploadFileToFal($localPath);
-            }
+            $prompt = $asset->prompt
+                ?? (collect($story->scenes ?? [])->firstWhere('scene_number', $this->sceneNumber)['description'] ?? null)
+                ?? "scene {$this->sceneNumber} from a children's story";
 
             Log::info("GenerateSingleSceneVideoJob: starting scene {$this->sceneNumber}", [
-                'story_id' => $story->id,
+                'story_id'     => $story->id,
                 'scene_number' => $this->sceneNumber,
-                'clip_duration' => $this->clipDuration,
-                'model' => config('services.fal.video_model'),
+                'clip_duration'=> $this->clipDuration,
+                'total_scenes' => $totalScenes,
+                'model'        => config('services.fal.video_model'),
+                'is_chain'     => $this->sceneNumber > 1 ? 'yes (last frame of previous scene)' : 'no (original story image)',
             ]);
 
-            $videoUrl  = $fal->generateVideo($imageUrlForFal, $prompt, $this->clipDuration);
+            // ── 2. Generate video from inputImageUrl ────────────────────────
+            $videoUrl  = $fal->generateVideo($this->inputImageUrl, $prompt, $this->clipDuration);
             $storedUrl = $fal->downloadAndStore(
                 $videoUrl,
                 "stories/{$story->id}/scene_{$this->sceneNumber}.mp4"
             );
 
-            // Clear any previously saved video_failed status if this is a retry that succeeded
+            // ── 3. Clear any video_failed marker from a previous retry ──────
             $story->assets()
                 ->where('scene_number', $this->sceneNumber)
                 ->where('asset_type', 'video_failed')
@@ -90,32 +96,67 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
                 ['url' => $storedUrl, 'prompt' => $prompt]
             );
 
-            // Increment the counter atomically for this successful scene
             DB::table('stories')
                 ->where('id', $story->id)
                 ->update(['completed_video_scenes' => DB::raw('completed_video_scenes + 1')]);
 
             $log->complete();
-            
+
             Log::info("GenerateSingleSceneVideoJob: completed scene {$this->sceneNumber}", [
-                'story_id' => $story->id,
+                'story_id'     => $story->id,
                 'scene_number' => $this->sceneNumber,
             ]);
 
-            // Check if all scenes are complete - trigger assembly if so
-            $this->checkAndTriggerAssembly($story);
+            // ── 4. Extract last frame of this clip via FFmpeg ────────────────
+            $nextSceneNumber = $this->nextSceneNumber();
+
+            if ($nextSceneNumber !== null) {
+                $lastFrameUrl = $this->extractLastFrameAndUpload($storedUrl, $story->id, $fal, $mediaDuration);
+
+                $nextClipDuration = $this->clipPlan[$nextSceneNumber];
+
+                Log::info("GenerateSingleSceneVideoJob: chaining to scene {$nextSceneNumber}", [
+                    'story_id'    => $story->id,
+                    'next_scene'  => $nextSceneNumber,
+                    'frame_url'   => $lastFrameUrl,
+                ]);
+
+                // ── 5a. Dispatch NEXT scene job with last frame ───────────────
+                GenerateSingleSceneVideoJob::dispatch(
+                    $story->id,
+                    $nextSceneNumber,
+                    $nextClipDuration,
+                    $lastFrameUrl,
+                    $this->clipPlan,
+                    $this->selectedOutputs
+                );
+
+            } else {
+                // ── 5b. All scenes done → trigger assembly ────────────────────
+                Log::info("GenerateSingleSceneVideoJob: last scene complete, triggering assembly", [
+                    'story_id'    => $story->id,
+                    'scene_count' => $totalScenes,
+                ]);
+
+                $affected = DB::table('stories')
+                    ->where('id', $story->id)
+                    ->where('video_assembly_triggered', false)
+                    ->update(['video_assembly_triggered' => true]);
+
+                if ($affected > 0) {
+                    AssembleVideoJob::dispatch($story->id, $this->selectedOutputs);
+                }
+            }
 
         } catch (Throwable $e) {
             $log->fail(mb_substr($e->getMessage(), 0, 500));
-            
-            // Mark this scene as failed but don't fail the whole story yet
-            // Let the barrier mechanism handle partial failures
+
             Log::error("GenerateSingleSceneVideoJob failed for scene {$this->sceneNumber}", [
-                'story_id' => $story->id,
+                'story_id'     => $story->id,
                 'scene_number' => $this->sceneNumber,
-                'error' => $e->getMessage(),
+                'error'        => $e->getMessage(),
             ]);
-            
+
             throw $e;
         }
     }
@@ -123,80 +164,153 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         $story = Story::find($this->storyId);
-        if ($story) {
-            // Write a video_failed asset record to mark this scene as permanently failed
-            StoryAsset::updateOrCreate(
-                ['story_id' => $story->id, 'scene_number' => $this->sceneNumber, 'asset_type' => 'video_failed'],
-                ['url' => '', 'prompt' => substr($exception->getMessage(), 0, 500)]
-            );
-
-            // Increment the counter atomically for the failed scene
-            DB::table('stories')
-                ->where('id', $story->id)
-                ->update(['completed_video_scenes' => DB::raw('completed_video_scenes + 1')]);
-
-            // Trigger assembly check since this scene is now permanently failed
-            $this->checkAndTriggerAssembly($story);
-
-            $user = $story->user;
-            if ($user) {
-                // If we have less than 80% of scenes, refund
-                $videoAssets = $story->videoAssets()->count();
-                $totalScenes = $story->imageAssets()->count();
-                if ($videoAssets < ($totalScenes * 0.8)) {
-                    $user->refundProductByOutputType('video', $story->id);
-                    $story->decrementPendingOutputs();
-                }
-            }
+        if (!$story) {
+            Log::error("GenerateSingleSceneVideoJob permanently failed for story #{$this->storyId}, scene {$this->sceneNumber} — story not found");
+            return;
         }
 
-        Log::error("GenerateSingleSceneVideoJob permanently failed for story #{$this->storyId}, scene {$this->sceneNumber}", [
-            'error' => $exception->getMessage(),
-        ]);
-    }
+        // Mark scene as permanently failed
+        StoryAsset::updateOrCreate(
+            ['story_id' => $story->id, 'scene_number' => $this->sceneNumber, 'asset_type' => 'video_failed'],
+            ['url' => '', 'prompt' => substr($exception->getMessage(), 0, 500)]
+        );
 
-    private function checkAndTriggerAssembly(Story $story): void
-    {
-        $totalScenes = $story->imageAssets()->count();
-        
-        // Count how many unique scene numbers have finished processing (either as 'video' or 'video_failed')
-        $finishedScenes = $story->assets()
-            ->whereIn('asset_type', ['video', 'video_failed'])
-            ->distinct('scene_number')
-            ->count('scene_number');
+        DB::table('stories')
+            ->where('id', $story->id)
+            ->update(['completed_video_scenes' => DB::raw('completed_video_scenes + 1')]);
 
+        // Since we're sequential, a permanent failure breaks the chain.
+        // Assemble with whatever completed scenes we have so far.
         $completedScenes = $story->assets()
             ->where('asset_type', 'video')
             ->distinct('scene_number')
             ->count('scene_number');
 
-        Log::info("Barrier check: video progress", [
-            'story_id'         => $story->id,
+        Log::error("GenerateSingleSceneVideoJob permanently failed for story #{$this->storyId}, scene {$this->sceneNumber}", [
+            'error'            => $exception->getMessage(),
             'completed_scenes' => $completedScenes,
-            'finished_scenes'  => $finishedScenes,
-            'total_scenes'     => $totalScenes,
         ]);
 
-        if ($finishedScenes >= $totalScenes && $totalScenes > 0) {
-            // Atomic update to ensure AssembleVideoJob is dispatched exactly once
+        if ($completedScenes > 0) {
+            // Trigger assembly with whatever clips succeeded
             $affected = DB::table('stories')
                 ->where('id', $story->id)
                 ->where('video_assembly_triggered', false)
                 ->update(['video_assembly_triggered' => true]);
 
             if ($affected > 0) {
-                Log::info("Barrier reached: all scenes complete, triggering assembly", [
-                    'story_id'    => $story->id,
-                    'scene_count' => $totalScenes,
+                Log::warning("GenerateSingleSceneVideoJob: assembling partial video after scene {$this->sceneNumber} failure", [
+                    'story_id'        => $story->id,
+                    'completed_scenes' => $completedScenes,
                 ]);
-
                 AssembleVideoJob::dispatch($story->id, $this->selectedOutputs);
-            } else {
-                Log::info("Barrier already triggered by another worker, skipping duplicate dispatch", [
-                    'story_id' => $story->id,
-                ]);
             }
+        } else {
+            // No scenes at all succeeded — refund
+            $user = $story->user;
+            if ($user) {
+                $user->refundProductByOutputType('video', $story->id);
+            }
+            $story->decrementPendingOutputs();
         }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Returns the next scene number in the plan, or null if this is the last scene.
+     */
+    private function nextSceneNumber(): ?int
+    {
+        $sceneNumbers = array_keys($this->clipPlan);
+        sort($sceneNumbers);
+        $currentIndex = array_search($this->sceneNumber, $sceneNumbers);
+
+        if ($currentIndex === false || $currentIndex >= count($sceneNumbers) - 1) {
+            return null;
+        }
+
+        return $sceneNumbers[$currentIndex + 1];
+    }
+
+    /**
+     * Extract the very last frame of a stored video clip and upload it to
+     * Fal.ai storage so the next scene job can use it as its starting image.
+     *
+     * Uses `ffmpeg -sseof -0.1 -i video.mp4 -vframes 1 last_frame.jpg`
+     */
+    private function extractLastFrameAndUpload(
+        string $storedVideoUrl,
+        int $storyId,
+        FalAiService $fal,
+        MediaDurationService $mediaDuration
+    ): string {
+        $tmpDir   = storage_path('app/tmp/lastframe_' . $storyId . '_' . $this->sceneNumber . '_' . time());
+        @mkdir($tmpDir, 0755, true);
+        $framePath = "{$tmpDir}/last_frame.jpg";
+
+        try {
+            $ffmpeg    = $this->findFfmpeg();
+            $localPath = $mediaDuration->resolveLocalPath($storedVideoUrl, 'public');
+
+            if (!file_exists($localPath)) {
+                throw new \RuntimeException("Stored video not found for last-frame extraction: {$localPath}");
+            }
+
+            // Extract last frame: seek from EOF 0.1s and grab 1 frame at max quality
+            $cmd = "\"{$ffmpeg}\" -y -sseof -0.1 -i \"{$localPath}\" -vframes 1 -q:v 1 \"{$framePath}\" 2>&1";
+            exec($cmd, $out, $code);
+
+            if ($code !== 0 || !file_exists($framePath) || filesize($framePath) < 100) {
+                // Fallback: try from a fixed offset (0.5s from end)
+                $duration   = $mediaDuration->getDurationSeconds($localPath);
+                $offset     = number_format(max(0, $duration - 0.5), 3, '.', '');
+                $cmdFallback = "\"{$ffmpeg}\" -y -ss {$offset} -i \"{$localPath}\" -vframes 1 -q:v 1 \"{$framePath}\" 2>&1";
+                exec($cmdFallback, $outFb, $codeFb);
+
+                if ($codeFb !== 0 || !file_exists($framePath) || filesize($framePath) < 100) {
+                    throw new \RuntimeException('FFmpeg last-frame extraction failed: ' . implode("\n", array_slice($out, -10)));
+                }
+            }
+
+            Log::info("GenerateSingleSceneVideoJob: extracted last frame for scene {$this->sceneNumber}", [
+                'story_id'   => $storyId,
+                'frame_size' => filesize($framePath),
+                'frame_path' => $framePath,
+            ]);
+
+            // Upload the frame to Fal.ai storage so the next scene can use it
+            $falUrl = $fal->uploadFileToFal($framePath);
+
+            return $falUrl;
+
+        } finally {
+            if (file_exists($framePath)) @unlink($framePath);
+            @rmdir($tmpDir);
+        }
+    }
+
+    private function findFfmpeg(): string
+    {
+        $candidates = [
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
+            'ffmpeg',
+        ];
+
+        foreach ($candidates as $c) {
+            if (str_contains($c, '/') && !file_exists($c)) continue;
+            $cmd = "\"{$c}\" -version 2>&1";
+            exec($cmd, $out, $code);
+            if ($code === 0) return $c;
+        }
+
+        exec('which ffmpeg 2>&1', $whichOut, $whichCode);
+        if ($whichCode === 0 && !empty($whichOut[0])) {
+            return trim($whichOut[0]);
+        }
+
+        throw new \RuntimeException('FFmpeg not found on server. Install with: apt-get install ffmpeg');
     }
 
     private function isPublicFalUrl(string $url): bool

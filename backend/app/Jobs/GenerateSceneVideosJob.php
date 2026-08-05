@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Story;
-use App\Models\StoryAsset;
 use App\Models\AiJobLog;
+use App\Services\FalAiService;
 use App\Services\MediaDurationService;
 use App\Services\VideoTimelinePlanner;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,18 +13,22 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Phase 3 (Video path only) — Dispatches parallel jobs to generate scene videos.
- * This job now acts as a coordinator that calculates timing and dispatches
- * parallel GenerateSingleSceneVideoJob instances for each scene.
- * 
- * The barrier pattern is implemented in GenerateSingleSceneVideoJob which
- * checks completion and triggers AssembleVideoJob when all scenes are done.
+ * Phase 3 (Video path only) — Sequential frame-chaining coordinator.
+ *
+ * Builds the full clip plan (scene_number → clip_duration) from the measured
+ * narration duration, then kicks off Scene 1's GenerateSingleSceneVideoJob.
+ *
+ * Each scene job, after completing, extracts its own last frame via FFmpeg and
+ * passes it as the "inputImageUrl" to the next scene job — so Scene N always
+ * begins from the exact pixel where Scene N-1 ended.
+ *
+ * The last scene job dispatches AssembleVideoJob directly.
  */
 class GenerateSceneVideosJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 300; // 5 minutes for coordination
+    public int $timeout = 120;
     public int $tries   = 1;
 
     public function __construct(
@@ -32,7 +36,7 @@ class GenerateSceneVideosJob implements ShouldQueue
         public array $selectedOutputs
     ) {}
 
-    public function handle(MediaDurationService $mediaDuration): void
+    public function handle(MediaDurationService $mediaDuration, FalAiService $fal): void
     {
         $story = Story::findOrFail($this->storyId);
         $log   = AiJobLog::start($story->id, 'dispatch_scene_videos');
@@ -40,7 +44,8 @@ class GenerateSceneVideosJob implements ShouldQueue
         $testMode = (bool) config('app.story_test_mode', false);
 
         try {
-            $imageAssets = $story->imageAssets()->get();
+            // ── 1. Validate prerequisites ───────────────────────────────────
+            $imageAssets = $story->imageAssets()->orderBy('scene_number')->get();
 
             if ($imageAssets->isEmpty()) {
                 throw new \RuntimeException('No scene images found — cannot generate videos.');
@@ -50,7 +55,7 @@ class GenerateSceneVideosJob implements ShouldQueue
                 throw new \RuntimeException('Narration audio is required before scene videos can be timed.');
             }
 
-            $narrationLocal = $mediaDuration->resolveLocalPath($story->narration_url);
+            $narrationLocal    = $mediaDuration->resolveLocalPath($story->narration_url);
             $narrationDuration = $story->duration_seconds
                 ? (float) $story->duration_seconds
                 : $mediaDuration->getDurationSeconds($narrationLocal);
@@ -59,55 +64,53 @@ class GenerateSceneVideosJob implements ShouldQueue
                 throw new \RuntimeException('Could not determine narration duration for scene video timing.');
             }
 
-            $sceneCount = $imageAssets->count();
+            // ── 2. Build clip plan ──────────────────────────────────────────
+            $sceneCount  = $imageAssets->count();
             $clipDurations = VideoTimelinePlanner::computeClipDurations($narrationDuration, $sceneCount);
 
-            Log::info('GenerateSceneVideosJob: dispatching parallel scene video jobs', [
-                'story_id'             => $story->id,
-                'narration_duration_s' => round($narrationDuration, 3),
-                'scene_count'          => $sceneCount,
-                'clip_durations'       => $clipDurations,
-                'planned_video_total_s'=> array_sum($clipDurations),
-                'test_mode'            => $testMode,
-                'video_model'          => config('services.fal.video_model'),
-            ]);
-
-            // Clear any existing video and video_failed assets for this story (in case of retry)
-            $story->assets()->whereIn('asset_type', ['video', 'video_failed'])->delete();
-
-            // Initialize barrier counters atomically before dispatching parallel jobs
-            $story->update([
-                'total_video_scenes'        => $sceneCount,
-                'completed_video_scenes'    => 0,
-                'video_assembly_triggered'  => false,
-            ]);
-
-            // Dispatch parallel jobs for each scene
-            $clipIndex = 0;
-            foreach ($imageAssets as $asset) {
-                $sceneNum = $asset->scene_number;
-                $clipDuration = $clipDurations[$clipIndex] ?? end($clipDurations);
-                $clipIndex++;
-
-                GenerateSingleSceneVideoJob::dispatch(
-                    $story->id,
-                    $sceneNum,
-                    $clipDuration,
-                    $this->selectedOutputs
-                );
-
-                Log::info("GenerateSceneVideosJob: dispatched job for scene {$sceneNum}", [
-                    'story_id' => $story->id,
-                    'scene_number' => $sceneNum,
-                    'clip_duration' => $clipDuration,
-                ]);
+            // Build a map of scene_number => clip_duration
+            $clipPlan = [];
+            foreach ($imageAssets as $index => $asset) {
+                $clipPlan[$asset->scene_number] = $clipDurations[$index] ?? end($clipDurations);
             }
 
+            Log::info('GenerateSceneVideosJob: starting sequential frame-chain', [
+                'story_id'              => $story->id,
+                'narration_duration_s'  => round($narrationDuration, 3),
+                'scene_count'           => $sceneCount,
+                'clip_durations'        => $clipDurations,
+                'planned_video_total_s' => array_sum($clipDurations),
+                'test_mode'             => $testMode,
+                'video_model'           => config('services.fal.video_model'),
+            ]);
+
+            // ── 3. Clear any stale video assets & reset state ───────────────
+            $story->assets()->whereIn('asset_type', ['video', 'video_failed'])->delete();
+            $story->update([
+                'total_video_scenes'       => $sceneCount,
+                'completed_video_scenes'   => 0,
+                'video_assembly_triggered' => false,
+            ]);
+
+            // ── 4. Resolve + upload Scene 1's story image to Fal.ai ─────────
+            $firstAsset    = $imageAssets->first();
+            $firstImageUrl = $this->resolveAndUploadImage($firstAsset->url, $fal);
+
+            // ── 5. Dispatch ONLY Scene 1 — it will chain the rest ───────────
+            GenerateSingleSceneVideoJob::dispatch(
+                $story->id,
+                $firstAsset->scene_number,      // sceneNumber
+                $clipPlan[$firstAsset->scene_number], // clipDuration
+                $firstImageUrl,                 // inputImageUrl (Fal-ready)
+                $clipPlan,                      // full plan passed through chain
+                $this->selectedOutputs
+            );
+
             $log->complete();
-            
-            Log::info('GenerateSceneVideosJob: all parallel jobs dispatched', [
-                'story_id' => $story->id,
-                'jobs_dispatched' => $sceneCount,
+
+            Log::info('GenerateSceneVideosJob: Scene 1 dispatched — chain will self-propagate', [
+                'story_id'    => $story->id,
+                'scene_count' => $sceneCount,
             ]);
 
         } catch (Throwable $e) {
@@ -115,9 +118,6 @@ class GenerateSceneVideosJob implements ShouldQueue
             $story->update(['status' => 'failed', 'error_message' => mb_substr($e->getMessage(), 0, 500)]);
             throw $e;
         }
-
-        // Note: AssembleVideoJob is now triggered by the barrier in GenerateSingleSceneVideoJob
-        // when all parallel scene jobs complete
     }
 
     public function failed(Throwable $exception): void
@@ -134,5 +134,34 @@ class GenerateSceneVideosJob implements ShouldQueue
         Log::error("GenerateSceneVideosJob permanently failed for story #{$this->storyId} — refunded video credit", [
             'error' => $exception->getMessage(),
         ]);
+    }
+
+    /**
+     * Resolve a storage URL to a local path, then upload it to Fal.ai storage
+     * so it can be used as an image-to-video input.
+     */
+    private function resolveAndUploadImage(string $storageUrl, FalAiService $fal): string
+    {
+        if ($this->isPublicFalUrl($storageUrl)) {
+            return $storageUrl;
+        }
+
+        $disk     = 'public';
+        $baseUrl  = rtrim(\Illuminate\Support\Facades\Storage::disk($disk)->url(''), '/');
+        $relative = ltrim(substr($storageUrl, strlen($baseUrl)), '/');
+        $localPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($relative);
+
+        return $fal->uploadFileToFal($localPath);
+    }
+
+    private function isPublicFalUrl(string $url): bool
+    {
+        if (!filter_var($url, FILTER_VALIDATE_URL)) return false;
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) return false;
+        return !in_array($host, ['localhost', '127.0.0.1', '::1'], true)
+            && !str_starts_with($host, '192.168.')
+            && !str_starts_with($host, '10.')
+            && !str_starts_with($host, '172.');
     }
 }
