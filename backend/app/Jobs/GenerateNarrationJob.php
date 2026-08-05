@@ -65,7 +65,7 @@ class GenerateNarrationJob implements ShouldQueue
 
             if (!$testMode && !VideoTimelinePlanner::isNarrationDurationValid($narrationDuration, $story->language ?? 'en')) {
                 // Language-specific validation
-                $maxAllowed = ($story->language === 'ar') ? 50 : 40;
+                $maxAllowed = ($story->language === 'ar') ? 70 : 40;
                 throw new \RuntimeException(
                     'Narration audio is ' . round($narrationDuration, 1) . "s but should be 20-{$maxAllowed}s. "
                     . "Story had {$wordCount} words. Language: {$story->language}. "
