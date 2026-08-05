@@ -28,11 +28,15 @@ class VideoTimelinePlanner
 
     public static function wordCountBounds(
         int $minSeconds = self::MIN_NARRATION_SECONDS,
-        int $maxSeconds = self::MAX_NARRATION_SECONDS
+        int $maxSeconds = self::MAX_NARRATION_SECONDS,
+        string $language = 'en'
     ): array {
+        // Arabic speaks slower (80 words/min vs 110 for English)
+        $wordsPerMinute = ($language === 'ar') ? 80 : self::WORDS_PER_MINUTE;
+        
         return [
-            'min' => max(40,  (int) round($minSeconds * self::WORDS_PER_MINUTE / 60)),
-            'max' => max(50, (int) round($maxSeconds * self::WORDS_PER_MINUTE / 60)),
+            'min' => max(30,  (int) round($minSeconds * $wordsPerMinute / 60)),
+            'max' => max(40, (int) round($maxSeconds * $wordsPerMinute / 60)),
         ];
     }
 
@@ -108,9 +112,10 @@ class VideoTimelinePlanner
         return $durations;
     }
 
-    public static function isNarrationDurationValid(float $seconds): bool
+    public static function isNarrationDurationValid(float $seconds, string $language = 'en'): bool
     {
-        // Allow 20s minimum for very short languages
-        return $seconds >= 20 && $seconds <= self::MAX_NARRATION_SECONDS + 5;
+        // Arabic creates longer narrations for same word count, allow more range
+        $maxSeconds = ($language === 'ar') ? self::MAX_NARRATION_SECONDS + 15 : self::MAX_NARRATION_SECONDS + 5;
+        return $seconds >= 20 && $seconds <= $maxSeconds;
     }
 }

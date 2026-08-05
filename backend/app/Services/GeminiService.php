@@ -42,7 +42,7 @@ class GeminiService implements StoryTextGeneratorInterface
         $maxDuration    = max($minDuration, min($maxDuration, VideoTimelinePlanner::MAX_NARRATION_SECONDS));
         $targetDuration = max($minDuration, min($targetDuration, $maxDuration));
 
-        $wordBounds = VideoTimelinePlanner::wordCountBounds($minDuration, $maxDuration);
+        $wordBounds = VideoTimelinePlanner::wordCountBounds($minDuration, $maxDuration, $language);
         $minWords   = $wordBounds['min'];
         $maxWords   = $wordBounds['max'];
         $sceneCount = VideoTimelinePlanner::sceneCountForMaxDuration($maxDuration);
