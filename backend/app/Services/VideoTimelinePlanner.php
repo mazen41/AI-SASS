@@ -15,16 +15,16 @@ namespace App\Services;
  */
 class VideoTimelinePlanner
 {
-    public const MIN_NARRATION_SECONDS    = 25;
-    public const MAX_NARRATION_SECONDS    = 35;
+    public const MIN_NARRATION_SECONDS    = 20;
+    public const MAX_NARRATION_SECONDS    = 70;
     public const TARGET_NARRATION_SECONDS = 30;
     public const WORDS_PER_MINUTE         = 110;
 
     /** Effective max seconds per clip for Wan Pro (used for planning). */
     public const CLIP_MAX_SECONDS = 8;
 
-    /** Fixed target: always generate this many scenes for video. 4×8s = 32s covers 30s narration. */
-    public const TARGET_SCENE_COUNT = 4;
+    /** Fixed target: always generate this many scenes for video. 8×8s = 64s covers longer narrations during transition. */
+    public const TARGET_SCENE_COUNT = 8;
 
     public static function wordCountBounds(
         int $minSeconds = self::MIN_NARRATION_SECONDS,
