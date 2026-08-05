@@ -65,15 +65,17 @@ class GenerateSceneVideosJob implements ShouldQueue
             }
 
             // ── 2. Build clip plan ──────────────────────────────────────────
-            // Use story scenes count (not just image count) for frame chaining
-            $scenes      = collect($story->scenes ?? [])->keyBy('scene_number');
+            $scenes      = collect($story->scenes ?? [])->sortBy('scene_number');
             $sceneCount  = $scenes->count();
             $clipDurations = VideoTimelinePlanner::computeClipDurations($narrationDuration, $sceneCount);
 
-            // Build a map of scene_number => clip_duration
+            // Build a map of scene_number => clip_duration using index mapping
             $clipPlan = [];
-            foreach ($scenes as $sceneNum => $scene) {
-                $clipPlan[$sceneNum] = $clipDurations[$sceneNum - 1] ?? end($clipDurations);
+            $index = 0;
+            foreach ($scenes as $scene) {
+                $sceneNum = $scene['scene_number'];
+                $clipPlan[$sceneNum] = $clipDurations[$index] ?? end($clipDurations);
+                $index++;
             }
 
             Log::info('GenerateSceneVideosJob: starting sequential frame-chain', [

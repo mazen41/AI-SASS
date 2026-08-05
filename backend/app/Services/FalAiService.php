@@ -432,16 +432,16 @@ class FalAiService
         //   - Wan Pro is fast → wait 10s before first poll
         //   - Kling video is slow → wait 60s before first poll
         //   - Image models (PuLID included) wait 20s
-        $isWanPro    = str_contains($model, 'wan-pro');
+        $isWan       = str_contains($model, 'wan');
         $isKling     = str_contains($model, 'kling');
-        $isVideo     = str_contains($model, 'video');
+        $isVideo     = str_contains($model, 'video') || str_contains($model, 'i2v') || str_contains($model, 't2v');
         
-        if ($isWanPro) {
-            $initialWait = 10; // Wan Pro is fast
+        if ($isWan) {
+            $initialWait = 10; // Wan models are fast
         } elseif ($isKling) {
             $initialWait = 60; // Kling is slow
         } elseif ($isVideo) {
-            $initialWait = 30; // Other video models
+            $initialWait = 30; // Video models
         } else {
             $initialWait = 20; // Image models
         }
