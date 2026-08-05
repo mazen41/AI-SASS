@@ -115,8 +115,8 @@ class VideoTimelinePlanner
 
     public static function isNarrationDurationValid(float $seconds, string $language = 'en'): bool
     {
-        // Arabic TTS is very slow, allow much wider range
-        $maxSeconds = ($language === 'ar') ? 70 : self::MAX_NARRATION_SECONDS + 5;
+        // Very lenient validation during transition - allow 20-90s range
+        $maxSeconds = 90;
         return $seconds >= 20 && $seconds <= $maxSeconds;
     }
 }
