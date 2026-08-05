@@ -23,8 +23,8 @@ class VideoTimelinePlanner
     /** Effective max seconds per clip for Wan Pro (used for planning). */
     public const CLIP_MAX_SECONDS = 8;
 
-    /** Fixed target: always generate this many scenes for video. */
-    public const TARGET_SCENE_COUNT = 12;
+    /** Fixed target: always generate this many scenes for video. 8×8s = 64s covers any 60s narration. */
+    public const TARGET_SCENE_COUNT = 8;
 
     public static function wordCountBounds(
         int $minSeconds = self::MIN_NARRATION_SECONDS,

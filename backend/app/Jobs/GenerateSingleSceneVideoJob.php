@@ -34,10 +34,10 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
 {
     use Queueable;
 
-    /** 10 minutes per scene (Wan Pro typically completes in 2–4 min) */
+    /** 10 minutes per scene (Wan typically completes in 2–4 min) */
     public int $timeout = 600;
-    public int $tries   = 2;
-    public array $backoff = [30, 60];
+    public int $tries   = 1; // NO retries — Fal.ai charges even for failed/timed-out jobs
+
 
     public function __construct(
         public int    $storyId,
