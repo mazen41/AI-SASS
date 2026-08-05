@@ -112,23 +112,60 @@ class AssembleVideoJob implements ShouldQueue
         try {
             $ffmpeg = $this->findFfmpeg();
 
-            $lines = [];
-            foreach ($videoAssets as $asset) {
+            $normalizedPaths = [];
+            foreach ($videoAssets as $i => $asset) {
                 $localPath = $mediaDuration->resolveLocalPath($asset->url, $disk);
                 if (!file_exists($localPath)) {
                     throw new \RuntimeException("Video clip not found: {$localPath}");
                 }
-                $escaped = str_replace("'", "'\\''", $localPath);
-                $lines[] = "file '{$escaped}'";
+                $normPath = "{$tmpDir}/norm_{$i}.mp4";
+                $cmdNorm  = "\"{$ffmpeg}\" -y -i \"{$localPath}\" "
+                    . "-vf \"scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2\" "
+                    . "-r 25 -c:v libx264 -crf 20 -preset fast -an "
+                    . "\"{$normPath}\" 2>&1";
+                exec($cmdNorm, $outN, $codeN);
+                if ($codeN !== 0 || !file_exists($normPath)) {
+                    throw new \RuntimeException('Normalization failed (exit ' . $codeN . '): ' . implode("\n", array_slice($outN, -20)));
+                }
+                $normalizedPaths[] = $normPath;
             }
 
-            file_put_contents($listFile, implode("\n", $lines) . "\n");
+            $numClips = count($normalizedPaths);
+            if ($numClips === 1) {
+                copy($normalizedPaths[0], $outputConcat);
+            } else {
+                $clipDurations = [];
+                foreach ($normalizedPaths as $path) {
+                    $clipDurations[] = $mediaDuration->getDurationSeconds($path);
+                }
 
-            $cmd1 = "\"{$ffmpeg}\" -y -f concat -safe 0 -i \"{$listFile}\" -c:v libx264 -crf 20 -preset fast -an \"{$outputConcat}\" 2>&1";
-            exec($cmd1, $out1, $code1);
+                $xfadeDuration = 0.4;
+                $filterParts   = [];
+                $runningOffset = 0.0;
 
-            if ($code1 !== 0 || !file_exists($outputConcat)) {
-                throw new \RuntimeException('FFmpeg concat failed (exit ' . $code1 . '): ' . implode("\n", array_slice($out1, -20)));
+                for ($i = 1; $i < $numClips; $i++) {
+                    $prevDuration   = $clipDurations[$i - 1];
+                    $runningOffset += $prevDuration - $xfadeDuration;
+
+                    $inLabel   = ($i === 1) ? '[0:v]' : '[v' . ($i - 1) . ']';
+                    $outLabel  = ($i === $numClips - 1) ? '[vout]' : '[v' . $i . ']';
+                    $offsetStr = number_format(max(0.0, $runningOffset), 3, '.', '');
+
+                    $filterParts[] = "{$inLabel}[{$i}:v]xfade=transition=dissolve:duration={$xfadeDuration}:offset={$offsetStr}{$outLabel}";
+                }
+
+                $filterComplex = implode(';', $filterParts);
+                $inputsStr     = '';
+                foreach ($normalizedPaths as $path) {
+                    $inputsStr .= " -i \"{$path}\"";
+                }
+
+                $cmdXfade = "\"{$ffmpeg}\" -y {$inputsStr} -filter_complex \"{$filterComplex}\" -map \"[vout]\" -c:v libx264 -crf 20 -preset fast -an \"{$outputConcat}\" 2>&1";
+                exec($cmdXfade, $outX, $codeX);
+
+                if ($codeX !== 0 || !file_exists($outputConcat)) {
+                    throw new \RuntimeException('FFmpeg xfade failed (exit ' . $codeX . '): ' . implode("\n", array_slice($outX, -20)));
+                }
             }
 
             $videoDuration = $mediaDuration->getDurationSeconds($outputConcat);
@@ -149,14 +186,28 @@ class AssembleVideoJob implements ShouldQueue
                 'narration_duration_s' => round($narrationDuration, 3),
             ]);
 
-            if ($videoDuration + 0.25 < $narrationDuration) {
-                throw new \RuntimeException(
-                    'Concatenated scene video (' . round($videoDuration, 1) . 's) is shorter than narration ('
-                    . round($narrationDuration, 1) . 's). Scene clips must be planned from measured narration duration.'
-                );
-            }
-
             $durStr = number_format($narrationDuration, 3, '.', '');
+
+            // If concatenated clips are shorter than narration (e.g. some parallel scenes
+            // failed or timed out), loop the clips to fill the gap rather than crashing.
+            if ($videoDuration + 0.25 < $narrationDuration) {
+                Log::warning('AssembleVideoJob: video shorter than narration — looping clips to fill gap', [
+                    'story_id'        => $story->id,
+                    'video_duration'  => round($videoDuration, 1),
+                    'narration_s'     => round($narrationDuration, 1),
+                    'gap_s'           => round($narrationDuration - $videoDuration, 1),
+                ]);
+                $loopedConcat = "{$tmpDir}/looped.mp4";
+                $cmdLoop = "\"{$ffmpeg}\" -y -stream_loop -1 -i \"{$outputConcat}\" -t {$durStr}"
+                    . " -c:v libx264 -crf 20 -preset fast -an"
+                    . " \"{$loopedConcat}\" 2>&1";
+                exec($cmdLoop, $outLoop, $codeLoop);
+                if ($codeLoop !== 0 || !file_exists($loopedConcat)) {
+                    throw new \RuntimeException('FFmpeg loop-fill failed (exit ' . $codeLoop . '): ' . implode("\n", array_slice($outLoop, -20)));
+                }
+                $outputConcat = $loopedConcat;
+                $videoDuration = $narrationDuration; // treat as covered
+            }
 
             if ($videoDuration > $narrationDuration + 0.25) {
                 $trimmedConcat = "{$tmpDir}/trimmed.mp4";
@@ -242,8 +293,11 @@ class AssembleVideoJob implements ShouldQueue
 
         } finally {
             // Clean up temporary files under all circumstances to prevent server disk bloat
-            foreach ([$listFile, $outputConcat, $finalOutput, "{$tmpDir}/trimmed.mp4"] as $f) {
-                if ($f && file_exists($f)) @unlink($f);
+            $files = glob("{$tmpDir}/*");
+            if (is_array($files)) {
+                foreach ($files as $f) {
+                    if (is_file($f)) @unlink($f);
+                }
             }
             @rmdir($tmpDir);
         }

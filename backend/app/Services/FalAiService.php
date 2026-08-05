@@ -347,12 +347,14 @@ class FalAiService
         $payload = [
             'image_url'       => $imageUrl,
             'prompt'          => $prompt
-                . ', smooth cinematic motion, natural body movement, expressive facial animation,'
-                . ' consistent character identity, realistic camera movement, movie-quality animation,'
-                . ' family-friendly atmosphere, warm storytelling style, gentle cinematic lighting,'
-                . ' polished children\'s movie sequence',
+                . ', static camera angle, locked tripod shot, no camera movement, no pan, no zoom,'
+                . ' character centered in frame, medium shot composition,'
+                . ' consistent warm ambient lighting throughout,'
+                . ' children\'s animated movie style, gentle smooth motion only',
             'duration'        => $falDuration,
-            'negative_prompt' => 'blur, distort, low quality, inconsistent face, different child, changed hairstyle, changed clothing, different eye color, scary mood, unsafe content',
+            'negative_prompt' => 'camera pan, zoom, tracking shot, moving camera, handheld shake,'
+                . ' scene transition, different location, changed clothing, different background,'
+                . ' scary, dark, violent, unsafe, blur, distort, low quality',
         ];
 
         if ($isKling) {
