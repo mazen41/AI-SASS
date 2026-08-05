@@ -57,14 +57,15 @@ class GenerateImagesJob implements ShouldQueue
             $needsVideo      = in_array('video',             $selected, true);
 
             // ── How many scenes to generate images for ──────────────────────
-            // With sequential frame-chaining, video only needs Scene 1's image.
-            // Scenes 2–N use the last frame of the previous clip as input.
-            // PDFs (storybook / coloring book) still need all scenes.
+            // Frame chaining logic:
+            // - Video only → Generate Scene 1 image only (frame chaining handles rest)
+            // - Story book or coloring book → Generate all scene images
+            // - Video + PDF → Generate all images (PDFs need all scenes)
             //
             // Priority:
             //  • story_book_pdf or coloring_book_pdf selected → all scenes
             //  • video only → Scene 1 only (saves ~$0.55 per video)
-            //  • TEST_IMAGE_COUNT env var → respected for non-video PDF paths
+            //  • TEST_IMAGE_COUNT env var → respected for non-video paths
 
             if ($needsStoryBook || $needsColorBook) {
                 // PDFs need every scene image
@@ -72,7 +73,7 @@ class GenerateImagesJob implements ShouldQueue
                 $scenesToProcess = ($testImageCount > 0)
                     ? array_slice($scenes, 0, $testImageCount)
                     : $scenes;
-            } elseif ($needsVideo) {
+            } elseif ($needsVideo && !$needsStoryBook && !$needsColorBook) {
                 // Video-only: only generate Scene 1 image (frame chaining handles the rest)
                 $scenesToProcess = array_slice($scenes, 0, 1);
                 Log::info('GenerateImagesJob: video-only path — generating Scene 1 image only (frame chaining handles scenes 2-N)', [

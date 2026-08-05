@@ -15,24 +15,24 @@ namespace App\Services;
  */
 class VideoTimelinePlanner
 {
-    public const MIN_NARRATION_SECONDS    = 40;
-    public const MAX_NARRATION_SECONDS    = 90;
-    public const TARGET_NARRATION_SECONDS = 60;
+    public const MIN_NARRATION_SECONDS    = 25;
+    public const MAX_NARRATION_SECONDS    = 35;
+    public const TARGET_NARRATION_SECONDS = 30;
     public const WORDS_PER_MINUTE         = 110;
 
     /** Effective max seconds per clip for Wan Pro (used for planning). */
     public const CLIP_MAX_SECONDS = 8;
 
-    /** Fixed target: always generate this many scenes for video. 8×8s = 64s covers any 60s narration. */
-    public const TARGET_SCENE_COUNT = 8;
+    /** Fixed target: always generate this many scenes for video. 4×8s = 32s covers 30s narration. */
+    public const TARGET_SCENE_COUNT = 4;
 
     public static function wordCountBounds(
         int $minSeconds = self::MIN_NARRATION_SECONDS,
         int $maxSeconds = self::MAX_NARRATION_SECONDS
     ): array {
         return [
-            'min' => max(60,  (int) round($minSeconds * self::WORDS_PER_MINUTE / 60)),
-            'max' => max(80,  (int) round($maxSeconds * self::WORDS_PER_MINUTE / 60)),
+            'min' => max(40,  (int) round($minSeconds * self::WORDS_PER_MINUTE / 60)),
+            'max' => max(50, (int) round($maxSeconds * self::WORDS_PER_MINUTE / 60)),
         ];
     }
 
@@ -110,7 +110,7 @@ class VideoTimelinePlanner
 
     public static function isNarrationDurationValid(float $seconds): bool
     {
-        // Allow 30s minimum for shorter languages like Arabic
-        return $seconds >= 30 && $seconds <= self::MAX_NARRATION_SECONDS + 10;
+        // Allow 20s minimum for very short languages
+        return $seconds >= 20 && $seconds <= self::MAX_NARRATION_SECONDS + 5;
     }
 }

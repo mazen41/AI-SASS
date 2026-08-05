@@ -65,13 +65,15 @@ class GenerateSceneVideosJob implements ShouldQueue
             }
 
             // ── 2. Build clip plan ──────────────────────────────────────────
-            $sceneCount  = $imageAssets->count();
+            // Use story scenes count (not just image count) for frame chaining
+            $scenes      = collect($story->scenes ?? [])->keyBy('scene_number');
+            $sceneCount  = $scenes->count();
             $clipDurations = VideoTimelinePlanner::computeClipDurations($narrationDuration, $sceneCount);
 
             // Build a map of scene_number => clip_duration
             $clipPlan = [];
-            foreach ($imageAssets as $index => $asset) {
-                $clipPlan[$asset->scene_number] = $clipDurations[$index] ?? end($clipDurations);
+            foreach ($scenes as $sceneNum => $scene) {
+                $clipPlan[$sceneNum] = $clipDurations[$sceneNum - 1] ?? end($clipDurations);
             }
 
             Log::info('GenerateSceneVideosJob: starting sequential frame-chain', [
@@ -96,13 +98,13 @@ class GenerateSceneVideosJob implements ShouldQueue
             $firstAsset    = $imageAssets->first();
             $firstImageUrl = $this->resolveAndUploadImage($firstAsset->url, $fal);
 
-            // ── 5. Dispatch ONLY Scene 1 — it will chain the rest ───────────
+            // ── 5. Dispatch Scene 1 with full clip plan for frame chaining ───────────
             GenerateSingleSceneVideoJob::dispatch(
                 $story->id,
-                $firstAsset->scene_number,      // sceneNumber
-                $clipPlan[$firstAsset->scene_number], // clipDuration
-                $firstImageUrl,                 // inputImageUrl (Fal-ready)
-                $clipPlan,                      // full plan passed through chain
+                $firstAsset->scene_number,       // Use actual scene number from image
+                $clipPlan[$firstAsset->scene_number], // Scene 1 duration
+                $firstImageUrl,                 // Scene 1 image (Fal-ready)
+                $clipPlan,                      // Full plan for all scenes
                 $this->selectedOutputs
             );
 
