@@ -56,35 +56,25 @@ class GenerateImagesJob implements ShouldQueue
             $needsColorBook  = in_array('coloring_book_pdf', $selected, true);
             $needsVideo      = in_array('video',             $selected, true);
 
-            // ── How many scenes to generate images for ──────────────────────
-            // Frame chaining logic:
-            // - Video only → Generate Scene 1 image only (frame chaining handles rest)
-            // - Story book or coloring book → Generate all scene images
-            // - Video + PDF → Generate all images (PDFs need all scenes)
-            //
-            // Priority:
-            //  • story_book_pdf or coloring_book_pdf selected → all scenes
-            //  • video only → Scene 1 only (saves ~$0.55 per video)
-            //  • TEST_IMAGE_COUNT env var → respected for non-video paths
+            // Always generate images for all scenes — parallel generation.
+            // Every scene needs its own image as the starting frame for video.
+            // TEST_IMAGE_COUNT can limit scenes for cheaper dev testing.
+            $testImageCount  = (int) env('TEST_IMAGE_COUNT', 0);
+            $scenesToProcess = ($testImageCount > 0)
+                ? array_slice($scenes, 0, $testImageCount)
+                : $scenes;
 
-            if ($needsStoryBook || $needsColorBook) {
-                // PDFs need every scene image
-                $testImageCount  = (int)env('TEST_IMAGE_COUNT', 0);
-                $scenesToProcess = ($testImageCount > 0)
-                    ? array_slice($scenes, 0, $testImageCount)
-                    : $scenes;
-            } elseif ($needsVideo && !$needsStoryBook && !$needsColorBook) {
-                // Video-only: only generate Scene 1 image (frame chaining handles the rest)
-                $scenesToProcess = array_slice($scenes, 0, 1);
-                Log::info('GenerateImagesJob: video-only path — generating Scene 1 image only (frame chaining handles scenes 2-N)', [
-                    'story_id'    => $story->id,
-                    'total_scenes'=> count($scenes),
-                    'generating'  => 1,
-                    'saving'      => count($scenes) - 1 . ' image API calls (~$' . round((count($scenes) - 1) * 0.05, 2) . ')',
-                ]);
-            } else {
-                $scenesToProcess = $scenes;
-            }
+            // ── Per-story seed lock ──────────────────────────────────────────
+            // A fixed seed derived from the story ID ensures every scene image
+            // is generated with the same style, lighting, color palette, and
+            // clothing — maximising visual consistency across all scenes.
+            $storySeed = abs(crc32('story_' . $story->id)) % 2147483647;
+
+            Log::info('GenerateImagesJob: generating all scene images with seed lock', [
+                'story_id'    => $story->id,
+                'scene_count' => count($scenesToProcess),
+                'seed'        => $storySeed,
+            ]);
 
             foreach ($scenesToProcess as $scene) {
                 $sceneNum = $scene['scene_number'];
@@ -94,14 +84,13 @@ class GenerateImagesJob implements ShouldQueue
 
                 // Always generate images when story_book_pdf OR video is selected.
                 // coloring_book_pdf alone defers to StoryProductService line-art conversion.
-                // But if video is also selected, we must generate images now (video needs them).
                 $needsImages = $needsStoryBook || $needsVideo;
 
                 if ($needsImages) {
                     $stylePrefix    = 'Manga/comic style illustration, bold outlines, vibrant colors, dynamic composition, professional children\'s book art style. ';
                     $enhancedPrompt = $stylePrefix . $prompt;
 
-                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge);
+                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge, $storySeed);
                     $storedUrl = $fal->downloadAndStore(
                         $imageUrl,
                         "stories/{$story->id}/scene_{$sceneNum}.jpg"

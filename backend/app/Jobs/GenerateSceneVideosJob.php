@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\Story;
 use App\Models\AiJobLog;
-use App\Services\FalAiService;
 use App\Services\MediaDurationService;
 use App\Services\VideoTimelinePlanner;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,16 +12,18 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Phase 3 (Video path only) — Sequential frame-chaining coordinator.
+ * Phase 3 (Video path only) — Parallel scene video coordinator.
  *
- * Builds the full clip plan (scene_number → clip_duration) from the measured
- * narration duration, then kicks off Scene 1's GenerateSingleSceneVideoJob.
+ * Dispatches one GenerateSingleSceneVideoJob per scene simultaneously.
+ * All scenes generate in parallel (~30s total vs ~4 min sequential).
  *
- * Each scene job, after completing, extracts its own last frame via FFmpeg and
- * passes it as the "inputImageUrl" to the next scene job — so Scene N always
- * begins from the exact pixel where Scene N-1 ended.
+ * Consistency is maintained by:
+ *  • PuLID face-lock on every image (same child's face in every scene)
+ *  • Per-story seed lock (same seed → same art style, clothing, lighting)
+ *  • Strong prompt enforcement (identical clothing description in every prompt)
  *
- * The last scene job dispatches AssembleVideoJob directly.
+ * The barrier pattern in GenerateSingleSceneVideoJob triggers AssembleVideoJob
+ * exactly once when all scenes complete.
  */
 class GenerateSceneVideosJob implements ShouldQueue
 {
@@ -36,12 +37,11 @@ class GenerateSceneVideosJob implements ShouldQueue
         public array $selectedOutputs
     ) {}
 
-    public function handle(MediaDurationService $mediaDuration, FalAiService $fal): void
+    public function handle(MediaDurationService $mediaDuration): void
     {
         $story = Story::findOrFail($this->storyId);
         $log   = AiJobLog::start($story->id, 'dispatch_scene_videos');
         $story->setStep('generate_videos');
-        $testMode = (bool) config('app.story_test_mode', false);
 
         try {
             // ── 1. Validate prerequisites ───────────────────────────────────
@@ -64,31 +64,26 @@ class GenerateSceneVideosJob implements ShouldQueue
                 throw new \RuntimeException('Could not determine narration duration for scene video timing.');
             }
 
-            // ── 2. Build clip plan ──────────────────────────────────────────
-            $scenes      = collect($story->scenes ?? [])->sortBy('scene_number');
-            $sceneCount  = $scenes->count();
+            // ── 2. Compute clip durations ────────────────────────────────────
+            $sceneCount    = $imageAssets->count();
             $clipDurations = VideoTimelinePlanner::computeClipDurations($narrationDuration, $sceneCount);
 
-            // Build a map of scene_number => clip_duration using index mapping
-            $clipPlan = [];
-            $index = 0;
-            foreach ($scenes as $scene) {
-                $sceneNum = $scene['scene_number'];
-                $clipPlan[$sceneNum] = $clipDurations[$index] ?? end($clipDurations);
-                $index++;
-            }
+            // ── 3. Per-story seed (same seed = same style across all clips) ──
+            // Using the same seed the image job used ensures the video style
+            // matches the images exactly.
+            $storySeed = abs(crc32('story_' . $story->id)) % 2147483647;
 
-            Log::info('GenerateSceneVideosJob: starting sequential frame-chain', [
+            Log::info('GenerateSceneVideosJob: dispatching parallel scene jobs', [
                 'story_id'              => $story->id,
                 'narration_duration_s'  => round($narrationDuration, 3),
                 'scene_count'           => $sceneCount,
                 'clip_durations'        => $clipDurations,
                 'planned_video_total_s' => array_sum($clipDurations),
-                'test_mode'             => $testMode,
+                'seed'                  => $storySeed,
                 'video_model'           => config('services.fal.video_model'),
             ]);
 
-            // ── 3. Clear any stale video assets & reset state ───────────────
+            // ── 4. Reset barrier state ───────────────────────────────────────
             $story->assets()->whereIn('asset_type', ['video', 'video_failed'])->delete();
             $story->update([
                 'total_video_scenes'       => $sceneCount,
@@ -96,25 +91,33 @@ class GenerateSceneVideosJob implements ShouldQueue
                 'video_assembly_triggered' => false,
             ]);
 
-            // ── 4. Resolve + upload Scene 1's story image to Fal.ai ─────────
-            $firstAsset    = $imageAssets->first();
-            $firstImageUrl = $this->resolveAndUploadImage($firstAsset->url, $fal);
+            // ── 5. Dispatch ALL scenes in parallel ───────────────────────────
+            $clipIndex = 0;
+            foreach ($imageAssets as $asset) {
+                $sceneNum    = $asset->scene_number;
+                $clipDuration = $clipDurations[$clipIndex] ?? end($clipDurations);
+                $clipIndex++;
 
-            // ── 5. Dispatch Scene 1 with full clip plan for frame chaining ───────────
-            GenerateSingleSceneVideoJob::dispatch(
-                $story->id,
-                $firstAsset->scene_number,       // Use actual scene number from image
-                $clipPlan[$firstAsset->scene_number], // Scene 1 duration
-                $firstImageUrl,                 // Scene 1 image (Fal-ready)
-                $clipPlan,                      // Full plan for all scenes
-                $this->selectedOutputs
-            );
+                GenerateSingleSceneVideoJob::dispatch(
+                    $story->id,
+                    $sceneNum,
+                    $clipDuration,
+                    $storySeed,
+                    $this->selectedOutputs
+                );
+
+                Log::info("GenerateSceneVideosJob: dispatched scene {$sceneNum}", [
+                    'story_id'     => $story->id,
+                    'scene_number' => $sceneNum,
+                    'clip_duration'=> $clipDuration,
+                ]);
+            }
 
             $log->complete();
 
-            Log::info('GenerateSceneVideosJob: Scene 1 dispatched — chain will self-propagate', [
-                'story_id'    => $story->id,
-                'scene_count' => $sceneCount,
+            Log::info('GenerateSceneVideosJob: all parallel jobs dispatched', [
+                'story_id'       => $story->id,
+                'jobs_dispatched'=> $sceneCount,
             ]);
 
         } catch (Throwable $e) {
@@ -135,37 +138,8 @@ class GenerateSceneVideosJob implements ShouldQueue
             $story->decrementPendingOutputs();
         }
 
-        Log::error("GenerateSceneVideosJob permanently failed for story #{$this->storyId} — refunded video credit", [
+        Log::error("GenerateSceneVideosJob permanently failed for story #{$this->storyId}", [
             'error' => $exception->getMessage(),
         ]);
-    }
-
-    /**
-     * Resolve a storage URL to a local path, then upload it to Fal.ai storage
-     * so it can be used as an image-to-video input.
-     */
-    private function resolveAndUploadImage(string $storageUrl, FalAiService $fal): string
-    {
-        if ($this->isPublicFalUrl($storageUrl)) {
-            return $storageUrl;
-        }
-
-        $disk     = 'public';
-        $baseUrl  = rtrim(\Illuminate\Support\Facades\Storage::disk($disk)->url(''), '/');
-        $relative = ltrim(substr($storageUrl, strlen($baseUrl)), '/');
-        $localPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($relative);
-
-        return $fal->uploadFileToFal($localPath);
-    }
-
-    private function isPublicFalUrl(string $url): bool
-    {
-        if (!filter_var($url, FILTER_VALIDATE_URL)) return false;
-        $host = parse_url($url, PHP_URL_HOST);
-        if (!$host) return false;
-        return !in_array($host, ['localhost', '127.0.0.1', '::1'], true)
-            && !str_starts_with($host, '192.168.')
-            && !str_starts_with($host, '10.')
-            && !str_starts_with($host, '172.');
     }
 }

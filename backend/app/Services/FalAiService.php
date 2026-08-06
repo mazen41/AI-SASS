@@ -246,7 +246,7 @@ class FalAiService
         throw new \RuntimeException('All Fal.ai models failed for line art conversion. Last error: ' . $lastError?->getMessage());
     }
 
-    public function generateImage(string $prompt, ?string $photoUrl = null, ?int $childAge = null): string
+    public function generateImage(string $prompt, ?string $photoUrl = null, ?int $childAge = null, ?int $seed = null): string
     {
         $this->ensureConfigured();
 
@@ -315,6 +315,10 @@ class FalAiService
             ];
         }
 
+        if ($seed !== null) {
+            $payload['seed'] = $seed;
+        }
+
         [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($model, $payload);
         $result = $this->pollForResult($model, $requestId, $statusUrl, $responseUrl);
 
@@ -334,7 +338,7 @@ class FalAiService
      * $durationSeconds: desired clip length. Wan Pro supports flexible durations.
      * Different models have different duration constraints.
      */
-    public function generateVideo(string $imageUrl, string $prompt, int $durationSeconds = 5): string
+    public function generateVideo(string $imageUrl, string $prompt, int $durationSeconds = 5, ?int $seed = null): string
     {
         $this->ensureConfigured();
 
@@ -359,6 +363,10 @@ class FalAiService
 
         if ($isKling) {
             $payload['generate_audio'] = false;
+        }
+
+        if ($seed !== null) {
+            $payload['seed'] = $seed;
         }
 
         [$requestId, $statusUrl, $responseUrl] = $this->submitRequest($this->videoModel, $payload);
