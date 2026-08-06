@@ -133,6 +133,26 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
         $story = Story::find($this->storyId);
         if (!$story) return;
 
+        // ── Race-condition guard ─────────────────────────────────────────────
+        // If the supervisor killed and re-queued this job but the original
+        // worker process was still alive and completed the Fal.ai call, a
+        // successful 'video' asset will already exist. In that case this
+        // failed() call is a ghost — ignore it entirely to avoid corrupting
+        // the barrier and triggering partial assembly.
+        $alreadySucceeded = $story->assets()
+            ->where('asset_type', 'video')
+            ->where('scene_number', $this->sceneNumber)
+            ->exists();
+
+        if ($alreadySucceeded) {
+            Log::warning("GenerateSingleSceneVideoJob: failed() ghost call ignored — video asset already exists for scene {$this->sceneNumber}", [
+                'story_id'     => $story->id,
+                'scene_number' => $this->sceneNumber,
+                'error'        => substr($exception->getMessage(), 0, 200),
+            ]);
+            return;
+        }
+
         // Mark scene as permanently failed
         StoryAsset::updateOrCreate(
             ['story_id' => $story->id, 'scene_number' => $this->sceneNumber, 'asset_type' => 'video_failed'],
