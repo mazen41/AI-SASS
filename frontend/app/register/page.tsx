@@ -35,6 +35,7 @@ function RegisterForm() {
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const searchParams = useSearchParams();
   const packageId = searchParams.get('package') ? Number(searchParams.get('package')) : undefined;
@@ -50,6 +51,7 @@ function RegisterForm() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (password !== confirm) return setError(locale === 'ar' ? 'كلمات المرور غير متطابقة' : 'Passwords do not match');
+    if (!termsAccepted) return setError(locale === 'ar' ? 'يجب الموافقة على الشروط والأحكام' : 'You must accept the Terms and Conditions');
     setLoading(true);
     setError('');
     try {
@@ -187,7 +189,27 @@ function RegisterForm() {
               {error && <motion.div className="auth-error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{error}</motion.div>}
 
               <motion.div variants={fadeUp} style={{ marginTop: '0.5rem' }}>
-                <motion.button className="btn btn-primary" type="submit" disabled={loading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', justifyContent: 'center' }}>
+                <label className="flex items-start gap-2 cursor-pointer" style={{ fontSize: '0.8rem', color: 'var(--text-2)', lineHeight: 1.5 }}>
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    className="mt-0.5"
+                    required
+                  />
+                  <span>
+                    {locale === 'ar' ? 'أوافق على ' : 'I agree to the '}
+                    <Link href="/terms" className="underline font-semibold" style={{ color: 'var(--primary)' }}>
+                      {locale === 'ar' ? 'الشروط والأحكام' : 'Terms & Conditions'}
+                    </Link>
+                    {' ' + (locale === 'ar' ? 'و' : 'and ') + ' '}
+                    <Link href="/privacy" className="underline font-semibold" style={{ color: 'var(--primary)' }}>
+                      {locale === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}
+                    </Link>
+                  </span>
+                </label>
+
+                <motion.button className="btn btn-primary" type="submit" disabled={loading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
                   {loading
                     ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ animation: 'spin-star 1s linear infinite', display: 'inline-block' }}>⏳</span>{t('register_loading')}</span>
                     : <>{t('register_submit')} ✦</>}

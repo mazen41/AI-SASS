@@ -65,6 +65,7 @@ export default function BillingPage() {
   const [gateway, setGateway] = useState<'stripe' | 'paypal' | 'moyasar'>('stripe');
   const [checkoutPlanId, setCheckoutPlanId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isLoggedIn) router.push('/login');
@@ -96,6 +97,11 @@ export default function BillingPage() {
   }, [isLoggedIn]);
 
   const handleSubscribe = async (planId: number) => {
+    if (!termsAccepted) {
+      alert(isRTL ? 'يجب الموافقة على الشروط والأحكام وسياسة عدم استرجاع المنتجات الرقمية' : 'You must accept the Terms and Conditions and the No-Refund Policy for Digital Products');
+      return;
+    }
+    
     setCheckoutPlanId(planId);
     setActionLoading(true);
     try {
@@ -251,6 +257,30 @@ export default function BillingPage() {
                   </button>
                 )}
               </div>
+              
+              {/* Terms and Conditions Checkbox */}
+              <div className="w-full max-w-2xl mt-2 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                  />
+                  <span className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {isRTL 
+                      ? 'أوافق على الشروط والأحكام وسياسة عدم استرجاع المنتجات الرقمية بعد التوليد. ' 
+                      : 'I agree to the Terms and Conditions and the No-Refund Policy for Digital Products after generation. '}
+                    <Link href="/terms" className="text-amber-600 dark:text-amber-400 hover:underline font-semibold">
+                      {isRTL ? 'الشروط والأحكام' : 'Terms & Conditions'}
+                    </Link>
+                    {' ' + (isRTL ? 'و' : 'and ') + ' '}
+                    <Link href="/privacy" className="text-amber-600 dark:text-amber-400 hover:underline font-semibold">
+                      {isRTL ? 'سياسة الخصوصية' : 'Privacy Policy'}
+                    </Link>
+                  </span>
+                </label>
+              </div>
             </div>
 
             {/* Plans Grid */}
@@ -296,7 +326,7 @@ export default function BillingPage() {
 
                     <button
                       onClick={() => handleSubscribe(plan.id)}
-                      disabled={actionLoading}
+                      disabled={actionLoading || !termsAccepted}
                       className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-sm ${
                         isFeatured
                           ? 'bg-indigo-600 hover:bg-indigo-700 text-white'

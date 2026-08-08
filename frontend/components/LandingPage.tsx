@@ -578,26 +578,26 @@ export default function LandingPage() {
             </p>
             <div className="footer-social" style={{ display: 'flex', gap: '0.6rem', marginTop: '1.25rem' }}>
               {['𝕏', '📘', '📸', '▶'].map((icon, i) => (
-                <a key={i} href="#" className="footer-social-btn">{icon}</a>
+                <a key={i} href="#" className="footer-social-btn" target="_blank" rel="noopener noreferrer">{icon}</a>
               ))}
             </div>
           </div>
           <div className="footer-col">
             <h4 className="footer-col-title">{t('footer_product')}</h4>
-            <a href="#">{t('footer_features')}</a>
-            <a href="#">{t('footer_pricing')}</a>
-            <a href="#">{locale === 'ar' ? 'أمثلة' : 'Examples'}</a>
+            <Link href="/#how">{t('footer_features')}</Link>
+            <Link href="/#pricing">{t('footer_pricing')}</Link>
+            <Link href="/#how">{locale === 'ar' ? 'أمثلة' : 'Examples'}</Link>
           </div>
           <div className="footer-col">
             <h4 className="footer-col-title">{t('footer_company')}</h4>
-            <a href="#">{t('footer_about')}</a>
-            <a href="#">{t('footer_blog')}</a>
-            <a href="#">{locale === 'ar' ? 'وظائف' : 'Careers'}</a>
+            <Link href="/about">{t('footer_about')}</Link>
+            <Link href="/blog">{t('footer_blog')}</Link>
+            <Link href="/careers">{locale === 'ar' ? 'وظائف' : 'Careers'}</Link>
           </div>
           <div className="footer-col">
             <h4 className="footer-col-title">{t('footer_legal')}</h4>
-            <a href="#">{t('footer_privacy')}</a>
-            <a href="#">{t('footer_terms')}</a>
+            <Link href="/privacy">{t('footer_privacy')}</Link>
+            <Link href="/terms">{t('footer_terms')}</Link>
           </div>
         </div>
         <div className="footer-bottom">
