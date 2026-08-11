@@ -79,17 +79,72 @@ export interface AuthResponse {
   token: string;
 }
 
-export async function apiRegister(payload: {
+// ── Registration (package-required, OTP-verified, payment-gated) ──────────
+// Replaces the old single-step apiRegister(). Flow:
+//   apiRegisterInitiate -> apiRegisterVerifyOtp -> apiRegisterComplete
+//   (paid package: apiRegisterComplete returns a payment url instead of a
+//    token; after redirect back, poll apiRegisterStatus until 'completed')
+
+export interface RegisterInitiateResponse {
+  message: string;
+  pending_registration_id: string;
+  otp_expires_in_seconds: number;
+}
+
+export async function apiRegisterInitiate(payload: {
   name: string;
   email: string;
   password: string;
   password_confirmation: string;
-  package_id?: number;
-}): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/register', {
+  package_id: number; // required — no more optional package
+}): Promise<RegisterInitiateResponse> {
+  return apiFetch<RegisterInitiateResponse>('/register/initiate', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function apiRegisterResendOtp(pendingRegistrationId: string): Promise<{ message: string; otp_expires_in_seconds: number }> {
+  return apiFetch('/register/resend-otp', {
+    method: 'POST',
+    body: JSON.stringify({ pending_registration_id: pendingRegistrationId }),
+  });
+}
+
+export interface RegisterVerifyOtpResponse {
+  message: string;
+  package: { id: number; name: string; total_price: number };
+  next_step: 'payment' | 'complete';
+}
+
+export async function apiRegisterVerifyOtp(pendingRegistrationId: string, otp: string): Promise<RegisterVerifyOtpResponse> {
+  return apiFetch<RegisterVerifyOtpResponse>('/register/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify({ pending_registration_id: pendingRegistrationId, otp }),
+  });
+}
+
+// Free package -> returns { user, token }. Paid package -> returns { url, pending_registration_id }.
+export type RegisterCompleteResponse =
+  | { message: string; user: AuthUser; token: string }
+  | { url: string; pending_registration_id: string };
+
+export async function apiRegisterComplete(pendingRegistrationId: string): Promise<RegisterCompleteResponse> {
+  return apiFetch<RegisterCompleteResponse>('/register/complete', {
+    method: 'POST',
+    body: JSON.stringify({ pending_registration_id: pendingRegistrationId }),
+  });
+}
+
+export interface RegisterStatusResponse {
+  status: 'pending_otp' | 'otp_verified' | 'awaiting_payment' | 'completed' | 'expired' | 'failed';
+  user?: AuthUser;
+  token?: string;
+  already_claimed?: boolean;
+}
+
+export async function apiRegisterStatus(pendingRegistrationId: string): Promise<RegisterStatusResponse> {
+  return apiFetch<RegisterStatusResponse>(`/register/status/${pendingRegistrationId}`);
 }
 
 export async function apiLogin(payload: {

@@ -520,7 +520,7 @@ export default function StoryViewPage() {
             <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '16mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
               <div style={{ width: '100%', textAlign: 'center', marginTop: '5mm', direction: isRtl ? 'rtl' : 'ltr' }}>
                 <div style={{ fontSize: '12pt', fontWeight: 'bold', color: '#1E90FF', marginBottom: '4mm', letterSpacing: isRtl ? 'normal' : '2px' }}>{isRtl ? '✦ قصة مصورة ✦' : '✦ Story Book ✦'}</div>
-                <h1 style={{ fontSize: '28pt', color: '#0F172A', margin: '0', fontWeight: 'bold', lineHeight: 1.25, fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', wordBreak: 'keep-all', textAlign: 'center' }}>{story.title}</h1>
+                <h1 style={{ fontSize: '28pt', color: '#0F172A', margin: '0', fontWeight: 'bold', lineHeight: 1.25, fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed', textAlign: 'center' }}>{story.title}</h1>
                 <div style={{ width: '25mm', height: '3px', background: 'linear-gradient(90deg, #22D3EE, #1E90FF)', margin: '5mm auto 0' }} />
               </div>
               {imageAssets[0] && (
@@ -530,7 +530,7 @@ export default function StoryViewPage() {
                 </div>
               )}
               <div style={{ width: '100%', textAlign: 'center', marginBottom: '5mm', direction: isRtl ? 'rtl' : 'ltr' }}>
-                {story.child_name && (<><div style={{ fontSize: '12pt', color: '#94A3B8', marginBottom: '2mm', fontStyle: 'italic' }}>{isRtl ? 'بطولة' : 'Starring'}</div><h2 style={{ fontSize: '22pt', color: '#7C3AED', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', margin: '0', textAlign: 'center' }}>{story.child_name}</h2></>)}
+                {story.child_name && (<><div style={{ fontSize: '12pt', color: '#94A3B8', marginBottom: '2mm', fontStyle: 'italic' }}>{isRtl ? 'بطولة' : 'Starring'}</div><h2 style={{ fontSize: '22pt', color: '#7C3AED', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed', margin: '0', textAlign: 'center' }}>{story.child_name}</h2></>)}
               </div>
             </div>
           </div>
@@ -543,7 +543,7 @@ export default function StoryViewPage() {
                 <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '12mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
                   {/* Title Section */}
                   <div style={{ width: '100%', textAlign: 'center', marginBottom: '5mm', direction: isRtl ? 'rtl' : 'ltr' }}>
-                    <h2 style={{ fontSize: '20pt', color: '#0F172A', margin: '0 0 3mm 0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', lineHeight: 1.4, wordBreak: 'keep-all', textAlign: 'center' }}>{(scene as any).title || (isRtl ? `الصفحة ${index + 1}` : `Page ${index + 1}`)}</h2>
+                    <h2 style={{ fontSize: '20pt', color: '#0F172A', margin: '0 0 3mm 0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed', lineHeight: 1.4, textAlign: 'center' }}>{(scene as any).title || (isRtl ? `الصفحة ${index + 1}` : `Page ${index + 1}`)}</h2>
                     <div style={{ width: '25mm', height: '2px', backgroundColor: '#7C3AED', margin: '0 auto' }} />
                   </div>
                   
@@ -571,7 +571,7 @@ export default function StoryViewPage() {
             <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '16mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '30pt', color: '#FF2E93', marginBottom: '6mm' }}>✦</div>
-                <h1 style={{ fontSize: '32pt', color: '#0F172A', fontWeight: 'bold', margin: '0 0 4mm 0', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', lineHeight: 1.3, wordBreak: 'keep-all', textAlign: 'center' }}>{isRtl ? 'النهاية' : 'The End'}</h1>
+                <h1 style={{ fontSize: '32pt', color: '#0F172A', fontWeight: 'bold', margin: '0 0 4mm 0', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed', lineHeight: 1.3, textAlign: 'center' }}>{isRtl ? 'النهاية' : 'The End'}</h1>
                 <p style={{ fontSize: '16pt', color: '#475569', margin: '0', fontStyle: 'italic', fontFamily: isRtl ? "'AmiriCustom', serif" : 'inherit', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed' }}>{isRtl ? 'شكراً لقراءة هذه القصة الرائعة!' : 'Thank you for reading this amazing story!'}</p>
                 <div style={{ fontSize: '30pt', color: '#22D3EE', marginTop: '6mm' }}>✦</div>
               </div>
@@ -585,15 +585,15 @@ export default function StoryViewPage() {
           <div style={{ width: '210mm', height: '296mm', boxSizing: 'border-box', padding: '6mm', background: '#000000', pageBreakAfter: (story.scenes?.length || 0) > 0 ? 'always' : 'avoid' }}>
             <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '20mm 15mm', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
               <div style={{ width: '100%', textAlign: 'center', marginTop: '10mm', direction: isRtl ? 'rtl' : 'ltr' }}>
-                <h1 style={{ fontSize: '32pt', color: '#000000', margin: '0 0 3mm 0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', lineHeight: 1.3, wordBreak: 'keep-all', textAlign: 'center' }}>{isRtl ? 'كتاب التلوين' : 'My Coloring Book'}</h1>
-                <h2 style={{ fontSize: '20pt', color: '#333333', margin: '0', fontWeight: 'normal', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', lineHeight: 1.4, wordBreak: 'keep-all', textAlign: 'center' }}>{story.title}</h2>
+                <h1 style={{ fontSize: '32pt', color: '#000000', margin: '0 0 3mm 0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed', lineHeight: 1.3, textAlign: 'center' }}>{isRtl ? 'كتاب التلوين' : 'My Coloring Book'}</h1>
+                <h2 style={{ fontSize: '20pt', color: '#333333', margin: '0', fontWeight: 'normal', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed', lineHeight: 1.4, textAlign: 'center' }}>{story.title}</h2>
                 <div style={{ width: '35mm', height: '3px', backgroundColor: '#000000', margin: '6mm auto 0' }} />
               </div>
               <div style={{ width: '100%', textAlign: 'center', marginBottom: '20mm', direction: isRtl ? 'rtl' : 'ltr' }}>
                 {story.child_name && (
                   <>
                     <div style={{ fontSize: '14pt', color: '#666666', marginBottom: '3mm' }}>{isRtl ? 'تلوين البطل' : 'Coloring by'}</div>
-                    <h2 style={{ fontSize: '24pt', color: '#000000', fontWeight: 'bold', border: '3px dashed #000000', display: 'inline-block', padding: '3mm 8mm', borderRadius: '6px', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', margin: '0', lineHeight: 1.3, textAlign: 'center' }}>{story.child_name}</h2>
+                    <h2 style={{ fontSize: '24pt', color: '#000000', fontWeight: 'bold', border: '3px dashed #000000', display: 'inline-block', padding: '3mm 8mm', borderRadius: '6px', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed', margin: '0', lineHeight: 1.3, textAlign: 'center' }}>{story.child_name}</h2>
                   </>
                 )}
               </div>
@@ -608,7 +608,7 @@ export default function StoryViewPage() {
                 <div style={{ width: '100%', height: '100%', backgroundColor: '#FFFFFF', boxSizing: 'border-box', padding: '12mm 14mm', display: 'flex', flexDirection: 'column', alignItems: 'center', borderRadius: '4px', position: 'relative', direction: isRtl ? 'rtl' : 'ltr' }}>
                   {/* Title Section */}
                   <div style={{ width: '100%', textAlign: 'center', marginBottom: '6mm', direction: isRtl ? 'rtl' : 'ltr' }}>
-                    <h2 style={{ fontSize: '20pt', color: '#000000', margin: '0 0 3mm 0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', lineHeight: 1.4, wordBreak: 'keep-all', textAlign: 'center' }}>{isRtl ? `صفحة تلوين ${index + 1}` : `Coloring Page ${index + 1}`}</h2>
+                    <h2 style={{ fontSize: '20pt', color: '#000000', margin: '0 0 3mm 0', fontWeight: 'bold', fontFamily: isRtl ? "'AmiriCustom', serif" : 'sans-serif', direction: isRtl ? 'rtl' : 'ltr', unicodeBidi: 'embed', lineHeight: 1.4, textAlign: 'center' }}>{isRtl ? `صفحة تلوين ${index + 1}` : `Coloring Page ${index + 1}`}</h2>
                     <div style={{ width: '25mm', height: '2px', backgroundColor: '#000000', margin: '0 auto' }} />
                   </div>
                   
