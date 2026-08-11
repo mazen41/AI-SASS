@@ -115,24 +115,12 @@ class BillingController extends Controller
 
         $stripeSettings = PaymentSetting::getStripe();
         if (!$stripeSettings || !$stripeSettings->is_enabled || !$stripeSettings->secret_key || !$plan->stripe_price_id) {
-            // Mock Fallback Activation for Dev/Test environments
-            $user->subscriptions()->where('status', 'active')->update(['status' => 'canceled', 'canceled_at' => now()]);
-
-            $subscription = Subscription::create([
-                'user_id' => $user->id,
-                'plan_id' => $plan->id,
-                'gateway' => 'stripe',
-                'gateway_subscription_id' => 'mock_stripe_sub_' . uniqid(),
-                'status' => 'active',
-                'current_period_start' => now(),
-                'current_period_end' => now()->addDays(30),
-            ]);
-
-            $this->createSubscriptionInvoice($user, $subscription, $plan, 'stripe');
-
-            return response()->json([
-                'url' => rtrim(config('app.frontend_url', 'http://localhost:3000'), '/') . '/billing/success?gateway=stripe&mock=true'
-            ]);
+            // SECURITY: fail closed. A "mock" fallback here used to grant a
+            // real active subscription with no payment whenever Stripe was
+            // unconfigured — anyone could hit this endpoint and get a free
+            // plan. Never silently grant access; require a working gateway.
+            Log::error('Stripe subscribe: gateway not configured', ['user_id' => $user->id, 'plan_id' => $plan->id]);
+            return response()->json(['message' => 'Payment is temporarily unavailable. Please try again later or contact support.'], 503);
         }
 
         try {
@@ -175,24 +163,10 @@ class BillingController extends Controller
 
         $paypalSettings = PaymentSetting::getPaypal();
         if (!$paypalSettings || !$paypalSettings->is_enabled || !$paypalSettings->public_key || !$paypalSettings->secret_key || !$plan->paypal_plan_id) {
-            // Mock Fallback Activation for Dev/Test environments
-            $user->subscriptions()->where('status', 'active')->update(['status' => 'canceled', 'canceled_at' => now()]);
-
-            $subscription = Subscription::create([
-                'user_id' => $user->id,
-                'plan_id' => $plan->id,
-                'gateway' => 'paypal',
-                'gateway_subscription_id' => 'mock_paypal_sub_' . uniqid(),
-                'status' => 'active',
-                'current_period_start' => now(),
-                'current_period_end' => now()->addDays(30),
-            ]);
-
-            $this->createSubscriptionInvoice($user, $subscription, $plan, 'paypal');
-
-            return response()->json([
-                'url' => rtrim(config('app.frontend_url', 'http://localhost:3000'), '/') . '/billing/success?gateway=paypal&mock=true'
-            ]);
+            // SECURITY: fail closed — see subscribeStripe() for why the old
+            // mock-activation fallback was removed.
+            Log::error('PayPal subscribe: gateway not configured', ['user_id' => $user->id, 'plan_id' => $plan->id]);
+            return response()->json(['message' => 'Payment is temporarily unavailable. Please try again later or contact support.'], 503);
         }
 
         $baseUrl = $paypalSettings->is_sandbox
@@ -265,28 +239,12 @@ class BillingController extends Controller
 
         $frontendUrl = rtrim(config('app.frontend_url', 'http://localhost:3000'), '/');
 
-        // Fallback / mock when Moyasar is not configured
+        // SECURITY: fail closed — see subscribeStripe() for why the old
+        // mock-activation fallback (which granted a free active subscription
+        // with no payment whenever Moyasar was unconfigured) was removed.
         if (!$setting || !$setting->is_enabled || !$setting->secret_key || !$setting->public_key) {
-            $user->subscriptions()->where('status', 'active')->update([
-                'status'      => 'canceled',
-                'canceled_at' => now(),
-            ]);
-
-            $subscription = Subscription::create([
-                'user_id'                 => $user->id,
-                'plan_id'                 => $plan->id,
-                'gateway'                 => 'moyasar',
-                'gateway_subscription_id' => 'mock_moyasar_' . uniqid(),
-                'status'                  => 'active',
-                'current_period_start'    => now(),
-                'current_period_end'      => now()->addDays(30),
-            ]);
-
-            $this->createSubscriptionInvoice($user, $subscription, $plan, 'moyasar');
-
-            return response()->json([
-                'url' => $frontendUrl . '/billing/success?gateway=moyasar&mock=true',
-            ]);
+            Log::error('Moyasar subscribe: gateway not configured', ['user_id' => $user->id, 'plan_id' => $plan->id]);
+            return response()->json(['message' => 'Payment is temporarily unavailable. Please try again later or contact support.'], 503);
         }
 
         // Amount in halala (SAR cents): Moyasar expects smallest currency unit
@@ -319,19 +277,12 @@ class BillingController extends Controller
                 throw new \Exception('Moyasar API error: ' . $response->body());
             }
 
-            $payment     = $response->json();
-            $paymentUrl  = null;
-
-            // Moyasar returns links array — find the payment URL
-            foreach ($payment['source']['transaction_url'] ?? [] as $link) {
-                $paymentUrl = $link;
-                break;
-            }
-
-            // Newer Moyasar API: payment URL is in source.transaction_url directly
-            if (!$paymentUrl && isset($payment['source']['transaction_url'])) {
-                $paymentUrl = $payment['source']['transaction_url'];
-            }
+            $payment    = $response->json();
+            // Moyasar's payment URL is a single string at source.transaction_url,
+            // not an array — the old code here `foreach`'d over it as if it were
+            // one, which is either a no-op or a TypeError depending on the SDK
+            // version, and always fell through to the checks below anyway.
+            $paymentUrl = $payment['source']['transaction_url'] ?? null;
 
             // Fallback: use Moyasar hosted payment page
             if (!$paymentUrl && isset($payment['id'])) {

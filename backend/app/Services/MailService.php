@@ -239,6 +239,15 @@ class MailService
                 'variables' => ['app_name', 'user_name', 'plan_name', 'days_remaining', 'renewal_date', 'amount'],
             ],
             [
+                'key' => 'registration_otp',
+                'name' => 'Registration OTP Code',
+                'subject' => 'Your {{app_name}} verification code: {{otp_code}}',
+                'html_content' => '<h1>Verify your email</h1><p>Hello {{user_name}},</p><p>Your verification code is:</p><h2 style="letter-spacing:4px">{{otp_code}}</h2><p>This code expires in {{expires_in}}.</p><p>If you did not request this, you can safely ignore this email.</p>',
+                'text_content' => 'Verify your email. Hello {{user_name}}, your verification code is {{otp_code}}. It expires in {{expires_in}}.',
+                'description' => 'Sent with a one-time code during registration email verification',
+                'variables' => ['app_name', 'user_name', 'otp_code', 'expires_in'],
+            ],
+            [
                 'key' => 'login_notification',
                 'name' => 'Login Notification',
                 'subject' => 'New login to your {{app_name}} account',

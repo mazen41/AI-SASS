@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Admin\AuthSettingsController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use App\Http\Controllers\Webhook\PaypalWebhookController;
 use App\Http\Controllers\Webhook\MoyasarWebhookController;
+use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\StorybookViewerController;
 use App\Http\Controllers\PasswordResetController;
@@ -50,7 +51,16 @@ Route::get('/blog', [BlogPostController::class, 'index']);
 Route::get('/blog/{slug}', [BlogPostController::class, 'show']);
 
 // Public auth routes
-Route::post('/register', [AuthController::class, 'register']);
+// NOTE: the old single-step POST /register (AuthController::register) has been
+// removed from routing — it allowed registering without a package and without
+// verifying the email, which is exactly what tasks 4 & 5 required fixing.
+// The method itself is left in AuthController for reference but is unrouted,
+// so there is no way to reach it and bypass the new flow below.
+Route::post('/register/initiate',    [RegistrationController::class, 'initiate']);
+Route::post('/register/resend-otp',  [RegistrationController::class, 'resendOtp']);
+Route::post('/register/verify-otp',  [RegistrationController::class, 'verifyOtp']);
+Route::post('/register/complete',    [RegistrationController::class, 'complete']);
+Route::get('/register/status/{id}',  [RegistrationController::class, 'status'])->whereUuid('id');
 Route::post('/login',    [AuthController::class, 'login']);
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
 Route::post('/reset-password', [PasswordResetController::class, 'reset']);

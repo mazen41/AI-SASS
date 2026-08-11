@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Package;
 use App\Models\User;
 use App\Models\AuthSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class SocialAuthController extends Controller
@@ -29,7 +32,23 @@ class SocialAuthController extends Controller
         }
         RateLimiter::hit($key, 60);
 
-        $driver = Socialite::driver($provider)->stateless();
+        // ── Package enforcement for social signup ────────────────────────────
+        // Social login used to create a `users` row with NO package at all —
+        // a straightforward bypass of task 4's "must choose a package" rule.
+        // The frontend must pass ?package_id=X (the package the visitor picked
+        // on the pricing/signup page) BEFORE redirecting here. We stash it in
+        // cache keyed by a random `state` token, since Socialite's stateless()
+        // mode doesn't persist a session across the OAuth round trip. If the
+        // person already has an account, this is just a login and package_id
+        // is ignored in callback() — see there.
+        $request->validate(['package_id' => ['nullable', 'integer', 'exists:packages,id']]);
+
+        $state = Str::random(40);
+        if ($request->filled('package_id')) {
+            Cache::put("social_auth_package:{$state}", (int) $request->package_id, now()->addMinutes(15));
+        }
+
+        $driver = Socialite::driver($provider)->stateless()->with(['state' => $state]);
 
         // Apply dynamic callback URL from admin settings if configured
         $callbackUrl = $this->getCallbackUrl($provider);
@@ -84,7 +103,7 @@ class SocialAuthController extends Controller
         $user = User::where('email', $email)->first();
 
         if ($user) {
-            // Update social fields
+            // Existing account — this is a login, package_id (if any) is irrelevant.
             $user->update([
                 'social_provider'      => $provider,
                 'social_id'            => $socialUser->getId(),
@@ -92,11 +111,30 @@ class SocialAuthController extends Controller
                 'social_refresh_token' => $socialUser->refreshToken ?? null,
             ]);
         } else {
-            // Create new user
+            // ── New account via social login: package required, same as email flow ──
+            $state     = $request->query('state');
+            $packageId = $state ? Cache::pull("social_auth_package:{$state}") : null;
+            $package   = $packageId ? Package::where('id', $packageId)->where('is_active', true)->first() : null;
+
+            if (!$package) {
+                return redirect()->to("{$frontendUrl}/signup?error="
+                    . urlencode('Please choose a package before signing up.'));
+            }
+
+            // Paid packages need a payment step, which this social-login redirect
+            // flow doesn't carry. Rather than silently granting free access,
+            // send them to the normal email+OTP+payment registration flow,
+            // pre-filled with their social email/name on the frontend.
+            if ((float) $package->total_price > 0.0) {
+                $params = http_build_query(['email' => $email, 'name' => $socialUser->getName() ?? '', 'package_id' => $package->id]);
+                return redirect()->to("{$frontendUrl}/register?{$params}"
+                    . '&notice=' . urlencode('This package requires payment — please complete registration below.'));
+            }
+
             $user = User::create([
                 'name'                 => $socialUser->getName() ?? $socialUser->getNickname() ?? explode('@', $email)[0],
                 'email'                => $email,
-                'password'             => Hash::make(uniqid()),
+                'password'             => Hash::make(Str::random(32)),
                 'role'                 => 'user',
                 'status'               => 'active',
                 'avatar'               => $socialUser->getAvatar(),
@@ -106,6 +144,8 @@ class SocialAuthController extends Controller
                 'social_token'         => $socialUser->token,
                 'social_refresh_token' => $socialUser->refreshToken ?? null,
             ]);
+
+            $user->assignPackage($package->id);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;

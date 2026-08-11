@@ -38,8 +38,21 @@ class MoyasarWebhookController extends Controller
         $payload   = $request->getContent();
         $signature = $request->header('X-Moyasar-Signature');
 
-        // Verify HMAC-SHA256 signature
-        if ($setting->webhook_secret) {
+        // Verify HMAC-SHA256 signature.
+        // SECURITY FIX: this used to be `if ($setting->webhook_secret) { verify }`,
+        // which meant a missing secret SKIPPED verification entirely — anyone
+        // who found the webhook URL could POST a fake `payment.paid` event and
+        // get a free subscription or (with the new registration flow) a free
+        // account. Now we fail CLOSED: no secret configured = reject, except
+        // in local/testing where you're presumably hitting this with a tool
+        // like `php artisan tinker` or a manual curl during setup.
+        if (!$setting->webhook_secret) {
+            if (!app()->environment('local', 'testing')) {
+                Log::error('Moyasar webhook: rejected — no webhook_secret configured in a non-local environment');
+                return response('Webhook not configured', 400);
+            }
+            Log::warning('Moyasar webhook: no webhook_secret configured — allowing ONLY because APP_ENV is local/testing');
+        } else {
             $expected = hash_hmac('sha256', $payload, $setting->webhook_secret);
             if (!hash_equals($expected, (string) $signature)) {
                 Log::error('Moyasar webhook: invalid signature');
@@ -72,6 +85,25 @@ class MoyasarWebhookController extends Controller
     {
         $payment  = $data['data'] ?? $data;
         $metadata = $payment['metadata'] ?? [];
+
+        // Defense in depth: don't trust the event `type` alone — also check
+        // the payment's own status field actually says paid.
+        $status = strtolower($payment['status'] ?? '');
+        if ($status !== 'paid') {
+            Log::warning('Moyasar payment.paid event received but payment.status is not "paid" — ignoring', [
+                'payment_id' => $payment['id'] ?? null,
+                'status'     => $status,
+            ]);
+            return;
+        }
+
+        // ── Branch: package-purchase-at-registration flow (no user yet) ─────
+        if (!empty($metadata['pending_registration_id'])) {
+            $this->handleRegistrationPaymentPaid($payment, $metadata['pending_registration_id']);
+            return;
+        }
+
+        // ── Existing flow: paying for a Plan/Subscription as a logged-in user ─
         $userId   = $metadata['user_id']   ?? null;
         $planId   = $metadata['plan_id']   ?? null;
 
@@ -151,6 +183,60 @@ class MoyasarWebhookController extends Controller
             'user_id'         => $user->id,
             'plan'            => $plan->name,
             'subscription_id' => $subscription->id,
+        ]);
+    }
+
+    /**
+     * Confirmed payment for a paid-package registration: create the account
+     * now. This is the ONLY place a paid registration's `users` row gets
+     * created — there is no other code path that can do it.
+     */
+    private function handleRegistrationPaymentPaid(array $payment, string $pendingRegistrationId): void
+    {
+        $pending = \App\Models\PendingRegistration::find($pendingRegistrationId);
+        if (!$pending) {
+            Log::error('Moyasar payment.paid: pending_registration not found', ['id' => $pendingRegistrationId]);
+            return;
+        }
+
+        // Idempotency: webhook deliveries can duplicate. createUserAndComplete()
+        // itself is also idempotent, but skip the whole block if already done.
+        if ($pending->status === 'completed' && $pending->created_user_id) {
+            Log::info('Moyasar payment.paid: registration already completed', ['pending_id' => $pending->id]);
+            return;
+        }
+
+        // Must have actually passed OTP verification — belt and suspenders,
+        // since complete()/initiateMoyasarPayment() already enforce this
+        // before a payment can even be created.
+        if (!$pending->email_verified_at) {
+            Log::error('Moyasar payment.paid: pending registration has no verified email — refusing to create account', [
+                'pending_id' => $pending->id,
+            ]);
+            return;
+        }
+
+        $user = $pending->createUserAndComplete();
+
+        Transaction::create([
+            'user_id'                => $user->id,
+            'gateway'                => 'moyasar',
+            'gateway_transaction_id' => $payment['id'] ?? null,
+            'amount'                 => (int) ($payment['amount'] ?? 0) / 100,
+            'currency'               => strtoupper($payment['currency'] ?? 'SAR'),
+            'status'                 => 'completed',
+            'type'                   => 'package',
+            'gateway_response'       => $payment,
+        ]);
+
+        ActivityLog::log('user_registered_paid_package', $user->id, 'User', $user->id, null, [
+            'package_id' => $pending->package_id,
+            'gateway'    => 'moyasar',
+        ]);
+
+        Log::info('Moyasar payment.paid: registration completed, account created', [
+            'user_id'    => $user->id,
+            'pending_id' => $pending->id,
         ]);
     }
 

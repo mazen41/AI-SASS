@@ -14,7 +14,11 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * Register a new user.
+     * @deprecated UNROUTED as of 2026-08-10 — see routes/api.php.
+     * This single-step registration let package_id be null and never
+     * verified the email, bypassing the package-required + OTP-verified
+     * flow now enforced by RegistrationController. Left here only for
+     * reference; there is no route pointing at this method anymore.
      */
     public function register(Request $request): JsonResponse
     {

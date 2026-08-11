@@ -11,6 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // MySQL-only: this collation conversion has no equivalent (or need)
+        // on SQLite/Postgres, which are already UTF-8 by default. Without
+        // this guard, `php artisan migrate` fails outright on any non-MySQL
+        // connection (e.g. local/testing with sqlite), blocking every
+        // migration after this one.
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         $tables = [
             'stories'     => ['title', 'content', 'error_message', 'custom_prompt'],
             'story_assets'=> ['url', 'prompt'],
