@@ -23,8 +23,8 @@ class VideoTimelinePlanner
     /** Effective max seconds per clip for Wan Pro (used for planning). */
     public const CLIP_MAX_SECONDS = 8;
 
-    /** Fixed target: always generate this many scenes for video. 8×8s = 64s covers longer narrations during transition. */
-    public const TARGET_SCENE_COUNT = 8;
+    /** Fixed target: always generate this many scenes for video. 12×8s = 96s covers the full narration range (up to 90s) with headroom. This was accidentally lowered to 8 at some point (64s max), which let stories with 64–90s narration pass validation but then crash video generation with a RuntimeException. Keep this at 12 to match isNarrationDurationValid()'s 90s ceiling below. */
+    public const TARGET_SCENE_COUNT = 12;
 
     public static function wordCountBounds(
         int $minSeconds = self::MIN_NARRATION_SECONDS,

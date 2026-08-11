@@ -63,17 +63,24 @@ function RegisterForm() {
   // Pre-selected via ?package=ID (e.g. coming from the pricing section)
   useEffect(() => {
     if (!urlPackageId) return;
-    apiGetPublicPackage(urlPackageId)
+    apiGetPublicPackage(urlPackageId, locale)
       .then((res) => { setSelectedPackage(res.package); setStep('details'); })
       .catch(() => {});
-  }, [urlPackageId]);
+  }, [urlPackageId, locale]);
 
   // If no package pre-selected, load the list so the user can pick one —
   // this is the frontend half of "package required before registration".
   useEffect(() => {
     if (urlPackageId || selectedPackage) return;
-    apiGetPublicPackages().then((res) => setPackages(res.packages)).catch(() => setPackages([]));
-  }, [urlPackageId, selectedPackage]);
+    apiGetPublicPackages(locale).then((res) => setPackages(res.packages)).catch(() => setPackages([]));
+  }, [urlPackageId, selectedPackage, locale]);
+
+  const formatSar = (amount: number) =>
+    new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-SA', {
+      style: 'currency',
+      currency: 'SAR',
+      maximumFractionDigits: 0,
+    }).format(amount);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -228,7 +235,7 @@ function RegisterForm() {
                       <div style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
                         {Number(pkg.total_price) === 0
                           ? (locale === 'ar' ? 'مجاني' : 'Free')
-                          : Number(pkg.total_price).toFixed(2)}
+                          : formatSar(Number(pkg.total_price))}
                       </div>
                     </button>
                   ))}
@@ -258,7 +265,7 @@ function RegisterForm() {
                     <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', margin: '0.15rem 0 0' }}>
                       {Number(selectedPackage.total_price) === 0
                         ? (locale === 'ar' ? 'باقة مجانية — لا يلزم دفع' : 'Free package — no payment required')
-                        : `${Number(selectedPackage.total_price).toFixed(2)} — ${locale === 'ar' ? 'سيُطلب الدفع بعد التحقق من البريد' : 'payment requested after email verification'}`}
+                        : `${formatSar(Number(selectedPackage.total_price))} — ${locale === 'ar' ? 'سيُطلب الدفع بعد التحقق من البريد' : 'payment requested after email verification'}`}
                     </p>
                   </div>
                   <button type="button" onClick={() => { setSelectedPackage(null); setStep('package'); router.replace('/register'); }}

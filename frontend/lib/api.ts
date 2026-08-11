@@ -809,12 +809,14 @@ export async function apiDeletePackage(id: number): Promise<{ message: string }>
 
 // -- Public Packages -----------------------------------------------------------
 
-export async function apiGetPublicPackages(): Promise<{ packages: Package[] }> {
-  return apiFetch<{ packages: Package[] }>('/packages');
+export async function apiGetPublicPackages(lang?: 'en' | 'ar'): Promise<{ packages: Package[] }> {
+  const query = lang ? `?lang=${lang}` : '';
+  return apiFetch<{ packages: Package[] }>(`/packages${query}`);
 }
 
-export async function apiGetPublicPackage(id: number): Promise<{ package: Package }> {
-  return apiFetch<{ package: Package }>(`/packages/${id}`);
+export async function apiGetPublicPackage(id: number, lang?: 'en' | 'ar'): Promise<{ package: Package }> {
+  const query = lang ? `?lang=${lang}` : '';
+  return apiFetch<{ package: Package }>(`/packages/${id}${query}`);
 }
 
 // -- Product Balances ---------------------------------------------------------

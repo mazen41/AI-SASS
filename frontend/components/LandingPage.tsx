@@ -51,11 +51,18 @@ export default function LandingPage() {
   const [pkgLoading, setPkgLoading] = useState(true);
 
   useEffect(() => {
-    apiGetPublicPackages()
+    apiGetPublicPackages(locale)
       .then((res) => setPackages(res.packages.filter((p) => p.is_active)))
       .catch(() => setPackages([]))
       .finally(() => setPkgLoading(false));
-  }, []);
+  }, [locale]);
+
+  const formatSar = (amount: number) =>
+    new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-SA', {
+      style: 'currency',
+      currency: 'SAR',
+      maximumFractionDigits: 0,
+    }).format(amount);
 
   const features = [
     { icon: '🎭', color: 'feat-icon-blue',   accent: 'kido-card-blue',   title: t('feat1_title'), desc: t('feat1_desc') },
@@ -399,7 +406,7 @@ export default function LandingPage() {
                 const isFeatured = i === 1;
                 const checkClasses = ['pricing-check-blue', 'pricing-check-pink', 'pricing-check-yellow'];
                 const checkClass = checkClasses[i % checkClasses.length];
-                const price = pkg.total_price === 0 ? (locale === 'ar' ? 'مجاني' : 'Free') : `${Number(pkg.total_price).toFixed(2)}`;
+                const price = pkg.total_price === 0 ? (locale === 'ar' ? 'مجاني' : 'Free') : formatSar(Number(pkg.total_price));
                 return (
                   <motion.div
                     key={pkg.id}
@@ -415,7 +422,7 @@ export default function LandingPage() {
                     </div>
                     <div style={{ marginBottom: '0.25rem' }}>
                       <span className="pricing-amount">{price}</span>
-                      {pkg.total_price > 0 && <span className="pricing-period">{t('plan_per_month')}</span>}
+                      {pkg.total_price > 0 && <span className="pricing-period">{locale === 'ar' ? 'ر.س' : 'SAR'}</span>}
                     </div>
                     <ul className="pricing-features">
                       {pkg.items?.map((item) => (

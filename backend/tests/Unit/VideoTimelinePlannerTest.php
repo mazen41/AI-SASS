@@ -17,17 +17,48 @@ class VideoTimelinePlannerTest extends TestCase
 
     public function test_scene_count_covers_ninety_second_narration(): void
     {
-        $this->assertSame(9, VideoTimelinePlanner::sceneCountForMaxDuration(90));
+        // Fixed at TARGET_SCENE_COUNT (12) regardless of requested duration —
+        // 12 × CLIP_MAX_SECONDS (8) = 96s, which covers the 90s validation
+        // ceiling in isNarrationDurationValid() below with headroom.
+        $this->assertSame(12, VideoTimelinePlanner::sceneCountForMaxDuration(90));
     }
 
     public function test_clip_durations_cover_narration_without_looping(): void
     {
-        $durations = VideoTimelinePlanner::computeClipDurations(75.0, 9);
+        $durations = VideoTimelinePlanner::computeClipDurations(75.0, 12);
 
-        $this->assertCount(9, $durations);
+        $this->assertCount(12, $durations);
         $this->assertGreaterThanOrEqual(75, array_sum($durations));
         $this->assertContains(5, $durations);
-        $this->assertContains(10, $durations);
+        $this->assertContains(8, $durations);
+    }
+
+    public function test_clip_durations_reject_narration_beyond_scene_capacity(): void
+    {
+        // 12 scenes × 8s max = 96s capacity. A narration longer than that
+        // (plus the 0.5s tolerance) must fail loudly here rather than
+        // silently truncating audio during assembly.
+        $this->expectException(\RuntimeException::class);
+        VideoTimelinePlanner::computeClipDurations(97.0, 12);
+    }
+
+    public function test_scene_capacity_covers_the_full_valid_narration_range(): void
+    {
+        // Regression guard for the bug where TARGET_SCENE_COUNT (8) was
+        // lower than what isNarrationDurationValid() actually allowed (90s),
+        // so any narration in the 64–90s range passed validation but then
+        // threw a RuntimeException in computeClipDurations() during video
+        // generation. This asserts the two are consistent.
+        $maxAllowedNarration = 90.0;
+        $sceneCapacity = VideoTimelinePlanner::TARGET_SCENE_COUNT * VideoTimelinePlanner::CLIP_MAX_SECONDS;
+        $this->assertGreaterThanOrEqual($maxAllowedNarration, $sceneCapacity);
+
+        // And confirm it actually plans successfully at that ceiling.
+        $durations = VideoTimelinePlanner::computeClipDurations(
+            $maxAllowedNarration,
+            VideoTimelinePlanner::sceneCountForMaxDuration($maxAllowedNarration)
+        );
+        $this->assertGreaterThanOrEqual($maxAllowedNarration, array_sum($durations));
     }
 
     public function test_short_story_word_count_is_detected(): void
