@@ -76,6 +76,12 @@ Route::post('/webhooks/paypal',  [PaypalWebhookController::class,   'handle']);
 Route::post('/webhooks/moyasar', [MoyasarWebhookController::class,  'handle']);
 Route::post('/webhooks/myfatoorah', [MyFatoorahWebhookController::class, 'handle']);
 
+// Signed server-to-server callbacks from the centralized NazBiz payment service.
+Route::prefix('internal/payments')->middleware('central.payment')->group(function () {
+    Route::post('/verify', [\App\Http\Controllers\Api\CentralPaymentOriginController::class, 'verifyOrder']);
+    Route::post('/confirm', [\App\Http\Controllers\Api\CentralPaymentOriginController::class, 'confirmPayment']);
+});
+
 // Backup download (uses api_token query param for authentication)
 Route::get('/admin/backup-settings/download', [BackupSettingsController::class, 'downloadBackup']);
 

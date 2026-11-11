@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Invoice;
 use App\Models\MyFatoorahCheckoutSession;
-use App\Models\Package;
 use App\Models\PendingRegistration;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -100,6 +99,7 @@ class CentralPaymentOriginController extends Controller
                     || (string) $pending->id !== (string) $input['external_customer_id']) return false;
                 if ($input['payment_status'] === 'paid') {
                     if (!$pending->email_verified_at || $pending->status !== 'awaiting_payment') return false;
+                    $pending->update(['myfatoorah_invoice_id' => $input['myfatoorah_invoice_id']]);
                     $user = $pending->createUserAndComplete();
                     Transaction::firstOrCreate(['gateway_transaction_id' => 'myfatoorah_' . $input['myfatoorah_payment_id']], [
                         'user_id' => $user->id,
@@ -112,7 +112,6 @@ class CentralPaymentOriginController extends Controller
                     ]);
                     ActivityLog::log('user_registered_paid_package', $user->id, 'User', $user->id, null, ['package_id' => $pending->package_id, 'gateway' => 'myfatoorah']);
                 } else {
-                    $pending->update(['status' => 'payment_failed']);
                     $checkout->update(['status' => 'failed']);
                     return true;
                 }
@@ -132,7 +131,9 @@ class CentralPaymentOriginController extends Controller
                             'gateway_subscription_id' => $transactionId,
                             'status' => 'active',
                             'current_period_start' => now(),
-                            'current_period_end' => now()->addDays(30),
+                            'current_period_end' => in_array(strtolower((string) $plan->billing_period), ['year', 'yearly', 'annual', 'annually'], true)
+                                ? now()->addYear()
+                                : now()->addMonth(),
                         ]);
                         Transaction::query()->create([
                             'user_id' => $user->id, 'subscription_id' => $subscription->id,
@@ -159,6 +160,7 @@ class CentralPaymentOriginController extends Controller
 
             $checkout->update([
                 'status' => 'completed',
+                'invoice_id' => $input['myfatoorah_invoice_id'],
                 'payment_id' => $input['myfatoorah_payment_id'],
                 'gateway_response' => [
                     ...($checkout->gateway_response ?? []),

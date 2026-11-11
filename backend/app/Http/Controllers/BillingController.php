@@ -34,7 +34,7 @@ class BillingController extends Controller
         if ($stripe  && $stripe->is_enabled  && $stripe->secret_key)  $gateways[] = 'stripe';
         if ($paypal  && $paypal->is_enabled  && $paypal->secret_key)  $gateways[] = 'paypal';
         if ($moyasar && $moyasar->is_enabled && $moyasar->secret_key) $gateways[] = 'moyasar';
-        if ($myfatoorah && $myfatoorah->is_enabled && $myfatoorah->secret_key && $myfatoorah->webhook_secret) $gateways[] = 'myfatoorah';
+        if (config('services.central_payments.enabled') || ($myfatoorah && $myfatoorah->is_enabled && $myfatoorah->secret_key && $myfatoorah->webhook_secret)) $gateways[] = 'myfatoorah';
 
         return response()->json([
             'plans'    => $plans,
@@ -55,7 +55,7 @@ class BillingController extends Controller
         if ($stripe  && $stripe->is_enabled  && $stripe->secret_key)  $gateways[] = 'stripe';
         if ($paypal  && $paypal->is_enabled  && $paypal->secret_key)  $gateways[] = 'paypal';
         if ($moyasar && $moyasar->is_enabled && $moyasar->secret_key) $gateways[] = 'moyasar';
-        if ($myfatoorah && $myfatoorah->is_enabled && $myfatoorah->secret_key && $myfatoorah->webhook_secret) $gateways[] = 'myfatoorah';
+        if (config('services.central_payments.enabled') || ($myfatoorah && $myfatoorah->is_enabled && $myfatoorah->secret_key && $myfatoorah->webhook_secret)) $gateways[] = 'myfatoorah';
 
         return response()->json([
             'subscription' => $subscription ? $subscription->load('plan') : null,

@@ -243,11 +243,13 @@ class RegistrationController extends Controller
             'currency' => 'SAR',
             'status' => 'pending',
         ]);
+        // The central payment service verifies that this pending order is in
+        // an eligible state during the same checkout request.
+        $pending->update(['status' => 'awaiting_payment']);
         try {
             $payment = app(\App\Services\CentralPaymentClientService::class)
                 ->createHostedPayment((string) $checkout->id, 'nazstudio-registration-' . $checkout->id);
             $checkout->update(['gateway_response' => ['central_payment_id' => $payment['central_payment_id']]]);
-            $pending->update(['status' => 'awaiting_payment']);
             return response()->json([
                 'url' => $payment['payment_url'],
                 'pending_registration_id' => $pending->id,
