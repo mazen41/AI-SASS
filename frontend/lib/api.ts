@@ -10,10 +10,14 @@ function getToken(): string | null {
 // from "the request never made it / server errored".
 export class ApiError extends Error {
   status: number | null;
-  constructor(message: string, status: number | null) {
+  code?: string;
+  data?: Record<string, unknown>;
+  constructor(message: string, status: number | null, data?: Record<string, unknown>) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.code = typeof data?.code === 'string' ? data.code : undefined;
+    this.data = data;
   }
 }
 
@@ -56,7 +60,7 @@ async function apiFetch<T>(
             .flat()
             .join(' ')
         : 'An error occurred');
-    throw new ApiError(String(message), res.status);
+    throw new ApiError(String(message), res.status, data as Record<string, unknown>);
   }
 
   return data as T;
@@ -89,6 +93,10 @@ export interface RegisterInitiateResponse {
   message: string;
   pending_registration_id: string;
   otp_expires_in_seconds: number;
+  status?: 'pending_otp' | 'otp_verified' | 'awaiting_payment';
+  email_verified?: boolean;
+  already_verified?: boolean;
+  package_id?: number;
 }
 
 export async function apiRegisterInitiate(payload: {
@@ -115,6 +123,7 @@ export interface RegisterVerifyOtpResponse {
   message: string;
   package: { id: number; name: string; total_price: number };
   next_step: 'payment' | 'complete';
+  already_verified?: boolean;
 }
 
 export async function apiRegisterVerifyOtp(pendingRegistrationId: string, otp: string): Promise<RegisterVerifyOtpResponse> {
@@ -138,6 +147,11 @@ export async function apiRegisterComplete(pendingRegistrationId: string): Promis
 
 export interface RegisterStatusResponse {
   status: 'pending_otp' | 'otp_verified' | 'awaiting_payment' | 'completed' | 'expired' | 'failed';
+  pending_registration_id?: string;
+  name?: string;
+  email?: string;
+  package_id?: number;
+  email_verified?: boolean;
   user?: AuthUser;
   token?: string;
   already_claimed?: boolean;

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\PendingRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -96,6 +97,26 @@ class AuthController extends Controller
 
         if (! Auth::attempt($request->only('email', 'password'))) {
             RateLimiter::hit($key, 60);
+
+            // Paid signups intentionally have no users row until payment is
+            // confirmed. If this is their verified pending registration and
+            // the password matches, give them a resumable checkout path.
+            $pendingRegistration = PendingRegistration::query()
+                ->where('email', $request->input('email'))
+                ->whereIn('status', ['otp_verified', 'awaiting_payment'])
+                ->whereNotNull('email_verified_at')
+                ->where('expires_at', '>', now())
+                ->latest('created_at')
+                ->first();
+
+            if ($pendingRegistration && Hash::check($request->input('password'), (string) $pendingRegistration->password_hash)) {
+                RateLimiter::clear($key);
+                return response()->json([
+                    'message' => 'Your email is verified, but signup is not complete until payment. Continue your registration to finish checkout.',
+                    'code' => 'registration_payment_pending',
+                    'pending_registration_id' => $pendingRegistration->id,
+                ], 409);
+            }
 
             ActivityLog::log(
                 action: 'login_failed',

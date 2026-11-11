@@ -67,8 +67,36 @@ class RegistrationController extends Controller
             return response()->json(['message' => 'Selected package is not available.'], 422);
         }
 
-        // A stale/abandoned attempt for the same email shouldn't block a retry.
-        PendingRegistration::where('email', $request->email)->delete();
+        // A verified registration is resumable. Do not delete it when the user
+        // retries signup after losing the tab or payment redirect.
+        $existing = PendingRegistration::where('email', $request->email)
+            ->whereIn('status', ['otp_verified', 'awaiting_payment'])
+            ->where('expires_at', '>', now())
+            ->latest('created_at')
+            ->first();
+        if ($existing) {
+            if (!Hash::check($request->password, (string) $existing->password_hash)) {
+                return response()->json([
+                    'message' => 'A registration is already in progress for this email. Sign in with the password used during signup to resume it.',
+                    'code' => 'registration_in_progress',
+                ], 409);
+            }
+
+            return response()->json([
+                'message' => 'Your email is already verified. Continue to payment.',
+                'pending_registration_id' => $existing->id,
+                'status' => $existing->status,
+                'email_verified' => true,
+                'package_id' => $existing->package_id,
+                'already_verified' => true,
+            ]);
+        }
+
+        // Remove only expired/abandoned sessions; preserve active OTP sessions
+        // so a retry cannot silently invalidate a code already in the inbox.
+        PendingRegistration::where('email', $request->email)
+            ->where('expires_at', '<=', now())
+            ->delete();
 
         $otp = (string) random_int(100000, 999999);
 
@@ -150,6 +178,18 @@ class RegistrationController extends Controller
             return response()->json(['message' => 'This registration session is invalid or expired. Please start again.'], 410);
         }
 
+        if (in_array($pending->status, ['otp_verified', 'awaiting_payment'], true)) {
+            return response()->json([
+                'message' => 'Email already verified. Continue to payment.',
+                'already_verified' => true,
+                'package' => [
+                    'id' => $pending->package->id,
+                    'name' => $pending->package->name,
+                    'total_price' => $pending->package->total_price,
+                ],
+                'next_step' => 'payment',
+            ]);
+        }
         if ($pending->status !== 'pending_otp') {
             return response()->json(['message' => 'This step was already completed.'], 409);
         }
@@ -366,8 +406,23 @@ class RegistrationController extends Controller
             return response()->json(['message' => 'Not found.'], 404);
         }
 
+        if ($pending->isExpired() && $pending->status !== 'completed') {
+            return response()->json([
+                'status' => 'expired',
+                'pending_registration_id' => $pending->id,
+                'email_verified' => (bool) $pending->email_verified_at,
+            ]);
+        }
+
         if ($pending->status !== 'completed' || !$pending->created_user_id) {
-            return response()->json(['status' => $pending->status]);
+            return response()->json([
+                'status' => $pending->status,
+                'pending_registration_id' => $pending->id,
+                'name' => $pending->name,
+                'email' => $pending->email,
+                'package_id' => $pending->package_id,
+                'email_verified' => (bool) $pending->email_verified_at,
+            ]);
         }
 
         $user = $pending->createdUser;

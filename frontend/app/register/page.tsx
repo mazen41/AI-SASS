@@ -14,6 +14,7 @@ import {
   apiRegisterResendOtp,
   apiRegisterVerifyOtp,
   apiRegisterComplete,
+  apiRegisterStatus,
   Package,
 } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
@@ -68,6 +69,7 @@ function RegisterForm() {
 
   const searchParams = useSearchParams();
   const urlPackageId = searchParams.get('package') ? Number(searchParams.get('package')) : undefined;
+  const resumeId = searchParams.get('resume');
 
   const [step, setStep] = useState<Step>('package');
   const [packages, setPackages] = useState<Package[] | null>(null);
@@ -80,11 +82,56 @@ function RegisterForm() {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [otp, setOtp] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Restore a verified or in-progress signup after login redirect, page reload,
+  // or returning from a payment gateway. OTPs/passwords are never persisted.
+  useEffect(() => {
+    const savedId = resumeId || sessionStorage.getItem('nazstudio_pending_registration');
+    if (!savedId) return;
+    let cancelled = false;
+    setLoading(true);
+    apiRegisterStatus(savedId)
+      .then(async (status) => {
+        if (cancelled) return;
+        if (status.status === 'completed') {
+          sessionStorage.removeItem('nazstudio_pending_registration');
+          router.replace('/login?registered=1');
+          return;
+        }
+        if (status.status === 'expired' || status.status === 'failed' || !status.package_id) {
+          sessionStorage.removeItem('nazstudio_pending_registration');
+          setError(locale === 'ar'
+            ? 'انتهت جلسة التسجيل. ابدأ التسجيل مجددًا واختر الباقة.'
+            : 'This registration session expired. Start again and choose your plan.');
+          return;
+        }
+        const packageResponse = await apiGetPublicPackage(status.package_id, locale);
+        if (cancelled) return;
+        setPendingId(savedId);
+        setName(status.name || '');
+        setEmail(status.email || '');
+        setSelectedPackage(packageResponse.package);
+        setEmailVerified(Boolean(status.email_verified) || status.status === 'otp_verified' || status.status === 'awaiting_payment');
+        setStep('otp');
+        if (resumeId) router.replace('/register');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          sessionStorage.removeItem('nazstudio_pending_registration');
+          setError(locale === 'ar'
+            ? 'تعذر استعادة التسجيل. ابدأ التسجيل مجددًا.'
+            : 'Could not restore your registration. Please start again.');
+        }
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [resumeId, locale, router]);
 
   // Pre-selected via ?package=ID (e.g. from Pricing section)
   useEffect(() => {
@@ -148,7 +195,13 @@ function RegisterForm() {
         package_id: selectedPackage.id,
       });
       setPendingId(res.pending_registration_id);
-      setResendCooldown(60);
+      sessionStorage.setItem('nazstudio_pending_registration', res.pending_registration_id);
+      if (res.package_id && res.package_id !== selectedPackage.id) {
+        const savedPackage = await apiGetPublicPackage(res.package_id, locale);
+        setSelectedPackage(savedPackage.package);
+      }
+      setEmailVerified(Boolean(res.email_verified || res.already_verified));
+      setResendCooldown(res.already_verified ? 0 : 60);
       setStep('otp');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please check your details.');
@@ -174,11 +227,25 @@ function RegisterForm() {
     setLoading(true);
     setError('');
     try {
-      await apiRegisterVerifyOtp(pendingId, otp);
+      if (!emailVerified) {
+        try {
+          await apiRegisterVerifyOtp(pendingId, otp);
+          setEmailVerified(true);
+        } catch (verifyError) {
+          // A previous attempt may have verified successfully before the
+          // browser lost its response. Check server state and resume safely.
+          const status = await apiRegisterStatus(pendingId);
+          if (!status.email_verified && status.status !== 'otp_verified' && status.status !== 'awaiting_payment') {
+            throw verifyError;
+          }
+          setEmailVerified(true);
+        }
+      }
       const completeRes = await apiRegisterComplete(pendingId);
 
       if ('token' in completeRes) {
         // Free tier: direct login
+        sessionStorage.removeItem('nazstudio_pending_registration');
         login(completeRes.token, completeRes.user);
         router.push('/dashboard');
       } else {
@@ -647,8 +714,16 @@ function RegisterForm() {
                     </p>
                   </div>
 
+                  {emailVerified && (
+                    <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-300">
+                      {locale === 'ar'
+                        ? 'تم التحقق من بريدك الإلكتروني بالفعل. تابع لإكمال الدفع وإنشاء حسابك.'
+                        : 'Your email is already verified. Continue to secure checkout to finish creating your account.'}
+                    </div>
+                  )}
+
                   <form onSubmit={onVerifyOtp} className="space-y-6">
-                    <div>
+                    {!emailVerified && <div>
                       <StudioInput
                         label={locale === 'ar' ? 'رمز التحقق (٦ أرقام)' : 'Verification Code (6 digits)'}
                         type="text"
@@ -661,7 +736,7 @@ function RegisterForm() {
                         required
                         className="text-center text-xl font-mono tracking-[0.4em]"
                       />
-                    </div>
+                    </div>}
 
                     <button
                       type="submit"
@@ -675,13 +750,15 @@ function RegisterForm() {
                         </span>
                       ) : (
                         <span className="flex items-center justify-center gap-2">
-                          <span>{locale === 'ar' ? 'تأكيد الحساب ومتابعة' : 'Verify & Continue'}</span>
+                          <span>{emailVerified
+                            ? (locale === 'ar' ? 'المتابعة إلى الدفع' : 'Continue to payment')
+                            : (locale === 'ar' ? 'تأكيد الحساب ومتابعة' : 'Verify & Continue')}</span>
                           <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                         </span>
                       )}
                     </button>
 
-                    <div className="text-center">
+                    {!emailVerified && <div className="text-center">
                       <button
                         type="button"
                         onClick={onResendOtp}
@@ -703,7 +780,7 @@ function RegisterForm() {
                             : 'Resend Verification Code'}
                         </span>
                       </button>
-                    </div>
+                    </div>}
                   </form>
                 </motion.div>
               )}

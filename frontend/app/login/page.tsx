@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
-import { apiLogin } from '@/lib/api';
+import { ApiError, apiLogin } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
 import StudioInput from '@/components/StudioInput';
 import SplitTextReveal from '@/components/SplitTextReveal';
@@ -62,6 +62,13 @@ export default function LoginPage() {
       login(res.token, res.user);
       router.push('/dashboard');
     } catch (err: unknown) {
+      if (err instanceof ApiError && err.code === 'registration_payment_pending') {
+        const pendingId = err.data?.pending_registration_id;
+        if (typeof pendingId === 'string') {
+          router.push(`/register?resume=${encodeURIComponent(pendingId)}`);
+          return;
+        }
+      }
       setError(err instanceof Error ? err.message : 'Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
