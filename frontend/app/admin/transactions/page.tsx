@@ -3,25 +3,27 @@
 import { useEffect, useState } from 'react';
 import { apiGetTransactions, Transaction, PaginatedResponse } from '@/lib/api';
 import { useLang } from '@/context/LangContext';
-import { 
-  CreditCard, 
-  CheckCircle, 
-  Clock, 
-  XCircle, 
+import SplitTextReveal from '@/components/SplitTextReveal';
+import {
+  CreditCard,
+  CheckCircle2,
+  Clock,
+  XCircle,
   RotateCcw,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  DollarSign,
 } from 'lucide-react';
 
 export default function TransactionsPage() {
   const { locale } = useLang();
   const isRTL = locale === 'ar';
-  
+
   const t = {
-    title: isRTL ? 'المعاملات' : 'Transactions',
-    allStatus: isRTL ? 'جميع الحالات' : 'All Status',
+    title: isRTL ? 'سجل المعاملات والمدفوعات' : 'Payment Transactions',
+    subtitle: isRTL ? 'تدقيق العمليات المالية، والرسوم، وفواتير الاشتراكات' : 'Audit ledger of charges, gateway checkouts, and invoices',
+    allStatus: isRTL ? 'جميع الحالات' : 'All Statuses',
     allGateways: isRTL ? 'جميع البوابات' : 'All Gateways',
     status: {
       completed: isRTL ? 'مكتمل' : 'Completed',
@@ -29,18 +31,16 @@ export default function TransactionsPage() {
       failed: isRTL ? 'فاشل' : 'Failed',
       refunded: isRTL ? 'مسترد' : 'Refunded',
     },
-    id: isRTL ? 'الرقم' : 'ID',
-    user: isRTL ? 'المستخدم' : 'User',
+    id: isRTL ? 'رقم المعاملة' : 'Transaction ID',
+    user: isRTL ? 'العميل' : 'Customer',
     amount: isRTL ? 'المبلغ' : 'Amount',
     gateway: isRTL ? 'البوابة' : 'Gateway',
     statusLabel: isRTL ? 'الحالة' : 'Status',
     type: isRTL ? 'النوع' : 'Type',
     date: isRTL ? 'التاريخ' : 'Date',
-    noTransactions: isRTL ? 'لا توجد معاملات' : 'No transactions found',
+    noTransactions: isRTL ? 'لا توجد معاملات مسجلة' : 'No transactions recorded',
     previous: isRTL ? 'السابق' : 'Previous',
     next: isRTL ? 'التالي' : 'Next',
-    page: isRTL ? 'صفحة' : 'Page',
-    of: isRTL ? 'من' : 'of',
   };
 
   const [transactions, setTransactions] = useState<PaginatedResponse<Transaction> | null>(null);
@@ -68,145 +68,152 @@ export default function TransactionsPage() {
   }, [page, statusFilter, gatewayFilter]);
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { bg: string; color: string; icon: React.ReactNode }> = {
-      completed: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', color: 'text-emerald-700 dark:text-emerald-400', icon: <CheckCircle size={14} /> },
-      pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-700 dark:text-amber-400', icon: <Clock size={14} /> },
-      failed: { bg: 'bg-red-100 dark:bg-red-900/30', color: 'text-red-700 dark:text-red-400', icon: <XCircle size={14} /> },
-      refunded: { bg: 'bg-purple-100 dark:bg-purple-900/30', color: 'text-purple-700 dark:text-purple-400', icon: <RotateCcw size={14} /> },
-    };
-    return badges[status] || { bg: 'bg-gray-100 dark:bg-gray-800', color: 'text-gray-700 dark:text-gray-400', icon: <AlertCircle size={14} /> };
-  };
-
-  const getStatusLabel = (status: string) => {
-    return t.status[status as keyof typeof t.status] || status;
+    if (status === 'completed') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          <CheckCircle2 size={12} />
+          <span>{t.status.completed}</span>
+        </span>
+      );
+    }
+    if (status === 'pending') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <Clock size={12} />
+          <span>{t.status.pending}</span>
+        </span>
+      );
+    }
+    if (status === 'refunded') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30">
+          <RotateCcw size={12} />
+          <span>{t.status.refunded}</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+        <XCircle size={12} />
+        <span>{t.status.failed}</span>
+      </span>
+    );
   };
 
   return (
-    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h2>
+    <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--border)]">
+        <div>
+          <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--k-blue)] uppercase tracking-wider mb-1">
+            <CreditCard size={14} />
+            <span>FINANCIAL LEDGER</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-[var(--text)]">
+            <SplitTextReveal as="span" by="words" delay={0.1}>
+              {t.title}
+            </SplitTextReveal>
+          </h1>
+          <p className="text-xs sm:text-sm text-[var(--text-3)] mt-1">{t.subtitle}</p>
+        </div>
+
+        {transactions && (
+          <div className="text-xs font-mono font-bold px-3 py-1.5 rounded-full bg-[var(--surface-2)] text-[var(--text-3)] border border-[var(--border)] shrink-0">
+            {transactions.total} {isRTL ? 'عملية مسجلة' : 'TRANSACTIONS'}
+          </div>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
-            <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="bg-transparent border-none text-gray-900 dark:text-white text-sm outline-none cursor-pointer w-full min-w-[140px]"
-            >
-              <option value="">{t.allStatus}</option>
-              <option value="completed">{t.status.completed}</option>
-              <option value="pending">{t.status.pending}</option>
-              <option value="failed">{t.status.failed}</option>
-              <option value="refunded">{t.status.refunded}</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
-            <CreditCard size={16} className="text-gray-500 dark:text-gray-400" />
-            <select
-              value={gatewayFilter}
-              onChange={(e) => { setGatewayFilter(e.target.value); setPage(1); }}
-              className="bg-transparent border-none text-gray-900 dark:text-white text-sm outline-none cursor-pointer w-full min-w-[140px]"
-            >
-              <option value="">{t.allGateways}</option>
-              <option value="stripe">Stripe</option>
-              <option value="paypal">PayPal</option>
-            </select>
-          </div>
+      {/* Filter Bar */}
+      <div className="studio-card-glass p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="studio-input flex-1 h-[3.25rem] text-xs sm:text-sm font-semibold"
+          >
+            <option value="">{t.allStatus}</option>
+            <option value="completed">{t.status.completed}</option>
+            <option value="pending">{t.status.pending}</option>
+            <option value="failed">{t.status.failed}</option>
+            <option value="refunded">{t.status.refunded}</option>
+          </select>
+
+          <select
+            value={gatewayFilter}
+            onChange={(e) => {
+              setGatewayFilter(e.target.value);
+              setPage(1);
+            }}
+            className="studio-input flex-1 h-[3.25rem] text-xs sm:text-sm font-semibold"
+          >
+            <option value="">{t.allGateways}</option>
+            <option value="stripe">Stripe</option>
+            <option value="paypal">PayPal</option>
+            <option value="moyasar">Moyasar</option>
+            <option value="myfatoorah">MyFatoorah</option>
+          </select>
         </div>
       </div>
 
-      {/* Transactions Table */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+      {/* Table */}
+      <div className="studio-card-glass overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider font-semibold">
-              <tr>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.id}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.user}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.amount}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.gateway}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.statusLabel}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.type}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap rtl:text-right">{t.date}</th>
+          <table className="w-full text-left rtl:text-right border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-[var(--surface-2)] text-xs font-mono font-bold uppercase tracking-wider text-[var(--text-3)]">
+                <th className="py-4 px-6">{t.id}</th>
+                <th className="py-4 px-4">{t.user}</th>
+                <th className="py-4 px-4">{t.amount}</th>
+                <th className="py-4 px-4">{t.gateway}</th>
+                <th className="py-4 px-4">{t.statusLabel}</th>
+                <th className="py-4 px-6 text-right rtl:text-left">{t.date}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-[var(--border)] text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-8">
-                    <div className="flex justify-center">
-                      <Loader2 size={32} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+                  <td colSpan={6} className="py-16 text-center text-[var(--text-3)]">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="w-8 h-8 animate-spin text-[var(--k-blue)]" />
+                      <span className="text-xs font-mono">{isRTL ? 'جارٍ التحميل...' : 'LOADING TRANSACTIONS...'}</span>
                     </div>
                   </td>
                 </tr>
-              ) : transactions?.data.length === 0 ? (
+              ) : !transactions || transactions.data.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12">
-                    <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
-                      <AlertCircle size={32} className="mb-3 opacity-50" />
-                      <p className="text-lg">{t.noTransactions}</p>
-                    </div>
+                  <td colSpan={6} className="py-16 text-center text-[var(--text-3)]">
+                    <CreditCard className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">{t.noTransactions}</p>
                   </td>
                 </tr>
               ) : (
-                transactions?.data.map((tx) => {
-                  const status = getStatusBadge(tx.status);
-                  const isNegative = parseFloat(tx.amount) < 0;
-                  return (
-                    <tr key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
-                      <td className="p-4 text-sm text-gray-500 dark:text-gray-400 font-mono">#{tx.id}</td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shadow-inner shrink-0">
-                            {tx.user?.name?.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white leading-none mb-1">{tx.user?.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{tx.user?.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-baseline gap-1">
-                          <span className={`text-lg font-bold ${isNegative ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                            {isNegative ? '-' : '+'}${Math.abs(parseFloat(tx.amount)).toFixed(2)}
-                          </span>
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">{tx.currency}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wider ${
-                            tx.gateway === 'stripe' 
-                              ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800' 
-                              : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800'
-                          }`}>
-                          {tx.gateway}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}>
-                          {status.icon}
-                          {getStatusLabel(tx.status)}
-                        </span>
-                      </td>
-                      <td className="p-4 text-sm text-gray-600 dark:text-gray-400 capitalize whitespace-nowrap">
-                        {tx.type.replace('_', ' ')}
-                      </td>
-                      <td className="p-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {new Date(tx.created_at).toLocaleString(isRTL ? 'ar-SA' : 'en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </td>
-                    </tr>
-                  );
-                })
+                transactions.data.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-[var(--surface-hover)] transition-colors">
+                    <td className="py-4 px-6 font-mono text-xs text-[var(--text-3)]">
+                      #{tx.id}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="font-bold text-[var(--text)]">{tx.user?.name || 'Customer'}</div>
+                      <div className="text-xs text-[var(--text-3)] font-mono">{tx.user?.email || '-'}</div>
+                    </td>
+                    <td className="py-4 px-4 font-mono font-extrabold text-base gradient-text">
+                      ${parseFloat(tx.amount || '0').toFixed(2)}
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--surface-2)] text-[var(--k-blue)] border border-[var(--border)] uppercase">
+                        {tx.gateway}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">{getStatusBadge(tx.status)}</td>
+                    <td className="py-4 px-6 text-right rtl:text-left text-xs font-mono text-[var(--text-3)]">
+                      {new Date(tx.created_at).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US')}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -214,26 +221,25 @@ export default function TransactionsPage() {
 
         {/* Pagination */}
         {transactions && transactions.last_page > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-100 dark:border-gray-700 gap-4 bg-gray-50/50 dark:bg-gray-800/30">
-            <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-              {t.page} {transactions.current_page} {t.of} {transactions.last_page}
-            </p>
-            <div className="flex items-center gap-2">
+          <div className="p-4 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--text-3)]">
+            <div>
+              Page <span className="font-bold text-[var(--text)]">{page}</span> of{' '}
+              <span className="font-bold text-[var(--text)]">{transactions.last_page}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-40"
               >
-                {isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-                {t.previous}
+                <ChevronLeft size={14} className="rtl:rotate-180" />
               </button>
               <button
-                onClick={() => setPage(p => Math.min(transactions.last_page, p + 1))}
-                disabled={page === transactions.last_page}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={page >= transactions.last_page}
+                onClick={() => setPage((p) => Math.min(transactions.last_page, p + 1))}
+                className="px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-40"
               >
-                {t.next}
-                {isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+                <ChevronRight size={14} className="rtl:rotate-180" />
               </button>
             </div>
           </div>

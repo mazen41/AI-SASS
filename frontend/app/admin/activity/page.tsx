@@ -3,36 +3,36 @@
 import { useEffect, useState } from 'react';
 import { apiGetActivityLogs, ActivityLog, PaginatedResponse } from '@/lib/api';
 import { useLang } from '@/context/LangContext';
-import { 
-  LogIn, 
-  User, 
-  RefreshCw, 
-  CreditCard, 
-  Settings, 
-  FileText, 
-  Edit3, 
-  Trash2, 
-  UserPlus, 
-  UserX, 
+import SplitTextReveal from '@/components/SplitTextReveal';
+import {
+  LogIn,
+  User,
+  RefreshCw,
+  CreditCard,
+  Settings,
+  FileText,
+  Edit3,
+  Trash2,
+  UserPlus,
+  UserX,
   UserCheck,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  Activity,
 } from 'lucide-react';
 
 export default function ActivityLogsPage() {
   const { locale } = useLang();
   const isRTL = locale === 'ar';
-  
+
   const t = {
-    title: isRTL ? 'سجل النشاط' : 'Activity Logs',
+    title: isRTL ? 'سجل النشاط والأحداث' : 'Audit Trail & Activity Logs',
+    subtitle: isRTL ? 'سجل زمني لجميع عمليات الدخول، والتعديلات، والمدفوعات' : 'Chronological audit trail of admin actions, user sessions, and updates',
     allActions: isRTL ? 'جميع الإجراءات' : 'All Actions',
-    noLogs: isRTL ? 'لا توجد سجلات نشاط' : 'No activity logs found',
+    noLogs: isRTL ? 'لا توجد سجلات مسجلة' : 'No activity logs found',
     previous: isRTL ? 'السابق' : 'Previous',
     next: isRTL ? 'التالي' : 'Next',
-    page: isRTL ? 'صفحة' : 'Page',
-    of: isRTL ? 'من' : 'of',
     actions: {
       user_created: isRTL ? 'إنشاء مستخدم' : 'User Created',
       user_updated: isRTL ? 'تحديث مستخدم' : 'User Updated',
@@ -50,8 +50,7 @@ export default function ActivityLogsPage() {
       login: isRTL ? 'تسجيل دخول' : 'Login',
       logout: isRTL ? 'تسجيل خروج' : 'Logout',
     },
-    on: isRTL ? 'على' : 'on',
-    ip: isRTL ? 'الآي بي' : 'IP',
+    ip: isRTL ? 'عنوان IP' : 'IP Address',
   };
 
   const [logs, setLogs] = useState<PaginatedResponse<ActivityLog> | null>(null);
@@ -77,108 +76,126 @@ export default function ActivityLogsPage() {
   }, [page, actionFilter]);
 
   const getActionIcon = (action: string) => {
-    if (action.includes('login')) return <LogIn size={18} />;
-    if (action.includes('user_created')) return <UserPlus size={18} />;
-    if (action.includes('user_deleted')) return <Trash2 size={18} />;
-    if (action.includes('user_suspended')) return <UserX size={18} />;
-    if (action.includes('user_activated')) return <UserCheck size={18} />;
-    if (action.includes('user')) return <User size={18} />;
-    if (action.includes('subscription')) return <RefreshCw size={18} />;
-    if (action.includes('payment')) return <CreditCard size={18} />;
-    if (action.includes('plan')) return <FileText size={18} />;
-    if (action.includes('settings')) return <Settings size={18} />;
-    return <Edit3 size={18} />;
-  };
-
-  const getActionStyle = (action: string) => {
-    if (action.includes('created')) return { bg: 'bg-green-100 dark:bg-green-900/30', color: 'text-green-600 dark:text-green-400', icon: 'text-green-500 dark:text-green-400' };
-    if (action.includes('deleted')) return { bg: 'bg-red-100 dark:bg-red-900/30', color: 'text-red-600 dark:text-red-400', icon: 'text-red-500 dark:text-red-400' };
-    if (action.includes('updated') || action.includes('activated')) return { bg: 'bg-blue-100 dark:bg-blue-900/30', color: 'text-blue-600 dark:text-blue-400', icon: 'text-blue-500 dark:text-blue-400' };
-    if (action.includes('suspended') || action.includes('canceled')) return { bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400', icon: 'text-amber-500 dark:text-amber-400' };
-    return { bg: 'bg-gray-100 dark:bg-gray-800', color: 'text-gray-500 dark:text-gray-400', icon: 'text-gray-400 dark:text-gray-500' };
-  };
-
-  const getActionLabel = (action: string) => {
-    return t.actions[action as keyof typeof t.actions] || action.replace(/_/g, ' ');
+    switch (action) {
+      case 'login':
+        return LogIn;
+      case 'logout':
+        return LogIn;
+      case 'user_created':
+        return UserPlus;
+      case 'user_updated':
+        return Edit3;
+      case 'user_deleted':
+        return Trash2;
+      case 'user_suspended':
+        return UserX;
+      case 'user_activated':
+        return UserCheck;
+      case 'subscription_created':
+      case 'subscription_canceled':
+        return RefreshCw;
+      case 'payment_received':
+      case 'payment_failed':
+      case 'payment_refunded':
+        return CreditCard;
+      case 'payment_settings_updated':
+        return Settings;
+      default:
+        return FileText;
+    }
   };
 
   return (
-    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+    <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--border)]">
+        <div>
+          <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--k-blue)] uppercase tracking-wider mb-1">
+            <Activity size={14} />
+            <span>AUDIT TRAIL</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-[var(--text)]">
+            <SplitTextReveal as="span" by="words" delay={0.1}>
+              {t.title}
+            </SplitTextReveal>
+          </h1>
+          <p className="text-xs sm:text-sm text-[var(--text-3)] mt-1">{t.subtitle}</p>
+        </div>
+
+        {logs && (
+          <div className="text-xs font-mono font-bold px-3 py-1.5 rounded-full bg-[var(--surface-2)] text-[var(--text-3)] border border-[var(--border)] shrink-0">
+            {logs.total} {isRTL ? 'حدث مسجل' : 'LOG EVENTS'}
+          </div>
+        )}
+      </div>
+
+      {/* Filter Bar */}
+      <div className="studio-card-glass p-4 sm:p-5">
         <select
           value={actionFilter}
-          onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-          className="w-full sm:w-auto px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer outline-none transition-all"
+          onChange={(e) => {
+            setActionFilter(e.target.value);
+            setPage(1);
+          }}
+          className="studio-input h-[3.25rem] text-xs sm:text-sm font-semibold max-w-sm"
         >
           <option value="">{t.allActions}</option>
-          <option value="user_created">{t.actions.user_created}</option>
-          <option value="user_updated">{t.actions.user_updated}</option>
-          <option value="user_deleted">{t.actions.user_deleted}</option>
-          <option value="user_suspended">{t.actions.user_suspended}</option>
-          <option value="user_activated">{t.actions.user_activated}</option>
-          <option value="subscription_created">{t.actions.subscription_created}</option>
-          <option value="subscription_canceled">{t.actions.subscription_canceled}</option>
-          <option value="payment_received">{t.actions.payment_received}</option>
-          <option value="payment_failed">{t.actions.payment_failed}</option>
-          <option value="payment_refunded">{t.actions.payment_refunded}</option>
-          <option value="plan_created">{t.actions.plan_created}</option>
-          <option value="plan_updated">{t.actions.plan_updated}</option>
-          <option value="payment_settings_updated">{t.actions.payment_settings_updated}</option>
+          {Object.entries(t.actions).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Activity Logs */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+      {/* Activity List */}
+      <div className="studio-card-glass p-6">
         {loading ? (
-          <div className="flex items-center justify-center p-12">
-            <Loader2 size={32} className="animate-spin text-indigo-500" />
+          <div className="py-16 text-center text-[var(--text-3)] flex flex-col items-center justify-center gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-[var(--k-blue)]" />
+            <span className="text-xs font-mono">{isRTL ? 'جارٍ التحميل...' : 'LOADING AUDIT STREAM...'}</span>
           </div>
-        ) : logs?.data.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center p-12 text-gray-500 dark:text-gray-400">
-            <AlertCircle size={48} className="mb-4 opacity-50" />
-            <p className="text-lg">{t.noLogs}</p>
+        ) : !logs || logs.data.length === 0 ? (
+          <div className="py-16 text-center text-[var(--text-3)]">
+            <Activity className="w-10 h-10 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">{t.noLogs}</p>
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-700">
-            {logs?.data.map((log) => {
-              const style = getActionStyle(log.action);
+          <div className="space-y-3">
+            {logs.data.map((log) => {
+              const ActionIcon = getActionIcon(log.action);
+              const actionLabel = t.actions[log.action as keyof typeof t.actions] || log.action.replace(/_/g, ' ');
+
               return (
-                <div key={log.id} className="flex gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <div 
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.bg} ${style.icon}`}
-                  >
-                    {getActionIcon(log.action)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {log.user?.name || 'System'}
-                      </span>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700/50 ${style.color}`}>
-                        {getActionLabel(log.action)}
-                      </span>
-                      {log.entity_type && (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {t.on} <span className="font-medium text-gray-700 dark:text-gray-300">{log.entity_type} #{log.entity_id}</span>
-                        </span>
-                      )}
+                <div
+                  key={log.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--k-blue)] transition-colors"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--k-blue)] shrink-0 shadow-sm">
+                      <ActionIcon size={18} />
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                      <span className="flex items-center gap-1">
-                        {new Date(log.created_at).toLocaleString(isRTL ? 'ar-SA' : 'en-US', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short'
-                        })}
-                      </span>
-                      {log.ip_address && (
-                        <span className="flex items-center gap-1">
-                          <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                          {t.ip}: <span className="font-mono">{log.ip_address}</span>
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm text-[var(--text)]">
+                        <span>{log.user?.name || (isRTL ? 'النظام' : 'System')}</span>
+                        <span className="text-[var(--k-blue)] ml-2 rtl:mr-2 capitalize">
+                          {actionLabel}
                         </span>
-                      )}
+                      </div>
+                      <div className="text-xs text-[var(--text-3)] mt-0.5 flex flex-wrap items-center gap-3">
+                        <span className="font-mono">{new Date(log.created_at).toLocaleString()}</span>
+                        {log.ip_address && (
+                          <span className="font-mono text-[11px] bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">
+                            IP: {log.ip_address}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-[var(--surface)] text-[var(--text-3)] border border-[var(--border)] shrink-0 self-start sm:self-auto">
+                    {log.action}
+                  </span>
                 </div>
               );
             })}
@@ -187,26 +204,25 @@ export default function ActivityLogsPage() {
 
         {/* Pagination */}
         {logs && logs.last_page > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {t.page} <span className="font-medium text-gray-900 dark:text-white">{logs.current_page}</span> {t.of} <span className="font-medium text-gray-900 dark:text-white">{logs.last_page}</span>
-            </p>
-            <div className="flex items-center gap-2">
+          <div className="mt-6 pt-4 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--text-3)]">
+            <div>
+              Page <span className="font-bold text-[var(--text)]">{page}</span> of{' '}
+              <span className="font-bold text-[var(--text)]">{logs.last_page}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-40"
               >
-                {isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-                {t.previous}
+                <ChevronLeft size={14} className="rtl:rotate-180" />
               </button>
               <button
-                onClick={() => setPage(p => Math.min(logs.last_page, p + 1))}
-                disabled={page === logs.last_page}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                disabled={page >= logs.last_page}
+                onClick={() => setPage((p) => Math.min(logs.last_page, p + 1))}
+                className="px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-40"
               >
-                {t.next}
-                {isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+                <ChevronRight size={14} className="rtl:rotate-180" />
               </button>
             </div>
           </div>

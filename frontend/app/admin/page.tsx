@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { apiGetAdminStats, DashboardStats } from '@/lib/api';
 import { useLang } from '@/context/LangContext';
+import { useAuth } from '@/context/AuthContext';
+import StudioCanvas3D from '@/components/StudioCanvas3D';
+import SplitTextReveal from '@/components/SplitTextReveal';
 import {
   Users,
   UserCheck,
@@ -19,12 +23,35 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Loader2,
+  Sparkles,
+  ShoppingBag,
+  Package,
+  Activity,
+  Server,
+  ShieldCheck,
+  ChevronRight,
+  Zap,
 } from 'lucide-react';
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      delay: i * 0.06,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+    },
+  }),
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { user } = useAuth();
   const { locale } = useLang();
   const isRTL = locale === 'ar';
+
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -35,7 +62,13 @@ export default function AdminDashboard() {
         const data = await apiGetAdminStats();
         setStats(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : (isRTL ? 'فشل تحميل البيانات' : 'Failed to load stats'));
+        setError(
+          err instanceof Error
+            ? err.message
+            : isRTL
+            ? 'فشل تحميل بيانات لوحة التحكم'
+            : 'Failed to load dashboard metrics'
+        );
       } finally {
         setLoading(false);
       }
@@ -45,16 +78,25 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 size={40} className="animate-spin text-indigo-600" />
+      <div className="flex flex-col items-center justify-center min-h-[460px] gap-4">
+        <Loader2 className="w-10 h-10 animate-spin text-[var(--k-blue)]" />
+        <span className="text-xs font-mono tracking-widest text-[var(--text-3)] uppercase">
+          {isRTL ? 'جارٍ تحميل مؤشرات الأداء...' : 'LOADING STUDIO TELEMETRY...'}
+        </span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-400">
+      <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 text-sm flex items-center justify-between">
         <span>{error}</span>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 font-bold text-xs"
+        >
+          {isRTL ? 'إعادة المحاولة' : 'Retry'}
+        </button>
       </div>
     );
   }
@@ -62,12 +104,56 @@ export default function AdminDashboard() {
   if (!stats) return null;
 
   const statCards = [
-    { label: isRTL ? 'إجمالي المستخدمين' : 'Total Users', value: stats.users.total, icon: Users, color: 'bg-indigo-600', href: '/admin/users' },
-    { label: isRTL ? 'المستخدمين النشطين' : 'Active Users', value: stats.users.active, icon: UserCheck, color: 'bg-emerald-500', href: '/admin/users?status=active' },
-    { label: isRTL ? 'الجدد هذا الشهر' : 'New This Month', value: stats.users.new_this_month, icon: TrendingUp, color: 'bg-purple-500', change: stats.users.growth_percentage, href: '/admin/users?filter=new' },
-    { label: isRTL ? 'الاشتراكات النشطة' : 'Active Subscriptions', value: stats.subscriptions.active, icon: RefreshCw, color: 'bg-amber-500', href: '/admin/subscriptions' },
-    { label: isRTL ? 'إجمالي الإيرادات' : 'Total Revenue', value: `$${parseFloat(stats.revenue.total || '0').toLocaleString()}`, icon: DollarSign, color: 'bg-teal-500', href: '/admin/transactions' },
-    { label: isRTL ? 'إيرادات الشهر' : 'Revenue This Month', value: `$${parseFloat(stats.revenue.this_month || '0').toLocaleString()}`, icon: BarChart3, color: 'bg-pink-500', change: stats.revenue.growth_percentage, href: '/admin/transactions?period=month' },
+    {
+      label: isRTL ? 'إجمالي المستخدمين' : 'Total Registered Users',
+      value: stats.users.total,
+      icon: Users,
+      color: 'from-blue-600 to-indigo-600',
+      href: '/admin/users',
+      tag: isRTL ? 'المجتمع' : 'Platform',
+    },
+    {
+      label: isRTL ? 'المستخدمين النشطين' : 'Active Storytellers',
+      value: stats.users.active,
+      icon: UserCheck,
+      color: 'from-emerald-500 to-teal-600',
+      href: '/admin/users?status=active',
+      tag: isRTL ? 'نشط الآن' : 'Active',
+    },
+    {
+      label: isRTL ? 'المستخدمون الجدد' : 'New This Month',
+      value: stats.users.new_this_month,
+      icon: TrendingUp,
+      color: 'from-purple-600 to-pink-600',
+      change: stats.users.growth_percentage,
+      href: '/admin/users?filter=new',
+      tag: isRTL ? 'نمو شهري' : 'Growth',
+    },
+    {
+      label: isRTL ? 'الاشتراكات الفعالة' : 'Active Subscriptions',
+      value: stats.subscriptions.active,
+      icon: RefreshCw,
+      color: 'from-amber-500 to-orange-600',
+      href: '/admin/subscriptions',
+      tag: isRTL ? 'الخطط' : 'Recurring',
+    },
+    {
+      label: isRTL ? 'إجمالي الإيرادات' : 'Lifetime Revenue',
+      value: `$${parseFloat(stats.revenue.total || '0').toLocaleString()}`,
+      icon: DollarSign,
+      color: 'from-cyan-500 to-blue-600',
+      href: '/admin/transactions',
+      tag: isRTL ? 'الإيرادات' : 'Revenue',
+    },
+    {
+      label: isRTL ? 'إيرادات هذا الشهر' : 'Revenue This Month',
+      value: `$${parseFloat(stats.revenue.this_month || '0').toLocaleString()}`,
+      icon: BarChart3,
+      color: 'from-pink-500 to-rose-600',
+      change: stats.revenue.growth_percentage,
+      href: '/admin/transactions?period=month',
+      tag: isRTL ? 'الشهر الحالي' : 'MTD',
+    },
   ];
 
   const getActivityIcon = (action: string) => {
@@ -79,161 +165,312 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isRTL ? 'لوحة التحكم' : 'Dashboard Overview'}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {isRTL ? 'نظرة عامة على أداء النظام' : 'System performance overview'}
-          </p>
+    <div className="space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* ── Welcome Studio Hero Banner ── */}
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp}
+        className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 border border-white/10 text-white shadow-xl relative overflow-hidden"
+      >
+        {/* Micro 3D Visual in Background */}
+        <div className="absolute -right-8 -top-8 w-48 h-48 sm:w-60 sm:h-60 opacity-50 pointer-events-none">
+          <StudioCanvas3D variant="admin" />
         </div>
-      </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-        {statCards.map((card, index) => {
+        <div className="relative z-10 max-w-xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-cyan-300 text-[11px] font-mono font-bold uppercase tracking-wider mb-3">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span>{isRTL ? 'مركز التحكم والعمليات' : 'STUDIO COMMAND CENTER'}</span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
+            <SplitTextReveal as="span" by="words" delay={0.1}>
+              {isRTL
+                ? `مرحباً بك، ${user?.name?.split(' ')[0] || 'المدير'}`
+                : `Welcome, ${user?.name?.split(' ')[0] || 'Admin'}`}
+            </SplitTextReveal>
+          </h2>
+
+          <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+            {isRTL
+              ? 'متابعة حية وشاملة لمؤشرات الأداء، والمستخدمين، وإيرادات البوابات، وحالة الذكاء الاصطناعي.'
+              : 'Live telemetry across active storytellers, revenue gateways, neural synthesis jobs, and system health.'}
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-300">
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-mono text-[11px]">
+              <ShieldCheck size={14} />
+              <span>Fal.ai & Claude API Online</span>
+            </span>
+            <span className="text-slate-400 font-mono text-[11px]">
+              {new Date().toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── Key Metrics Cards Grid ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        {statCards.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <div 
-              key={index} 
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 flex items-start gap-4 cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group"
+            <motion.div
+              key={idx}
+              variants={fadeUp}
+              custom={idx}
+              initial="hidden"
+              animate="visible"
+              whileHover={{ y: -4 }}
               onClick={() => router.push(card.href)}
-              role="button"
-              tabIndex={0}
+              className="studio-card-glass p-5 cursor-pointer flex flex-col justify-between group relative overflow-hidden"
             >
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 text-white ${card.color} group-hover:scale-110 transition-transform duration-300`}>
-                <Icon size={24} />
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--text-3)]">
+                  {card.tag}
+                </span>
+                <div
+                  className={`w-11 h-11 rounded-2xl bg-gradient-to-tr ${card.color} text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform`}
+                >
+                  <Icon size={20} />
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1 truncate">{card.label}</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white truncate">{card.value}</p>
-                {card.change !== undefined && (
-                  <p className={`flex items-center gap-1 text-xs mt-1.5 font-medium ${card.change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {card.change >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                    {Math.abs(card.change)}% {isRTL ? 'من الشهر الماضي' : 'from last month'}
-                  </p>
-                )}
+
+              <div>
+                <p className="text-xs font-semibold text-[var(--text-2)] mb-1 truncate">
+                  {card.label}
+                </p>
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-[var(--text)]">
+                    {card.value}
+                  </h3>
+
+                  {card.change !== undefined && (
+                    <span
+                      className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${
+                        card.change >= 0
+                          ? 'bg-emerald-500/15 text-emerald-500'
+                          : 'bg-red-500/15 text-red-500'
+                      }`}
+                    >
+                      {card.change >= 0 ? (
+                        <ArrowUpRight size={13} />
+                      ) : (
+                        <ArrowDownRight size={13} />
+                      )}
+                      <span>{Math.abs(card.change)}%</span>
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue by Gateway */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <Wallet size={18} className="text-gray-400" />
-            {isRTL ? 'الإيرادات حسب البوابة' : 'Revenue by Gateway'}
-          </h3>
+      {/* ── Data Breakdown Section: Gateways & Subscriptions ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Gateway Revenue Distribution */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="lg:col-span-6 studio-card-glass p-6"
+        >
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <Wallet size={18} className="text-[var(--k-blue)]" />
+              <h3 className="text-base font-bold text-[var(--text)] font-display">
+                {isRTL ? 'الإيرادات حسب بوابة الدفع' : 'Revenue by Payment Gateway'}
+              </h3>
+            </div>
+            <span className="text-xs font-mono font-bold text-[var(--text-3)]">
+              {stats.revenue.by_gateway.length} {isRTL ? 'بوابات' : 'GATEWAYS'}
+            </span>
+          </div>
+
           <div className="space-y-4">
             {stats.revenue.by_gateway.length > 0 ? (
-              stats.revenue.by_gateway.map((gateway, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      gateway.gateway === 'stripe' 
-                        ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' 
-                        : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                    }`}>
-                      {gateway.gateway === 'stripe' ? <CreditCard size={20} /> : <Wallet size={20} />}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white capitalize">{gateway.gateway}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{gateway.count} {isRTL ? 'معاملة' : 'transactions'}</p>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-gray-900 dark:text-white">${parseFloat(gateway.total || '0').toLocaleString()}</p>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <CreditCard size={32} className="mx-auto mb-3 opacity-50" />
-                <p>{isRTL ? 'لا توجد معاملات بعد' : 'No transactions yet'}</p>
-              </div>
-            )}
-          </div>
-        </div>
+              stats.revenue.by_gateway.map((gateway, index) => {
+                const totalAmount = parseFloat(stats.revenue.total || '1');
+                const gwAmount = parseFloat(gateway.total || '0');
+                const percent = Math.min(Math.round((gwAmount / Math.max(totalAmount, 1)) * 100), 100);
 
-        {/* Subscriptions by Plan */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <RefreshCw size={18} className="text-gray-400" />
-            {isRTL ? 'الاشتراكات حسب الخطة' : 'Subscriptions by Plan'}
-          </h3>
-          <div className="space-y-5">
-            {stats.subscriptions.by_plan.length > 0 ? (
-              stats.subscriptions.by_plan.map((plan, index) => {
-                const percentage = Math.min((plan.active_subscriptions_count / Math.max(stats.subscriptions.active, 1)) * 100, 100);
                 return (
-                  <div key={index} className="flex items-center justify-between group">
-                    <div className="flex flex-col">
-                      <p className="font-medium text-gray-900 dark:text-white">{plan.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">${plan.price}/{isRTL ? 'شهر' : 'mo'}</p>
-                    </div>
-                    <div className="flex items-center gap-3 w-1/2">
-                      <div className="h-2 flex-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-500 group-hover:bg-indigo-500"
-                          style={{ width: `${percentage}%` }}
-                        />
+                  <div
+                    key={index}
+                    className="p-3.5 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--k-blue)] transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--k-blue)]">
+                          <CreditCard size={16} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-xs sm:text-sm capitalize">{gateway.gateway}</p>
+                          <p className="text-[11px] text-[var(--text-3)]">
+                            {gateway.count} {isRTL ? 'معاملة' : 'transactions'}
+                          </p>
+                        </div>
                       </div>
-                      <span className="font-semibold text-gray-900 dark:text-white min-w-[2rem] text-right">
-                        {plan.active_subscriptions_count}
-                      </span>
+                      <div className="text-right rtl:text-left">
+                        <span className="font-extrabold text-sm sm:text-base gradient-text">
+                          ${gwAmount.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-3)] block font-mono">
+                          {percent}%
+                        </span>
+                      </div>
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full h-1.5 rounded-full bg-[var(--surface)] overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[var(--k-blue)] to-[var(--k-pink)] rounded-full transition-all duration-700"
+                        style={{ width: `${percent}%` }}
+                      />
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <FileText size={32} className="mx-auto mb-3 opacity-50" />
-                <p>{isRTL ? 'لا توجد خطط' : 'No plans configured'}</p>
+              <div className="text-center py-8 text-[var(--text-3)] text-xs">
+                {isRTL ? 'لا توجد معاملات مسجلة بعد' : 'No gateway transactions recorded yet'}
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
+
+        {/* Subscriptions by Plan */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="lg:col-span-6 studio-card-glass p-6"
+        >
+          <div className="flex items-center justify-between pb-4 mb-4 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <RefreshCw size={18} className="text-[var(--k-navy)]" />
+              <h3 className="text-base font-bold text-[var(--text)] font-display">
+                {isRTL ? 'توزيع الاشتراكات بالخطة' : 'Subscriptions by Plan'}
+              </h3>
+            </div>
+            <span className="text-xs font-mono font-bold text-[var(--text-3)]">
+              {stats.subscriptions.active} {isRTL ? 'نشط' : 'ACTIVE'}
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            {stats.subscriptions.by_plan.length > 0 ? (
+              stats.subscriptions.by_plan.map((plan, index) => {
+                const percentage = Math.min(
+                  Math.round(
+                    (plan.active_subscriptions_count / Math.max(stats.subscriptions.active, 1)) * 100
+                  ),
+                  100
+                );
+
+                return (
+                  <div key={index} className="p-3.5 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)]">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <span className="font-bold text-xs sm:text-sm">{plan.name}</span>
+                        <span className="text-[11px] text-[var(--text-3)] ml-2 rtl:mr-2">
+                          ${plan.price}/{isRTL ? 'شهر' : 'mo'}
+                        </span>
+                      </div>
+                      <span className="font-mono font-bold text-xs sm:text-sm text-[var(--k-blue)]">
+                        {plan.active_subscriptions_count} {isRTL ? 'مشترك' : 'users'}
+                      </span>
+                    </div>
+
+                    <div className="w-full h-1.5 rounded-full bg-[var(--surface)] overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[var(--k-navy)] to-[var(--k-blue)] rounded-full transition-all duration-700"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-[var(--text-3)] text-xs">
+                {isRTL ? 'لا توجد خطط اشتراك مضافة' : 'No subscription plans configured'}
+              </div>
+            )}
+          </div>
+        </motion.div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-8">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-          <TrendingUp size={18} className="text-gray-400" />
-          {isRTL ? 'النشاط الأخير' : 'Recent Activity'}
-        </h3>
-        <div className="space-y-4">
+      {/* ── Recent Activity Stream ── */}
+      <motion.div
+        variants={fadeUp}
+        initial="hidden"
+        animate="visible"
+        className="studio-card-glass p-6"
+      >
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-[var(--border)]">
+          <div className="flex items-center gap-2">
+            <Activity size={18} className="text-[var(--k-pink)]" />
+            <h3 className="text-base font-bold text-[var(--text)] font-display">
+              {isRTL ? 'سجل النشاط المباشر' : 'Live Activity Stream'}
+            </h3>
+          </div>
+          <button
+            onClick={() => router.push('/admin/activity')}
+            className="text-xs font-bold text-[var(--k-blue)] hover:underline flex items-center gap-1"
+          >
+            <span>{isRTL ? 'عرض الكل' : 'View Full Stream'}</span>
+            <ChevronRight size={14} className="rtl:rotate-180" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
           {stats.recent_activity.length > 0 ? (
-            stats.recent_activity.map((activity, index) => {
-              const ActivityIcon = getActivityIcon(activity.action);
+            stats.recent_activity.slice(0, 6).map((activity, index) => {
+              const ActionIcon = getActivityIcon(activity.action);
+
               return (
-                <div key={index} className="flex items-center gap-4 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                    <ActivityIcon size={18} />
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--k-blue)] transition-all"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--k-blue)] shrink-0">
+                      <ActionIcon size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-semibold truncate">
+                        <span className="text-[var(--text)] font-bold">
+                          {activity.user?.name || (isRTL ? 'النظام' : 'System')}
+                        </span>
+                        <span className="text-[var(--text-2)] ml-2 rtl:mr-2 capitalize">
+                          {activity.action.replace(/_/g, ' ')}
+                        </span>
+                      </p>
+                      <span className="text-[10px] text-[var(--text-3)] font-mono">
+                        {new Date(activity.created_at).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 dark:text-white truncate">
-                      <span className="font-semibold">{activity.user?.name || 'System'}</span>
-                      <span className="text-gray-500 dark:text-gray-400 ml-1">{activity.action.replace(/_/g, ' ')}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {new Date(activity.created_at).toLocaleString()}
-                    </p>
-                  </div>
+
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[var(--surface)] text-[var(--text-3)] border border-[var(--border)] shrink-0">
+                    EVENT
+                  </span>
                 </div>
               );
             })
           ) : (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <RefreshCw size={32} className="mx-auto mb-3 opacity-50" />
-              <p>{isRTL ? 'لا يوجد نشاط حديث' : 'No recent activity'}</p>
+            <div className="text-center py-8 text-[var(--text-3)] text-xs">
+              {isRTL ? 'لا يوجد نشاط حديث مسجل' : 'No recent studio activity recorded'}
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

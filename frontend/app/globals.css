@@ -2566,3 +2566,117 @@ h1, h2, h3, h4, h5, h6, .font-display {
   background: var(--surface-hover);
   transform: translateY(-2px);
 }
+
+
+/* ============================================================
+   ROBUST FORM & INPUT ARCHITECTURE (LTR & RTL DEDICATED SLOTS)
+   ============================================================ */
+
+.studio-input-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.studio-input-icon-lead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  pointer-events: none;
+  transition: color 0.25s ease;
+  z-index: 2;
+}
+
+[dir="rtl"] .studio-input-icon-lead {
+  left: auto;
+  right: 0;
+}
+
+.studio-input-icon-trail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  z-index: 2;
+}
+
+[dir="rtl"] .studio-input-icon-trail {
+  right: auto;
+  left: 0;
+}
+
+.studio-input-field {
+  width: 100%;
+  height: 3.25rem;
+  padding: 0 1.25rem;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.studio-input-has-lead {
+  padding-left: 3rem !important;
+  padding-right: 1.25rem !important;
+}
+
+[dir="rtl"] .studio-input-has-lead {
+  padding-left: 1.25rem !important;
+  padding-right: 3rem !important;
+}
+
+.studio-input-has-trail {
+  padding-right: 3rem !important;
+}
+
+[dir="rtl"] .studio-input-has-trail {
+  padding-right: 1.25rem !important;
+  padding-left: 3rem !important;
+}
+
+.studio-input-has-lead.studio-input-has-trail {
+  padding-left: 3rem !important;
+  padding-right: 3rem !important;
+}
+
+.studio-input-field::placeholder {
+  color: var(--text-3);
+  opacity: 0.75;
+}
+
+.studio-input-field:focus {
+  border-color: var(--k-blue);
+  background: var(--surface-hover);
+  box-shadow: 0 0 0 3.5px rgba(30, 144, 255, 0.16);
+}
+
+.studio-input-wrap:focus-within .studio-input-icon-lead {
+  color: var(--k-blue);
+}
+
+.studio-input-field.has-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.studio-input-field:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--surface-2);
+}

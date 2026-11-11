@@ -85,4 +85,13 @@ return [
         'ar_voice_id' => env('ELEVENLABS_AR_VOICE_ID', 'ThT5KcBeYPX3keUQqHPh'),
     ],
 
+    'central_payments' => [
+        'enabled' => (bool) env('CENTRAL_PAYMENTS_ENABLED', false),
+        'api_url' => env('CENTRAL_PAYMENT_API_URL', 'https://api.nazbiz.io'),
+        'client_id' => env('CENTRAL_PAYMENT_CLIENT_ID', ''),
+        'api_key' => env('CENTRAL_PAYMENT_CLIENT_API_KEY', ''),
+        'hmac_secret' => env('CENTRAL_PAYMENT_CLIENT_HMAC_SECRET', ''),
+        'notification_secret' => env('CENTRAL_PAYMENT_CLIENT_NOTIFICATION_SECRET', ''),
+    ],
+
 ];

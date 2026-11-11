@@ -12,6 +12,7 @@ import {
   StorageSettings,
 } from '@/lib/api';
 import { useLang } from '@/context/LangContext';
+import StudioInput from '@/components/StudioInput';
 import {
   CreditCard,
   Wallet,
@@ -24,11 +25,15 @@ import {
   Lock,
   Zap,
   Copy,
-  CheckCircle,
+  CheckCircle2,
   Database,
   Cloud,
   Server,
   Loader2,
+  Sparkles,
+  Globe2,
+  HardDrive,
+  CheckCheck,
 } from 'lucide-react';
 
 export default function PaymentSettingsPage() {
@@ -36,51 +41,57 @@ export default function PaymentSettingsPage() {
   const isRTL = locale === 'ar';
 
   const t = {
+    title: isRTL ? 'إعدادات الدفع والتخزين السحابي' : 'Payment & Storage Infrastructure',
+    subtitle: isRTL
+      ? 'إدارة بوابات الدفع الإلكتروني، مفاتيح الـ API المشفرة، ومحركات التخزين السحابي'
+      : 'Manage payment gateways, encrypted API keys, and cloud storage providers',
     securityNotice: isRTL
-      ? 'ملاحظة أمان: مفاتيح API مشفرة في قاعدة البيانات. المفاتيح السرية لا تظهر أبداً بعد الحفظ.'
-      : 'Security Notice: API keys and storage credentials are encrypted at rest. Secret keys are never displayed after saving.',
-    stripe: isRTL ? 'Stripe' : 'Stripe',
-    paypal: isRTL ? 'PayPal' : 'PayPal',
+      ? 'ملاحظة أمان مشددة: جميع مفاتيح الـ API وبيانات الاعتماد مشفرة في قاعدة البيانات باستخدام AES-256. المفاتيح السرية لا تظهر أبداً بعد الحفظ.'
+      : 'Security Notice: All API credentials and secrets are encrypted at rest using AES-256. Secrets are never exposed after storage.',
+    stripe: 'Stripe',
+    paypal: 'PayPal',
     myfatoorah: 'MyFatoorah',
-    enabled: isRTL ? 'مفعل' : 'Enabled',
-    disabled: isRTL ? 'غير مفعل' : 'Disabled',
-    sandbox: isRTL ? 'وضع الرمل' : 'Sandbox',
-    enableStripe: isRTL ? 'تفعيل Stripe' : 'Enable Stripe',
-    enablePaypal: isRTL ? 'تفعيل PayPal' : 'Enable PayPal',
-    sandboxMode: isRTL ? 'وضع الرمل' : 'Sandbox Mode',
-    publishableKey: isRTL ? 'المفتاح العام' : 'Publishable Key',
-    secretKey: isRTL ? 'المفتاح السري' : 'Secret Key',
-    configured: isRTL ? 'مكون' : 'Configured',
-    webhookSecret: isRTL ? 'سر webhook' : 'Webhook Secret',
-    webhookUrl: isRTL ? 'رابط Webhook' : 'Webhook URL',
+    enabled: isRTL ? 'مفعل' : 'Active',
+    disabled: isRTL ? 'غير مفعل' : 'Inactive',
+    sandbox: isRTL ? 'بيئة الاختبار (Sandbox)' : 'Sandbox Mode',
+    production: isRTL ? 'بيئة الإنتاج (Live)' : 'Live Mode',
+    enableStripe: isRTL ? 'تفعيل بوابة Stripe' : 'Enable Stripe Gateway',
+    enablePaypal: isRTL ? 'تفعيل بوابة PayPal' : 'Enable PayPal Gateway',
+    enableMyfatoorah: isRTL ? 'تفعيل بوابة MyFatoorah' : 'Enable MyFatoorah Gateway',
+    sandboxMode: isRTL ? 'وضع الرمل (Sandbox)' : 'Sandbox Environment',
+    publishableKey: isRTL ? 'المفتاح العام (Publishable Key)' : 'Publishable Key / Client ID',
+    secretKey: isRTL ? 'المفتاح السري (Secret Key)' : 'Secret Key / Token',
+    configured: isRTL ? 'تم التكوين' : 'Configured',
+    webhookSecret: isRTL ? 'سر الـ Webhook' : 'Webhook Secret / ID',
+    webhookUrl: isRTL ? 'رابط استلام الـ Webhook' : 'Webhook Callback URL',
     copy: isRTL ? 'نسخ' : 'Copy',
     copied: isRTL ? 'تم النسخ!' : 'Copied!',
     saveSettings: isRTL ? 'حفظ الإعدادات' : 'Save Settings',
     saving: isRTL ? 'جاري الحفظ...' : 'Saving...',
     testConnection: isRTL ? 'اختبار الاتصال' : 'Test Connection',
-    testing: isRTL ? 'جاري الاختبار...' : 'Testing...',
+    testing: isRTL ? 'جاري الفحص...' : 'Testing...',
     saveSuccess: isRTL ? 'تم حفظ الإعدادات بنجاح!' : 'Settings saved successfully!',
     saveError: isRTL ? 'فشل حفظ الإعدادات' : 'Failed to save settings',
     testError: isRTL ? 'فشل اختبار الاتصال' : 'Connection test failed',
-    tabPayments: isRTL ? 'بوابات الدفع' : 'Payment Gateways',
-    tabStorage: isRTL ? 'التخزين السحابي' : 'Cloud Storage',
-    storageActive: isRTL ? 'نشط' : 'Active',
-    storageInactive: isRTL ? 'غير نشط' : 'Inactive',
-    activateDriver: isRTL ? 'تفعيل نظام التخزين هذا' : 'Activate this storage driver',
+    tabPayments: isRTL ? 'بوابات الدفع الإلكتروني' : 'Payment Gateways',
+    tabStorage: isRTL ? 'التخزين السحابي والملفات' : 'Cloud Storage Drivers',
+    storageActive: isRTL ? 'المحرك النشط' : 'Active Driver',
+    storageInactive: isRTL ? 'معطل' : 'Standby',
+    activateDriver: isRTL ? 'تعيين كمحرك التخزين الأساسي' : 'Set as Primary Driver',
     s3Key: isRTL ? 'مفتاح Access Key ID' : 'Access Key ID',
-    s3Secret: isRTL ? 'كلمة سر Secret Access Key' : 'Secret Access Key',
-    s3Region: isRTL ? 'المنطقة Region' : 'Region',
-    s3Bucket: isRTL ? 'اسم الحاوية Bucket Name' : 'Bucket Name',
-    s3Endpoint: isRTL ? 'رابط Endpoint (مطلوب للوسابي، واختياري للـ S3)' : 'Endpoint URL (required for Wasabi, optional for S3)',
-    usePathStyle: isRTL ? 'استخدام مسار Path-style للـ Endpoint' : 'Use path-style endpoint',
-    localDesc: isRTL ? 'التخزين المحلي الافتراضي. سيتم حفظ صور القصص في مجلد storage/app/public الخاص بـ Laravel.' : 'Default local storage. Story files and photos are stored locally in the Laravel storage/app/public directory.',
-    s3Desc: isRTL ? 'تخزين سحابي باستخدام Amazon S3. ممتاز للمشاريع الإنتاجية العالية.' : 'Cloud storage using Amazon Web Services S3 bucket. Best for production environments.',
-    wasabiDesc: isRTL ? 'تخزين سحابي اقتصادي ومتوافق بالكامل مع S3 من Wasabi.' : 'Cost-effective, high-performance, S3-compatible cloud storage from Wasabi.',
-    placeholder: {
-      publicKey: isRTL ? 'pk_test_...' : 'pk_test_...',
-      secretKey: isRTL ? 'sk_test_... (اتركه فارغاً للإبقاء على الحالي)' : 'sk_test_... (leave empty to keep current)',
-      webhookSecret: isRTL ? 'whsec_... (اتركه فارغاً للإبقاء على الحالي)' : 'whsec_... (leave empty to keep current)',
-    },
+    s3Secret: isRTL ? 'المفتاح السري Secret Access Key' : 'Secret Access Key',
+    s3Region: isRTL ? 'منطقة الخادم (Region)' : 'Bucket Region',
+    s3Bucket: isRTL ? 'اسم الحاوية (Bucket Name)' : 'Bucket Name',
+    s3Endpoint: isRTL ? 'رابط Endpoint (مطلوب لـ Wasabi / S3 مخصص)' : 'Endpoint URL (required for Wasabi)',
+    localDesc: isRTL
+      ? 'التخزين المحلي الافتراضي على نفس خادم التطبيق (storage/app/public). مناسب للتطوير والمشاريع الأولية.'
+      : 'Default local server disk storage (storage/app/public). Ideal for development or single-node deployments.',
+    s3Desc: isRTL
+      ? 'تخزين سحابي عالي التوافر عبر Amazon Web Services S3. مثالي للمشاريع الإنتاجية الكبرى والملفات الضخمة.'
+      : 'High-availability, enterprise-grade cloud object storage with AWS S3. Recommended for scale.',
+    wasabiDesc: isRTL
+      ? 'تخزين سحابي عالي الأداء ومتوافق مع S3 بتكلفة اقتصادية وبدون رسوم نقل بيانات (Egress).'
+      : 'High-performance, cost-effective S3-compatible cloud storage with no egress fees.',
   };
 
   const [activeTab, setActiveTab] = useState<'payments' | 'storage'>('payments');
@@ -104,7 +115,13 @@ export default function PaymentSettingsPage() {
     secret_key: '',
     webhook_secret: '',
   });
-  const [myfatoorahForm, setMyfatoorahForm] = useState({ is_enabled: false, is_sandbox: true, secret_key: '', webhook_secret: '', country: 'SA' });
+  const [myfatoorahForm, setMyfatoorahForm] = useState({
+    is_enabled: false,
+    is_sandbox: true,
+    secret_key: '',
+    webhook_secret: '',
+    country: 'SA',
+  });
 
   // Storage settings state
   const [storageSettings, setStorageSettings] = useState<StorageSettings | null>(null);
@@ -128,6 +145,12 @@ export default function PaymentSettingsPage() {
     use_path_style_endpoint: true,
   });
 
+  const [showStripeSecret, setShowStripeSecret] = useState(false);
+  const [showPaypalSecret, setShowPaypalSecret] = useState(false);
+  const [showS3Secret, setShowS3Secret] = useState(false);
+  const [showWasabiSecret, setShowWasabiSecret] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
   useEffect(() => {
     const loadAllSettings = async () => {
       try {
@@ -136,12 +159,11 @@ export default function PaymentSettingsPage() {
           apiGetStorageSettings(),
         ]);
 
-        // Setup payments
         setPaymentSettings(payData.settings);
         if (payData.settings.stripe) {
           setStripeForm({
-            is_enabled: payData.settings.stripe.is_enabled,
-            is_sandbox: payData.settings.stripe.is_sandbox,
+            is_enabled: !!payData.settings.stripe.is_enabled,
+            is_sandbox: !!payData.settings.stripe.is_sandbox,
             public_key: payData.settings.stripe.public_key || '',
             secret_key: '',
             webhook_secret: '',
@@ -149,8 +171,8 @@ export default function PaymentSettingsPage() {
         }
         if (payData.settings.paypal) {
           setPaypalForm({
-            is_enabled: payData.settings.paypal.is_enabled,
-            is_sandbox: payData.settings.paypal.is_sandbox,
+            is_enabled: !!payData.settings.paypal.is_enabled,
+            is_sandbox: !!payData.settings.paypal.is_sandbox,
             public_key: payData.settings.paypal.public_key || '',
             secret_key: '',
             webhook_secret: '',
@@ -158,38 +180,38 @@ export default function PaymentSettingsPage() {
         }
         if (payData.settings.myfatoorah) {
           setMyfatoorahForm({
-            is_enabled: payData.settings.myfatoorah.is_enabled,
-            is_sandbox: payData.settings.myfatoorah.is_sandbox,
-            secret_key: '', webhook_secret: '',
+            is_enabled: !!payData.settings.myfatoorah.is_enabled,
+            is_sandbox: !!payData.settings.myfatoorah.is_sandbox,
+            secret_key: '',
+            webhook_secret: '',
             country: String(payData.settings.myfatoorah.additional_settings?.country || 'SA'),
           });
         }
 
-        // Setup storage
         setStorageSettings(storeData.settings);
         if (storeData.settings.local) {
-          setLocalForm({ is_active: storeData.settings.local.is_active });
+          setLocalForm({ is_active: !!storeData.settings.local.is_active });
         }
         if (storeData.settings.s3) {
           setS3Form({
-            is_active: storeData.settings.s3.is_active,
+            is_active: !!storeData.settings.s3.is_active,
             key: '',
             secret: '',
             region: storeData.settings.s3.region || '',
             bucket: storeData.settings.s3.bucket || '',
             endpoint: storeData.settings.s3.endpoint || '',
-            use_path_style_endpoint: storeData.settings.s3.use_path_style_endpoint,
+            use_path_style_endpoint: !!storeData.settings.s3.use_path_style_endpoint,
           });
         }
         if (storeData.settings.wasabi) {
           setWasabiForm({
-            is_active: storeData.settings.wasabi.is_active,
+            is_active: !!storeData.settings.wasabi.is_active,
             key: '',
             secret: '',
             region: storeData.settings.wasabi.region || '',
             bucket: storeData.settings.wasabi.bucket || '',
             endpoint: storeData.settings.wasabi.endpoint || '',
-            use_path_style_endpoint: storeData.settings.wasabi.use_path_style_endpoint,
+            use_path_style_endpoint: !!storeData.settings.wasabi.use_path_style_endpoint,
           });
         }
       } catch (err) {
@@ -200,6 +222,13 @@ export default function PaymentSettingsPage() {
     };
     loadAllSettings();
   }, []);
+
+  const copyToClipboard = (text: string, key: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  };
 
   const handleSaveStripe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,26 +281,49 @@ export default function PaymentSettingsPage() {
       const data: Record<string, unknown> = {
         is_enabled: myfatoorahForm.is_enabled,
         is_sandbox: myfatoorahForm.is_sandbox,
-        additional_settings: { country: myfatoorahForm.country, currency: myfatoorahForm.country === 'EG' ? 'EGP' : myfatoorahForm.country === 'KW' ? 'KWD' : myfatoorahForm.country === 'AE' ? 'AED' : myfatoorahForm.country === 'BH' ? 'BHD' : myfatoorahForm.country === 'QA' ? 'QAR' : myfatoorahForm.country === 'OM' ? 'OMR' : 'SAR' },
+        additional_settings: {
+          country: myfatoorahForm.country,
+          currency:
+            myfatoorahForm.country === 'EG'
+              ? 'EGP'
+              : myfatoorahForm.country === 'KW'
+              ? 'KWD'
+              : myfatoorahForm.country === 'AE'
+              ? 'AED'
+              : myfatoorahForm.country === 'BH'
+              ? 'BHD'
+              : myfatoorahForm.country === 'QA'
+              ? 'QAR'
+              : myfatoorahForm.country === 'OM'
+              ? 'OMR'
+              : 'SAR',
+        },
       };
       if (myfatoorahForm.secret_key) data.secret_key = myfatoorahForm.secret_key;
       if (myfatoorahForm.webhook_secret) data.webhook_secret = myfatoorahForm.webhook_secret;
+
       await apiUpdatePaymentSettings('myfatoorah', data);
       alert(t.saveSuccess);
       window.location.reload();
     } catch (err) {
       alert(err instanceof Error ? err.message : t.saveError);
-    } finally { setSaving(null); }
+    } finally {
+      setSaving(null);
+    }
   };
 
-  const handleTestConnection = async (gateway: 'stripe' | 'paypal' | 'myfatoorah') => {
+  const handleTestPayment = async (gateway: 'stripe' | 'paypal' | 'myfatoorah') => {
     setTesting(gateway);
-    try { alert((await apiTestPaymentConnection(gateway)).message); }
-    catch (err) { alert(err instanceof Error ? err.message : t.testError); }
-    finally { setTesting(null); }
+    try {
+      const res = await apiTestPaymentConnection(gateway);
+      alert(res.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : t.testError);
+    } finally {
+      setTesting(null);
+    }
   };
 
-  // Storage Form Submissions
   const handleSaveLocal = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving('local');
@@ -337,8 +389,8 @@ export default function PaymentSettingsPage() {
   const handleTestStorage = async (driver: string) => {
     setTesting(driver);
     try {
-      const result = await apiTestStorageConnection(driver);
-      alert(result.message);
+      const res = await apiTestStorageConnection(driver);
+      alert(res.message);
     } catch (err) {
       alert(err instanceof Error ? err.message : t.testError);
     } finally {
@@ -346,482 +398,605 @@ export default function PaymentSettingsPage() {
     }
   };
 
-  const [showStripeSecret, setShowStripeSecret] = useState(false);
-  const [showPaypalSecret, setShowPaypalSecret] = useState(false);
-  const [showS3Secret, setShowS3Secret] = useState(false);
-  const [showWasabiSecret, setShowWasabiSecret] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const copyToClipboard = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 size={40} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+      <div className="flex flex-col items-center justify-center min-h-[480px] gap-4">
+        <Loader2 size={36} className="animate-spin text-brand-blue" />
+        <p className="text-xs uppercase tracking-widest text-slate-400 font-mono">
+          Loading credentials...
+        </p>
       </div>
     );
   }
 
-  const inputClass =
-    'w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none';
-  const labelClass =
-    'flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5';
-
   return (
-    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 gap-6">
-        <button
-          onClick={() => setActiveTab('payments')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'payments'
-              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          <CreditCard size={18} />
-          {t.tabPayments}
-        </button>
+    <div className="space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono tracking-wider uppercase bg-brand-blue/10 border border-brand-blue/20 text-brand-blue mb-3">
+            <Sparkles size={13} />
+            {isRTL ? 'تكوين البنية التحتية' : 'Infrastructure Engine'}
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            {t.title}
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+            {t.subtitle}
+          </p>
+        </div>
 
-        <button
-          onClick={() => setActiveTab('storage')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'storage'
-              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          <Database size={18} />
-          {t.tabStorage}
-        </button>
+        {/* Tab Switcher */}
+        <div className="flex items-center p-1.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('payments')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'payments'
+                ? 'bg-gradient-to-r from-brand-blue to-brand-purple text-white shadow-lg shadow-brand-blue/20'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <CreditCard size={15} />
+            <span>{t.tabPayments}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('storage')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'storage'
+                ? 'bg-gradient-to-r from-brand-blue to-brand-purple text-white shadow-lg shadow-brand-blue/20'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <HardDrive size={15} />
+            <span>{t.tabStorage}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Security Notice */}
-      <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400">
-        <Shield size={20} className="shrink-0 mt-0.5" />
-        <p className="text-sm">
-          <strong className="font-semibold">{isRTL ? 'ملاحظة أمان:' : 'Security Notice:'}</strong>{' '}
-          {t.securityNotice}
-        </p>
+      {/* Security Banner */}
+      <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-amber-800 dark:text-amber-300">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+            <Shield size={18} />
+          </div>
+          <div className="text-xs leading-relaxed">
+            <strong className="font-semibold block mb-0.5">
+              {isRTL ? 'طبقة تشفير آمنة' : 'Encrypted Credentials'}
+            </strong>
+            {t.securityNotice}
+          </div>
+        </div>
       </div>
 
+      {/* Main Content Area */}
       {activeTab === 'payments' ? (
-        /* Payments Grid */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Stripe Settings */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-indigo-600/20">
-                <CreditCard size={24} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                  {t.stripe}
-                </h3>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {paymentSettings?.stripe?.is_enabled ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
-                      <Check size={12} /> {t.enabled}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                      <X size={12} /> {t.disabled}
-                    </span>
-                  )}
-                  {paymentSettings?.stripe?.is_sandbox && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
-                      <AlertTriangle size={12} /> {t.sandbox}
-                    </span>
-                  )}
+          {/* Stripe Card */}
+          <div className="studio-card p-6 md:p-8 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                    <CreditCard size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                      {t.stripe}
+                    </h3>
+                    <p className="text-xs text-slate-400">Cards, Apple Pay, Google Pay</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-medium ${
+                      paymentSettings?.stripe?.is_enabled
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                        : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        paymentSettings?.stripe?.is_enabled ? 'bg-emerald-500' : 'bg-slate-400'
+                      }`}
+                    />
+                    {paymentSettings?.stripe?.is_enabled ? t.enabled : t.disabled}
+                  </span>
                 </div>
               </div>
-            </div>
 
-            <form onSubmit={handleSaveStripe} className="flex flex-col gap-5">
-              <div className="flex gap-6 pb-4 border-b border-gray-100 dark:border-gray-700">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
+              <form onSubmit={handleSaveStripe} className="space-y-5">
+                {/* Toggles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5">
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {t.enableStripe}
+                    </span>
                     <input
                       type="checkbox"
                       checked={stripeForm.is_enabled}
                       onChange={(e) => setStripeForm({ ...stripeForm, is_enabled: e.target.checked })}
-                      className="sr-only peer"
+                      className="w-4 h-4 rounded text-brand-blue focus:ring-brand-blue"
                     />
-                    <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                    {t.enableStripe}
-                  </span>
-                </label>
+                  </label>
 
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {t.sandboxMode}
+                    </span>
                     <input
                       type="checkbox"
                       checked={stripeForm.is_sandbox}
                       onChange={(e) => setStripeForm({ ...stripeForm, is_sandbox: e.target.checked })}
-                      className="sr-only peer"
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
                     />
-                    <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                    {t.sandboxMode}
-                  </span>
-                </label>
-              </div>
+                  </label>
+                </div>
 
-              <div>
-                <label className={labelClass}>{t.publishableKey}</label>
-                <input
+                <StudioInput
+                  label={t.publishableKey}
                   type="text"
                   value={stripeForm.public_key}
                   onChange={(e) => setStripeForm({ ...stripeForm, public_key: e.target.value })}
-                  placeholder={t.placeholder.publicKey}
-                  className={inputClass}
+                  placeholder="pk_test_..."
+                  leadIcon={<Globe2 size={16} />}
                 />
-              </div>
 
-              <div>
-                <label className={labelClass}>
-                  {t.secretKey}
-                  {paymentSettings?.stripe?.has_secret_key && (
-                    <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      <Lock size={12} /> {t.configured}
-                    </span>
-                  )}
-                </label>
                 <div className="relative">
-                  <input
+                  <StudioInput
+                    label={t.secretKey}
                     type={showStripeSecret ? 'text' : 'password'}
                     value={stripeForm.secret_key}
                     onChange={(e) => setStripeForm({ ...stripeForm, secret_key: e.target.value })}
-                    placeholder={t.placeholder.secretKey}
-                    className={`${inputClass} pr-10 rtl:pr-4 rtl:pl-10`}
+                    placeholder={
+                      paymentSettings?.stripe?.has_secret_key
+                        ? '•••••••••••••••• (Encrypted — leave empty to keep)'
+                        : 'sk_test_...'
+                    }
+                    leadIcon={<Lock size={16} />}
+                    trailIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowStripeSecret(!showStripeSecret)}
+                        className="text-slate-400 hover:text-slate-200 transition-colors"
+                      >
+                        {showStripeSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    }
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowStripeSecret(!showStripeSecret)}
-                    className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    {showStripeSecret ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>
-                  {t.webhookSecret}
-                  {paymentSettings?.stripe?.has_webhook_secret && (
-                    <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      <Lock size={12} /> {t.configured}
+                  {paymentSettings?.stripe?.has_secret_key && (
+                    <span className="absolute top-0 right-0 rtl:right-auto rtl:left-0 text-[10px] text-emerald-500 font-mono flex items-center gap-1">
+                      <CheckCheck size={12} /> {t.configured}
                     </span>
                   )}
-                </label>
-                <input
+                </div>
+
+                <StudioInput
+                  label={t.webhookSecret}
                   type="password"
                   value={stripeForm.webhook_secret}
                   onChange={(e) => setStripeForm({ ...stripeForm, webhook_secret: e.target.value })}
-                  placeholder={t.placeholder.webhookSecret}
-                  className={inputClass}
+                  placeholder={
+                    paymentSettings?.stripe?.has_webhook_secret
+                      ? '•••••••••••••••• (Leave blank to keep)'
+                      : 'whsec_...'
+                  }
+                  leadIcon={<Shield size={16} />}
                 />
-              </div>
 
-              <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t.webhookUrl}
-                  </span>
+                {/* Webhook URL pill */}
+                <div className="p-3.5 rounded-2xl bg-slate-900 text-slate-200 border border-white/10 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <span>{t.webhookUrl}</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(paymentSettings?.stripe?.webhook_url || '', 'stripe')}
+                      className="flex items-center gap-1 text-brand-blue hover:text-brand-purple transition-colors font-sans text-xs"
+                    >
+                      {copied === 'stripe' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                      {copied === 'stripe' ? t.copied : t.copy}
+                    </button>
+                  </div>
+                  <code className="block text-[11px] font-mono text-cyan-400 break-all select-all">
+                    {paymentSettings?.stripe?.webhook_url || 'https://api.nazstudio.art/api/v1/payments/stripe/webhook'}
+                  </code>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={saving === 'stripe'}
+                    className="flex-1 py-3 px-5 rounded-xl text-xs font-bold bg-gradient-to-r from-brand-blue to-brand-purple hover:opacity-90 text-white transition-all shadow-md shadow-brand-blue/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {saving === 'stripe' ? <Loader2 size={16} className="animate-spin" /> : null}
+                    {saving === 'stripe' ? t.saving : t.saveSettings}
+                  </button>
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(paymentSettings?.stripe?.webhook_url || '', 'stripe-webhook')}
-                    className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                    onClick={() => handleTestPayment('stripe')}
+                    disabled={testing === 'stripe' || !paymentSettings?.stripe?.is_enabled}
+                    className="py-3 px-4 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1.5 disabled:opacity-40"
                   >
-                    {copied === 'stripe-webhook' ? <CheckCircle size={14} /> : <Copy size={14} />}
-                    {copied === 'stripe-webhook' ? t.copied : t.copy}
+                    {testing === 'stripe' ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                    {testing === 'stripe' ? t.testing : t.testConnection}
                   </button>
                 </div>
-                <code className="block text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-200 break-all bg-white dark:bg-gray-900 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                  {paymentSettings?.stripe?.webhook_url}
-                </code>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={saving === 'stripe'}
-                  className="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                >
-                  {saving === 'stripe' ? <Loader2 size={18} className="animate-spin" /> : null}
-                  {saving === 'stripe' ? t.saving : t.saveSettings}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTestConnection('stripe')}
-                  disabled={testing === 'stripe' || !paymentSettings?.stripe?.is_enabled}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                >
-                  {testing === 'stripe' ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                  {testing === 'stripe' ? t.testing : t.testConnection}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
 
-          {/* PayPal Settings */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-blue-500/20">
-                <Wallet size={24} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                  {t.paypal}
-                </h3>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {paymentSettings?.paypal?.is_enabled ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
-                      <Check size={12} /> {t.enabled}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                      <X size={12} /> {t.disabled}
-                    </span>
-                  )}
-                  {paymentSettings?.paypal?.is_sandbox && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
-                      <AlertTriangle size={12} /> {t.sandbox}
-                    </span>
-                  )}
+          {/* PayPal Card */}
+          <div className="studio-card p-6 md:p-8 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                    <Wallet size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                      {t.paypal}
+                    </h3>
+                    <p className="text-xs text-slate-400">PayPal Wallet, Subscriptions</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-medium ${
+                      paymentSettings?.paypal?.is_enabled
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                        : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        paymentSettings?.paypal?.is_enabled ? 'bg-emerald-500' : 'bg-slate-400'
+                      }`}
+                    />
+                    {paymentSettings?.paypal?.is_enabled ? t.enabled : t.disabled}
+                  </span>
                 </div>
               </div>
-            </div>
 
-            <form onSubmit={handleSavePaypal} className="flex flex-col gap-5">
-              <div className="flex gap-6 pb-4 border-b border-gray-100 dark:border-gray-700">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
+              <form onSubmit={handleSavePaypal} className="space-y-5">
+                {/* Toggles */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5">
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {t.enablePaypal}
+                    </span>
                     <input
                       type="checkbox"
                       checked={paypalForm.is_enabled}
                       onChange={(e) => setPaypalForm({ ...paypalForm, is_enabled: e.target.checked })}
-                      className="sr-only peer"
+                      className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500"
                     />
-                    <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-blue-500"></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                    {t.enablePaypal}
-                  </span>
-                </label>
+                  </label>
 
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {t.sandboxMode}
+                    </span>
                     <input
                       type="checkbox"
                       checked={paypalForm.is_sandbox}
                       onChange={(e) => setPaypalForm({ ...paypalForm, is_sandbox: e.target.checked })}
-                      className="sr-only peer"
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
                     />
-                    <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-blue-500"></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                    {t.sandboxMode}
-                  </span>
-                </label>
-              </div>
+                  </label>
+                </div>
 
-              <div>
-                <label className={labelClass}>{t.publishableKey}</label>
-                <input
+                <StudioInput
+                  label="Client ID"
                   type="text"
                   value={paypalForm.public_key}
                   onChange={(e) => setPaypalForm({ ...paypalForm, public_key: e.target.value })}
-                  placeholder="Client ID"
-                  className={inputClass}
+                  placeholder="A..."
+                  leadIcon={<Globe2 size={16} />}
                 />
-              </div>
 
-              <div>
-                <label className={labelClass}>
-                  {t.secretKey}
-                  {paymentSettings?.paypal?.has_secret_key && (
-                    <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      <Lock size={12} /> {t.configured}
-                    </span>
-                  )}
-                </label>
                 <div className="relative">
-                  <input
+                  <StudioInput
+                    label="Client Secret"
                     type={showPaypalSecret ? 'text' : 'password'}
                     value={paypalForm.secret_key}
                     onChange={(e) => setPaypalForm({ ...paypalForm, secret_key: e.target.value })}
-                    placeholder="Client Secret"
-                    className={`${inputClass} pr-10 rtl:pr-4 rtl:pl-10`}
+                    placeholder={
+                      paymentSettings?.paypal?.has_secret_key
+                        ? '•••••••••••••••• (Leave blank to keep)'
+                        : 'E...'
+                    }
+                    leadIcon={<Lock size={16} />}
+                    trailIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowPaypalSecret(!showPaypalSecret)}
+                        className="text-slate-400 hover:text-slate-200 transition-colors"
+                      >
+                        {showPaypalSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    }
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPaypalSecret(!showPaypalSecret)}
-                    className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    {showPaypalSecret ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>
-                  {t.webhookSecret}
-                  {paymentSettings?.paypal?.has_webhook_secret && (
-                    <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      <Lock size={12} /> {t.configured}
+                  {paymentSettings?.paypal?.has_secret_key && (
+                    <span className="absolute top-0 right-0 rtl:right-auto rtl:left-0 text-[10px] text-emerald-500 font-mono flex items-center gap-1">
+                      <CheckCheck size={12} /> {t.configured}
                     </span>
                   )}
-                </label>
-                <input
+                </div>
+
+                <StudioInput
+                  label="Webhook ID"
                   type="text"
                   value={paypalForm.webhook_secret}
                   onChange={(e) => setPaypalForm({ ...paypalForm, webhook_secret: e.target.value })}
-                  placeholder="Webhook ID"
-                  className={inputClass}
+                  placeholder={
+                    paymentSettings?.paypal?.has_webhook_secret
+                      ? '•••••••••••••••• (Leave blank to keep)'
+                      : '0...'
+                  }
+                  leadIcon={<Shield size={16} />}
                 />
-              </div>
 
-              <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t.webhookUrl}
-                  </span>
+                {/* Webhook URL pill */}
+                <div className="p-3.5 rounded-2xl bg-slate-900 text-slate-200 border border-white/10 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <span>{t.webhookUrl}</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(paymentSettings?.paypal?.webhook_url || '', 'paypal')}
+                      className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors font-sans text-xs"
+                    >
+                      {copied === 'paypal' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                      {copied === 'paypal' ? t.copied : t.copy}
+                    </button>
+                  </div>
+                  <code className="block text-[11px] font-mono text-cyan-400 break-all select-all">
+                    {paymentSettings?.paypal?.webhook_url || 'https://api.nazstudio.art/api/v1/payments/paypal/webhook'}
+                  </code>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={saving === 'paypal'}
+                    className="flex-1 py-3 px-5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {saving === 'paypal' ? <Loader2 size={16} className="animate-spin" /> : null}
+                    {saving === 'paypal' ? t.saving : t.saveSettings}
+                  </button>
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(paymentSettings?.paypal?.webhook_url || '', 'paypal-webhook')}
-                    className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                    onClick={() => handleTestPayment('paypal')}
+                    disabled={testing === 'paypal' || !paymentSettings?.paypal?.is_enabled}
+                    className="py-3 px-4 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1.5 disabled:opacity-40"
                   >
-                    {copied === 'paypal-webhook' ? <CheckCircle size={14} /> : <Copy size={14} />}
-                    {copied === 'paypal-webhook' ? t.copied : t.copy}
+                    {testing === 'paypal' ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                    {testing === 'paypal' ? t.testing : t.testConnection}
                   </button>
                 </div>
-                <code className="block text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-200 break-all bg-white dark:bg-gray-900 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800">
-                  {paymentSettings?.paypal?.webhook_url}
-                </code>
+              </form>
+            </div>
+          </div>
+
+          {/* MyFatoorah Card */}
+          <div className="studio-card p-6 md:p-8 lg:col-span-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                  <CreditCard size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {t.myfatoorah}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    GCC & Regional Payment Processing (Mada, KNET, Apple Pay, Benefit, Meeza)
+                  </p>
+                </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={saving === 'paypal'}
-                  className="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                >
-                  {saving === 'paypal' ? <Loader2 size={18} className="animate-spin" /> : null}
-                  {saving === 'paypal' ? t.saving : t.saveSettings}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTestConnection('paypal')}
-                  disabled={testing === 'paypal' || !paymentSettings?.paypal?.is_enabled}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                >
-                  {testing === 'paypal' ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                  {testing === 'paypal' ? t.testing : t.testConnection}
-                </button>
-              </div>
-            </form>
-          </div>
-          {/* MyFatoorah hosted checkout */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white shrink-0"><CreditCard size={24} /></div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t.myfatoorah}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Hosted checkout · API token encrypted after saving</p>
-              </div>
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-medium self-start md:self-auto ${
+                  paymentSettings?.myfatoorah?.is_enabled
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                    : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    paymentSettings?.myfatoorah?.is_enabled ? 'bg-emerald-500' : 'bg-slate-400'
+                  }`}
+                />
+                {paymentSettings?.myfatoorah?.is_enabled ? t.enabled : t.disabled}
+              </span>
             </div>
-            <form onSubmit={handleSaveMyfatoorah} className="flex flex-col gap-5">
-              <div className="flex flex-wrap gap-6 pb-4 border-b border-gray-100 dark:border-gray-700">
-                <label className="flex items-center gap-2"><input type="checkbox" checked={myfatoorahForm.is_enabled} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, is_enabled: e.target.checked })} />{isRTL ? 'تفعيل MyFatoorah' : 'Enable MyFatoorah'}</label>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={myfatoorahForm.is_sandbox} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, is_sandbox: e.target.checked })} />{t.sandboxMode}</label>
+
+            <form onSubmit={handleSaveMyfatoorah} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5">
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {t.enableMyfatoorah}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={myfatoorahForm.is_enabled}
+                      onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, is_enabled: e.target.checked })}
+                      className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/40 dark:hover:bg-white/[0.02] transition-colors">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {t.sandboxMode}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={myfatoorahForm.is_sandbox}
+                      onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, is_sandbox: e.target.checked })}
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                    {isRTL ? 'دولة الحساب والعملة الافتراضية' : 'Account Country & Default Currency'}
+                  </label>
+                  <select
+                    value={myfatoorahForm.country}
+                    onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, country: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:border-brand-blue"
+                  >
+                    <option value="SA">Saudi Arabia — SAR (ريال سعودي)</option>
+                    <option value="AE">United Arab Emirates — AED (درهم إماراتي)</option>
+                    <option value="KW">Kuwait — KWD (دينار كويتي)</option>
+                    <option value="BH">Bahrain — BHD (دينار بحريني)</option>
+                    <option value="QA">Qatar — QAR (ريال قطري)</option>
+                    <option value="OM">Oman — OMR (ريال عماني)</option>
+                    <option value="EG">Egypt — EGP (جنيه مصري)</option>
+                  </select>
+                </div>
+
+                <div className="relative">
+                  <StudioInput
+                    label={isRTL ? 'رمز الـ API المشفر (API Token)' : 'API Secret Token'}
+                    type="password"
+                    value={myfatoorahForm.secret_key}
+                    onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, secret_key: e.target.value })}
+                    placeholder={
+                      paymentSettings?.myfatoorah?.has_secret_key
+                        ? '•••••••••••••••• (Encrypted — leave empty to keep)'
+                        : 'Paste API Token'
+                    }
+                    leadIcon={<Lock size={16} />}
+                  />
+                  {paymentSettings?.myfatoorah?.has_secret_key && (
+                    <span className="absolute top-0 right-0 rtl:right-auto rtl:left-0 text-[10px] text-emerald-500 font-mono flex items-center gap-1">
+                      <CheckCheck size={12} /> {t.configured}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className={labelClass}>{isRTL ? 'دولة حساب MyFatoorah' : 'MyFatoorah account country'}</label>
-                <select className={inputClass} value={myfatoorahForm.country} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, country: e.target.value })}>
-                  <option value="SA">Saudi Arabia (SAR)</option><option value="AE">UAE (AED)</option><option value="KW">Kuwait (KWD)</option><option value="BH">Bahrain (BHD)</option><option value="QA">Qatar (QAR)</option><option value="OM">Oman (OMR)</option><option value="EG">Egypt (EGP)</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>{isRTL ? 'رمز API' : 'API token'}{paymentSettings?.myfatoorah?.has_secret_key && <span className="text-xs text-emerald-600"><Lock size={12} className="inline" /> {t.configured}</span>}</label>
-                <input type="password" autoComplete="new-password" className={inputClass} value={myfatoorahForm.secret_key} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, secret_key: e.target.value })} placeholder={isRTL ? 'ألصق رمز API؛ اتركه فارغاً للإبقاء على الحالي' : 'Paste API token; leave blank to keep current'} />
-              </div>
-              <div>
-                <label className={labelClass}>{isRTL ? 'مفتاح توقيع Webhook' : 'Webhook signing secret'}{paymentSettings?.myfatoorah?.has_webhook_secret && <span className="text-xs text-emerald-600"><Lock size={12} className="inline" /> {t.configured}</span>}</label>
-                <input type="password" autoComplete="new-password" className={inputClass} value={myfatoorahForm.webhook_secret} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, webhook_secret: e.target.value })} placeholder={isRTL ? 'مفتاح Webhook السري' : 'Webhook secret from MyFatoorah portal'} />
-              </div>
-              <div className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
-                <div className="flex justify-between items-center mb-2"><span className="text-sm">{t.webhookUrl}</span><button type="button" onClick={() => copyToClipboard(paymentSettings?.myfatoorah?.webhook_url || '', 'myfatoorah-webhook')} className="text-xs text-indigo-600">{copied === 'myfatoorah-webhook' ? t.copied : t.copy}</button></div>
-                <code className="block text-xs break-all">{paymentSettings?.myfatoorah?.webhook_url}</code>
-              </div>
-              <div className="flex gap-3">
-                <button type="submit" disabled={saving === 'myfatoorah'} className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg">{saving === 'myfatoorah' ? t.saving : t.saveSettings}</button>
-                <button type="button" onClick={() => handleTestConnection('myfatoorah')} disabled={testing === 'myfatoorah' || !paymentSettings?.myfatoorah?.is_enabled} className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 rounded-lg disabled:opacity-50">{testing === 'myfatoorah' ? t.testing : t.testConnection}</button>
+
+              <div className="space-y-4 flex flex-col justify-between">
+                <div>
+                  <StudioInput
+                    label={isRTL ? 'مفتاح توقيع الـ Webhook' : 'Webhook Secret'}
+                    type="password"
+                    value={myfatoorahForm.webhook_secret}
+                    onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, webhook_secret: e.target.value })}
+                    placeholder={
+                      paymentSettings?.myfatoorah?.has_webhook_secret
+                        ? '•••••••••••••••• (Leave blank to keep)'
+                        : 'Secret from portal'
+                    }
+                    leadIcon={<Shield size={16} />}
+                  />
+
+                  {/* Webhook URL pill */}
+                  <div className="p-3.5 mt-4 rounded-2xl bg-slate-900 text-slate-200 border border-white/10 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                      <span>{t.webhookUrl}</span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(paymentSettings?.myfatoorah?.webhook_url || '', 'myfatoorah')}
+                        className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors font-sans text-xs"
+                      >
+                        {copied === 'myfatoorah' ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                        {copied === 'myfatoorah' ? t.copied : t.copy}
+                      </button>
+                    </div>
+                    <code className="block text-[11px] font-mono text-emerald-400 break-all select-all">
+                      {paymentSettings?.myfatoorah?.webhook_url ||
+                        'https://api.nazstudio.art/api/v1/payments/myfatoorah/webhook'}
+                    </code>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={saving === 'myfatoorah'}
+                    className="flex-1 py-3 px-5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {saving === 'myfatoorah' ? <Loader2 size={16} className="animate-spin" /> : null}
+                    {saving === 'myfatoorah' ? t.saving : t.saveSettings}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestPayment('myfatoorah')}
+                    disabled={testing === 'myfatoorah' || !paymentSettings?.myfatoorah?.is_enabled}
+                    className="py-3 px-4 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1.5 disabled:opacity-40"
+                  >
+                    {testing === 'myfatoorah' ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                    {testing === 'myfatoorah' ? t.testing : t.testConnection}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       ) : (
-        /* Storage Settings List */
+        /* Storage Drivers Tab */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Local Storage Card */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+          {/* Local Disk Card */}
+          <div className="studio-card p-6 md:p-8 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-200 shrink-0">
-                  <Server size={24} />
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white shadow-lg shadow-black/20">
+                  <Server size={22} />
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                    {isRTL ? 'تخزين محلي' : 'Local Storage'}
-                  </h3>
-                  <div className="mt-1">
-                    {storageSettings?.local?.is_active ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
-                        {t.storageActive}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                        {t.storageInactive}
-                      </span>
-                    )}
-                  </div>
-                </div>
+
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-medium ${
+                    storageSettings?.local?.is_active
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                      : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      storageSettings?.local?.is_active ? 'bg-emerald-500' : 'bg-slate-400'
+                    }`}
+                  />
+                  {storageSettings?.local?.is_active ? t.storageActive : t.storageInactive}
+                </span>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t.localDesc}</p>
+
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                {isRTL ? 'القرص المحلي (Local Disk)' : 'Local Storage Disk'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                {t.localDesc}
+              </p>
             </div>
 
-            <form onSubmit={handleSaveLocal}>
-              <div className="mb-4">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={localForm.is_active}
-                      onChange={(e) => setLocalForm({ is_active: e.target.checked })}
-                      disabled={storageSettings?.local?.is_active}
-                      className="sr-only peer"
-                    />
-                    <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600 disabled:opacity-50"></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                    {t.activateDriver}
-                  </span>
-                </label>
-              </div>
+            <form onSubmit={handleSaveLocal} className="space-y-4">
+              <label className="flex items-center justify-between p-3.5 rounded-xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 cursor-pointer">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {t.activateDriver}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={localForm.is_active}
+                  onChange={(e) => setLocalForm({ is_active: e.target.checked })}
+                  disabled={storageSettings?.local?.is_active}
+                  className="w-4 h-4 rounded text-brand-blue focus:ring-brand-blue disabled:opacity-40"
+                />
+              </label>
 
               {!storageSettings?.local?.is_active && (
                 <button
                   type="submit"
                   disabled={saving === 'local'}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                  className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 transition-all flex items-center justify-center gap-2"
                 >
                   {saving === 'local' ? <Loader2 size={16} className="animate-spin" /> : null}
                   {t.saveSettings}
@@ -831,278 +1006,232 @@ export default function PaymentSettingsPage() {
           </div>
 
           {/* Amazon S3 Card */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm col-span-1 lg:col-span-1">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-orange-500/20">
-                <Cloud size={24} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                  Amazon S3
-                </h3>
-                <div className="mt-1">
-                  {storageSettings?.s3?.is_active ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
-                      {t.storageActive}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                      {t.storageInactive}
-                    </span>
-                  )}
+          <div className="studio-card p-6 md:p-8 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/20">
+                  <Cloud size={22} />
                 </div>
+
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-medium ${
+                    storageSettings?.s3?.is_active
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                      : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      storageSettings?.s3?.is_active ? 'bg-emerald-500' : 'bg-slate-400'
+                    }`}
+                  />
+                  {storageSettings?.s3?.is_active ? t.storageActive : t.storageInactive}
+                </span>
               </div>
-            </div>
 
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t.s3Desc}</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Amazon S3</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                {t.s3Desc}
+              </p>
 
-            <form onSubmit={handleSaveS3} className="flex flex-col gap-4">
-              <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={s3Form.is_active}
-                      onChange={(e) => setS3Form({ ...s3Form, is_active: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+              <form onSubmit={handleSaveS3} className="space-y-4">
+                <label className="flex items-center justify-between p-3.5 rounded-xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 cursor-pointer">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     {t.activateDriver}
                   </span>
+                  <input
+                    type="checkbox"
+                    checked={s3Form.is_active}
+                    onChange={(e) => setS3Form({ ...s3Form, is_active: e.target.checked })}
+                    className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500"
+                  />
                 </label>
-              </div>
 
-              <div>
-                <label className={labelClass}>{t.s3Key}</label>
-                <input
+                <StudioInput
+                  label={t.s3Key}
                   type="text"
                   value={s3Form.key}
                   onChange={(e) => setS3Form({ ...s3Form, key: e.target.value })}
-                  placeholder={
-                    storageSettings?.s3?.has_key ? 'Encrypted (leave empty to keep current)' : 'Access Key'
-                  }
-                  className={inputClass}
+                  placeholder={storageSettings?.s3?.has_key ? 'Encrypted (leave empty to keep)' : 'AKIA...'}
+                  leadIcon={<Database size={16} />}
                 />
-              </div>
 
-              <div>
-                <label className={labelClass}>
-                  {t.s3Secret}
-                  {storageSettings?.s3?.has_secret && (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      ✓ Configured
-                    </span>
-                  )}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showS3Secret ? 'text' : 'password'}
-                    value={s3Form.secret}
-                    onChange={(e) => setS3Form({ ...s3Form, secret: e.target.value })}
-                    placeholder={
-                      storageSettings?.s3?.has_secret
-                        ? '•••••••••••••••• (leave empty to keep)'
-                        : 'Secret Key'
-                    }
-                    className={inputClass}
+                <StudioInput
+                  label={t.s3Secret}
+                  type={showS3Secret ? 'text' : 'password'}
+                  value={s3Form.secret}
+                  onChange={(e) => setS3Form({ ...s3Form, secret: e.target.value })}
+                  placeholder={storageSettings?.s3?.has_secret ? '••••••••••••••••' : 'Secret Key'}
+                  leadIcon={<Lock size={16} />}
+                  trailIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowS3Secret(!showS3Secret)}
+                      className="text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                      {showS3Secret ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  }
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <StudioInput
+                    label={t.s3Region}
+                    type="text"
+                    value={s3Form.region}
+                    onChange={(e) => setS3Form({ ...s3Form, region: e.target.value })}
+                    placeholder="us-east-1"
                   />
+                  <StudioInput
+                    label={t.s3Bucket}
+                    type="text"
+                    value={s3Form.bucket}
+                    onChange={(e) => setS3Form({ ...s3Form, bucket: e.target.value })}
+                    placeholder="my-bucket"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="submit"
+                    disabled={saving === 's3'}
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white transition-all shadow-md shadow-orange-500/20 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {saving === 's3' ? <Loader2 size={14} className="animate-spin" /> : null}
+                    {saving === 's3' ? t.saving : t.saveSettings}
+                  </button>
                   <button
                     type="button"
-                    onClick={() => setShowS3Secret(!showS3Secret)}
-                    className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    onClick={() => handleTestStorage('s3')}
+                    disabled={testing === 's3' || !storageSettings?.s3?.has_key}
+                    className="py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1 disabled:opacity-40"
                   >
-                    {showS3Secret ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {testing === 's3' ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                    {t.testConnection}
                   </button>
                 </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>{t.s3Region}</label>
-                <input
-                  type="text"
-                  value={s3Form.region}
-                  onChange={(e) => setS3Form({ ...s3Form, region: e.target.value })}
-                  placeholder="us-east-1"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>{t.s3Bucket}</label>
-                <input
-                  type="text"
-                  value={s3Form.bucket}
-                  onChange={(e) => setS3Form({ ...s3Form, bucket: e.target.value })}
-                  placeholder="bucket-name"
-                  className={inputClass}
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  disabled={saving === 's3'}
-                  className="flex-[2] flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                >
-                  {saving === 's3' ? <Loader2 size={16} className="animate-spin" /> : null}
-                  {t.saveSettings}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTestStorage('s3')}
-                  disabled={testing === 's3' || !storageSettings?.s3?.has_key}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                >
-                  {testing === 's3' ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                  {t.testConnection}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
 
           {/* Wasabi Storage Card */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm col-span-1 lg:col-span-1">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-teal-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-teal-500/20">
-                <Cloud size={24} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
-                  Wasabi Storage
-                </h3>
-                <div className="mt-1">
-                  {storageSettings?.wasabi?.is_active ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
-                      {t.storageActive}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                      {t.storageInactive}
-                    </span>
-                  )}
+          <div className="studio-card p-6 md:p-8 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-white shadow-lg shadow-teal-500/20">
+                  <Cloud size={22} />
                 </div>
+
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-medium ${
+                    storageSettings?.wasabi?.is_active
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                      : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      storageSettings?.wasabi?.is_active ? 'bg-emerald-500' : 'bg-slate-400'
+                    }`}
+                  />
+                  {storageSettings?.wasabi?.is_active ? t.storageActive : t.storageInactive}
+                </span>
               </div>
-            </div>
 
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t.wasabiDesc}</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Wasabi Cloud</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                {t.wasabiDesc}
+              </p>
 
-            <form onSubmit={handleSaveWasabi} className="flex flex-col gap-4">
-              <div className="pb-2 border-b border-gray-100 dark:border-gray-700">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={wasabiForm.is_active}
-                      onChange={(e) => setWasabiForm({ ...wasabiForm, is_active: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+              <form onSubmit={handleSaveWasabi} className="space-y-4">
+                <label className="flex items-center justify-between p-3.5 rounded-xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 cursor-pointer">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     {t.activateDriver}
                   </span>
+                  <input
+                    type="checkbox"
+                    checked={wasabiForm.is_active}
+                    onChange={(e) => setWasabiForm({ ...wasabiForm, is_active: e.target.checked })}
+                    className="w-4 h-4 rounded text-teal-500 focus:ring-teal-500"
+                  />
                 </label>
-              </div>
 
-              <div>
-                <label className={labelClass}>{t.s3Key}</label>
-                <input
+                <StudioInput
+                  label={t.s3Key}
                   type="text"
                   value={wasabiForm.key}
                   onChange={(e) => setWasabiForm({ ...wasabiForm, key: e.target.value })}
                   placeholder={
-                    storageSettings?.wasabi?.has_key ? 'Encrypted (leave empty to keep current)' : 'Access Key'
+                    storageSettings?.wasabi?.has_key ? 'Encrypted (leave empty to keep)' : 'Access Key'
                   }
-                  className={inputClass}
+                  leadIcon={<Database size={16} />}
                 />
-              </div>
 
-              <div>
-                <label className={labelClass}>
-                  {t.s3Secret}
-                  {storageSettings?.wasabi?.has_secret && (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      ✓ Configured
-                    </span>
-                  )}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showWasabiSecret ? 'text' : 'password'}
-                    value={wasabiForm.secret}
-                    onChange={(e) => setWasabiForm({ ...wasabiForm, secret: e.target.value })}
-                    placeholder={
-                      storageSettings?.wasabi?.has_secret
-                        ? '•••••••••••••••• (leave empty to keep)'
-                        : 'Secret Key'
-                    }
-                    className={inputClass}
+                <StudioInput
+                  label={t.s3Secret}
+                  type={showWasabiSecret ? 'text' : 'password'}
+                  value={wasabiForm.secret}
+                  onChange={(e) => setWasabiForm({ ...wasabiForm, secret: e.target.value })}
+                  placeholder={storageSettings?.wasabi?.has_secret ? '••••••••••••••••' : 'Secret Key'}
+                  leadIcon={<Lock size={16} />}
+                  trailIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowWasabiSecret(!showWasabiSecret)}
+                      className="text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                      {showWasabiSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  }
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <StudioInput
+                    label={t.s3Region}
+                    type="text"
+                    value={wasabiForm.region}
+                    onChange={(e) => setWasabiForm({ ...wasabiForm, region: e.target.value })}
+                    placeholder="eu-central-1"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowWasabiSecret(!showWasabiSecret)}
-                    className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    {showWasabiSecret ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                  <StudioInput
+                    label={t.s3Bucket}
+                    type="text"
+                    value={wasabiForm.bucket}
+                    onChange={(e) => setWasabiForm({ ...wasabiForm, bucket: e.target.value })}
+                    placeholder="my-bucket"
+                  />
                 </div>
-              </div>
 
-              <div>
-                <label className={labelClass}>{t.s3Region}</label>
-                <input
-                  type="text"
-                  value={wasabiForm.region}
-                  onChange={(e) => setWasabiForm({ ...wasabiForm, region: e.target.value })}
-                  placeholder="us-east-1"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>{t.s3Bucket}</label>
-                <input
-                  type="text"
-                  value={wasabiForm.bucket}
-                  onChange={(e) => setWasabiForm({ ...wasabiForm, bucket: e.target.value })}
-                  placeholder="bucket-name"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>{t.s3Endpoint}</label>
-                <input
+                <StudioInput
+                  label={t.s3Endpoint}
                   type="text"
                   value={wasabiForm.endpoint}
                   onChange={(e) => setWasabiForm({ ...wasabiForm, endpoint: e.target.value })}
-                  placeholder="https://s3.wasabisys.com"
-                  className={inputClass}
+                  placeholder="https://s3.eu-central-1.wasabisys.com"
+                  leadIcon={<Globe2 size={16} />}
                 />
-              </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  disabled={saving === 'wasabi'}
-                  className="flex-[2] flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                >
-                  {saving === 'wasabi' ? <Loader2 size={16} className="animate-spin" /> : null}
-                  {t.saveSettings}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTestStorage('wasabi')}
-                  disabled={testing === 'wasabi' || !storageSettings?.wasabi?.has_key}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                >
-                  {testing === 'wasabi' ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                  {t.testConnection}
-                </button>
-              </div>
-            </form>
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="submit"
+                    disabled={saving === 'wasabi'}
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white transition-all shadow-md shadow-teal-500/20 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {saving === 'wasabi' ? <Loader2 size={14} className="animate-spin" /> : null}
+                    {saving === 'wasabi' ? t.saving : t.saveSettings}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestStorage('wasabi')}
+                    disabled={testing === 'wasabi' || !storageSettings?.wasabi?.has_key}
+                    className="py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1 disabled:opacity-40"
+                  >
+                    {testing === 'wasabi' ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                    {t.testConnection}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

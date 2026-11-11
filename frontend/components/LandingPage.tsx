@@ -5,6 +5,9 @@ import { motion, useInView, AnimatePresence, Variants } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import CustomCursor from './CustomCursor';
+import SmoothScroll from './SmoothScroll';
+import SplitTextReveal from './SplitTextReveal';
+import StudioCanvas3D from './StudioCanvas3D';
 import { useLang } from '@/context/LangContext';
 import { apiGetPublicPackages, Package } from '@/lib/api';
 import {
@@ -318,22 +321,27 @@ export default function LandingPage() {
         ];
 
   return (
-    <div className="relative min-h-screen bg-[var(--bg)] text-[var(--text)] overflow-hidden">
-      <CustomCursor />
-      <Navbar />
+    <SmoothScroll>
+      <div className="relative min-h-screen bg-[var(--bg)] text-[var(--text)] overflow-hidden">
+        <CustomCursor />
+        <Navbar />
 
-      {/* ── Volumetric Ambient Studio Background ── */}
-      <div className="studio-mesh-bg">
-        <div className="studio-glow-orb-1" />
-        <div className="studio-glow-orb-2" />
-        <div className="studio-glow-orb-3" />
-        <div className="absolute inset-0 studio-grid-pattern opacity-30" />
-      </div>
+        {/* ── Volumetric Ambient Studio Background ── */}
+        <div className="studio-mesh-bg">
+          <div className="studio-glow-orb-1" />
+          <div className="studio-glow-orb-2" />
+          <div className="studio-glow-orb-3" />
+          <div className="absolute inset-0 studio-grid-pattern opacity-30" />
+        </div>
 
-      {/* ══════════════════════════════════════════════════════════
-          HERO SECTION — The Cinematic AI Story Studio
-      ═════════════════════════════════════════════════════════════ */}
-      <section className="relative pt-32 pb-20 md:pt-44 md:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto z-10">
+        {/* ══════════════════════════════════════════════════════════
+            HERO SECTION — The Cinematic AI Story Studio
+        ═════════════════════════════════════════════════════════════ */}
+        <section className="relative pt-32 pb-20 md:pt-44 md:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto z-10">
+          {/* Subtle 3D Storytelling Geometry in Hero */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] h-[480px] sm:w-[650px] sm:h-[650px] pointer-events-none opacity-40 z-0">
+            <StudioCanvas3D variant="hero" />
+          </div>
         <div className="text-center max-w-4xl mx-auto">
           {/* Studio Badge */}
           <motion.div
@@ -1442,5 +1450,6 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+  </SmoothScroll>
   );
 }

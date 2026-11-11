@@ -312,6 +312,9 @@ class BillingController extends Controller
         $request->validate(['plan_id' => ['required', 'exists:plans,id']]);
         $plan = Plan::findOrFail($request->integer('plan_id'));
         $user = $request->user();
+        if (config('services.central_payments.enabled')) {
+            return $this->subscribeCentralMyfatoorah($user, $plan);
+        }
         $gateway = MyFatoorahService::configured();
         if (!$gateway || (float) $plan->price <= 0) {
             return response()->json(['message' => 'MyFatoorah is not configured for paid checkout.'], 503);
@@ -343,6 +346,37 @@ class BillingController extends Controller
             $checkout->update(['status' => 'failed']);
             Log::error('MyFatoorah subscription invoice creation failed', ['checkout_id' => $checkout->id, 'exception' => get_class($e)]);
             return response()->json(['message' => 'Could not start MyFatoorah checkout. Verify the gateway settings and try again.'], 502);
+        }
+    }
+
+    private function subscribeCentralMyfatoorah(\App\Models\User $user, Plan $plan): JsonResponse
+    {
+        if ((float) $plan->price <= 0) {
+            return response()->json(['message' => 'Free plans do not require payment.'], 422);
+        }
+        $checkout = MyFatoorahCheckoutSession::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'amount' => $plan->price,
+            'currency' => 'SAR',
+            'status' => 'pending',
+        ]);
+        try {
+            $payment = app(\App\Services\CentralPaymentClientService::class)
+                ->createHostedPayment((string) $checkout->id, 'nazstudio-subscription-' . $checkout->id);
+            $checkout->update(['gateway_response' => ['central_payment_id' => $payment['central_payment_id']]]);
+            return response()->json([
+                'url' => $payment['payment_url'],
+                'invoice_id' => $payment['central_payment_id'],
+                'checkout_id' => $checkout->id,
+            ]);
+        } catch (\Throwable $e) {
+            $checkout->update(['status' => 'failed']);
+            Log::error('Central MyFatoorah subscription checkout failed', [
+                'checkout_id' => $checkout->id,
+                'exception_type' => get_class($e),
+            ]);
+            return response()->json(['message' => 'Could not start payment. Please try again or contact support.'], 502);
         }
     }
 

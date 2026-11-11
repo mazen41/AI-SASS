@@ -220,13 +220,48 @@ class RegistrationController extends Controller
             return response()->json(['message' => 'Registration successful.', 'user' => $user, 'token' => $token], 201);
         }
 
-        // Prefer MyFatoorah when enabled; otherwise preserve the existing Moyasar checkout.
+        // Centralized MyFatoorah is the sole MyF gateway when enabled.
+        if (config('services.central_payments.enabled')) {
+            return $this->initiateCentralMyFatoorahPayment($pending, $package);
+        }
         if (MyFatoorahService::configured()) {
             return $this->initiateMyFatoorahPayment($pending, $package);
         }
 
         // ── Paid package: create a Moyasar payment, no account yet ──────────
         return $this->initiateMoyasarPayment($pending, $package);
+    }
+
+    private function initiateCentralMyFatoorahPayment(PendingRegistration $pending, Package $package): JsonResponse
+    {
+        if ((float) $package->total_price <= 0) {
+            return response()->json(['message' => 'Free packages do not require payment.'], 422);
+        }
+        $checkout = MyFatoorahCheckoutSession::create([
+            'pending_registration_id' => $pending->id,
+            'amount' => $package->total_price,
+            'currency' => 'SAR',
+            'status' => 'pending',
+        ]);
+        try {
+            $payment = app(\App\Services\CentralPaymentClientService::class)
+                ->createHostedPayment((string) $checkout->id, 'nazstudio-registration-' . $checkout->id);
+            $checkout->update(['gateway_response' => ['central_payment_id' => $payment['central_payment_id']]]);
+            $pending->update(['status' => 'awaiting_payment']);
+            return response()->json([
+                'url' => $payment['payment_url'],
+                'pending_registration_id' => $pending->id,
+                'gateway' => 'myfatoorah',
+            ]);
+        } catch (\Throwable $e) {
+            $checkout->update(['status' => 'failed']);
+            Log::error('Central MyFatoorah registration checkout failed', [
+                'pending_id' => $pending->id,
+                'checkout_id' => $checkout->id,
+                'exception_type' => get_class($e),
+            ]);
+            return response()->json(['message' => 'Could not start payment. Please try again or contact support.'], 502);
+        }
     }
 
     private function initiateMyFatoorahPayment(PendingRegistration $pending, Package $package): JsonResponse

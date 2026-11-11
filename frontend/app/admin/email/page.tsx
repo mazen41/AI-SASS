@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useLang } from '@/context/LangContext';
+import StudioInput from '@/components/StudioInput';
 import {
   apiGetMailSettings,
   apiSaveMailSettings,
@@ -32,6 +33,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Sparkles,
+  Server,
+  Code2,
+  Lock,
+  Inbox,
+  X,
+  Search,
 } from 'lucide-react';
 
 type Tab = 'settings' | 'templates' | 'logs';
@@ -42,10 +50,13 @@ export default function EmailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('settings');
 
   const t = {
-    title: isRTL ? 'الإعدادات البريدية' : 'Email Settings',
-    settings: isRTL ? 'إعدادات SMTP' : 'SMTP Settings',
+    title: isRTL ? 'محرك البريد الإلكتروني' : 'Email Delivery Engine',
+    subtitle: isRTL
+      ? 'تكوين خادم SMTP، إدارة قوالب البريد الإلكتروني، وسجل الرسائل المرسلة'
+      : 'Configure SMTP transports, manage email templates, and inspect delivery logs',
+    settings: isRTL ? 'إعدادات SMTP' : 'SMTP Transport',
     templates: isRTL ? 'قوالب البريد' : 'Email Templates',
-    logs: isRTL ? 'سجل الإرسال' : 'Mail Logs',
+    logs: isRTL ? 'سجل الإرسال' : 'Delivery Logs',
     driver: isRTL ? 'المشغل' : 'Driver',
     host: isRTL ? 'الخادم' : 'Host',
     port: isRTL ? 'المنفذ' : 'Port',
@@ -71,7 +82,7 @@ export default function EmailPage() {
     edit: isRTL ? 'تعديل' : 'Edit',
     delete: isRTL ? 'حذف' : 'Delete',
     addTemplate: isRTL ? 'قالب جديد' : 'New Template',
-    seedDefaults: isRTL ? 'إضافة القوالب الافتراضية' : 'Add Default Templates',
+    seedDefaults: isRTL ? 'إضافة القوالب الافتراضية' : 'Seed Default Templates',
     close: isRTL ? 'إغلاق' : 'Close',
     toEmail: isRTL ? 'إلى البريد' : 'To Email',
     send: isRTL ? 'إرسال' : 'Send',
@@ -90,56 +101,58 @@ export default function EmailPage() {
     date: isRTL ? 'التاريخ' : 'Date',
   };
 
-  const tabs = [
-    { key: 'settings' as Tab, label: t.settings, icon: Settings },
-    { key: 'templates' as Tab, label: t.templates, icon: FileText },
-    { key: 'logs' as Tab, label: t.logs, icon: Mail },
+  const tabs: { key: Tab; label: string; icon: typeof Mail; count?: string }[] = [
+    { key: 'settings', label: t.settings, icon: Settings },
+    { key: 'templates', label: t.templates, icon: Code2 },
+    { key: 'logs', label: t.logs, icon: Inbox },
   ];
 
   return (
-    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {isRTL ? 'إدارة إعدادات البريد الإلكتروني والقوالب' : 'Manage email settings and templates'}
-          </p>
+      <div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono tracking-wider uppercase bg-brand-purple/10 border border-brand-purple/20 text-brand-purple mb-3">
+          <Sparkles size={13} />
+          {isRTL ? 'نظام البريد الإلكتروني' : 'Mail Subsystem'}
         </div>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+          {t.title}
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">{t.subtitle}</p>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="flex flex-wrap border-b border-gray-200 dark:border-gray-700">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium transition-all border-b-2 -mb-px ${
-                  activeTab === tab.key
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                }`}
-              >
-                <Icon size={18} />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Tab Bar */}
+      <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 w-fit">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                activeTab === tab.key
+                  ? 'bg-gradient-to-r from-brand-blue to-brand-purple text-white shadow-lg shadow-brand-blue/20'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Icon size={15} />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        <div className="p-4 sm:p-6">
-          {activeTab === 'settings' && <SettingsTab t={t} isRTL={isRTL} />}
-          {activeTab === 'templates' && <TemplatesTab t={t} isRTL={isRTL} />}
-          {activeTab === 'logs' && <LogsTab t={t} isRTL={isRTL} />}
-        </div>
+      {/* Tab Content */}
+      <div className="studio-card p-6 md:p-8">
+        {activeTab === 'settings' && <SettingsTab t={t} isRTL={isRTL} />}
+        {activeTab === 'templates' && <TemplatesTab t={t} isRTL={isRTL} />}
+        {activeTab === 'logs' && <LogsTab t={t} isRTL={isRTL} />}
       </div>
     </div>
   );
 }
 
+/* ─── SMTP Settings Tab ─── */
 function SettingsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
   const [settings, setSettings] = useState<MailSetting>({
     driver: 'smtp',
@@ -197,33 +210,32 @@ function SettingsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }
     }
   };
 
-  const inputClass = "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all";
-  const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
-
   return (
     <div className="space-y-6">
-      {/* Alerts */}
+      {/* Status Alerts */}
       {message && (
-        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-400 animate-fade-in">
-          <CheckCircle size={20} />
-          <span className="text-sm font-medium">{message}</span>
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/[0.06] border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+          <CheckCircle size={18} />
+          <span className="text-xs font-semibold">{message}</span>
         </div>
       )}
       {error && (
-        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-400 animate-fade-in">
-          <XCircle size={20} />
-          <span className="text-sm font-medium">{error}</span>
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/[0.06] border border-red-500/20 text-red-700 dark:text-red-400">
+          <XCircle size={18} />
+          <span className="text-xs font-semibold">{error}</span>
         </div>
       )}
 
       {/* Form Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div>
-          <label className={labelClass}>{t.driver}</label>
-          <select 
-            value={settings.driver} 
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+            {t.driver}
+          </label>
+          <select
+            value={settings.driver}
             onChange={(e) => setSettings({ ...settings, driver: e.target.value })}
-            className={inputClass}
+            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:border-brand-blue"
           >
             <option value="smtp">SMTP</option>
             <option value="sendmail">Sendmail</option>
@@ -233,133 +245,126 @@ function SettingsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }
           </select>
         </div>
 
-        <div>
-          <label className={labelClass}>{t.host}</label>
-          <input 
-            type="text" 
-            value={settings.host} 
-            onChange={(e) => setSettings({ ...settings, host: e.target.value })} 
-            placeholder="smtp.example.com"
-            className={inputClass}
-          />
-        </div>
+        <StudioInput
+          label={t.host}
+          type="text"
+          value={settings.host}
+          onChange={(e) => setSettings({ ...settings, host: e.target.value })}
+          placeholder="smtp.example.com"
+          leadIcon={<Server size={16} />}
+        />
+
+        <StudioInput
+          label={t.port}
+          type="number"
+          value={settings.port}
+          onChange={(e) => setSettings({ ...settings, port: parseInt(e.target.value) || 0 })}
+          placeholder="587"
+        />
 
         <div>
-          <label className={labelClass}>{t.port}</label>
-          <input 
-            type="number" 
-            value={settings.port} 
-            onChange={(e) => setSettings({ ...settings, port: parseInt(e.target.value) || 0 })}
-            className={inputClass}
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>{t.encryption}</label>
-          <select 
-            value={settings.encryption} 
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+            {t.encryption}
+          </label>
+          <select
+            value={settings.encryption}
             onChange={(e) => setSettings({ ...settings, encryption: e.target.value })}
-            className={inputClass}
+            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:border-brand-blue"
           >
-            <option value="tls">TLS</option>
+            <option value="tls">TLS (recommended)</option>
             <option value="ssl">SSL</option>
             <option value="none">None</option>
           </select>
         </div>
 
-        <div>
-          <label className={labelClass}>{t.username}</label>
-          <input 
-            type="text" 
-            value={settings.username} 
-            onChange={(e) => setSettings({ ...settings, username: e.target.value })}
-            className={inputClass}
-          />
-        </div>
+        <StudioInput
+          label={t.username}
+          type="text"
+          value={settings.username}
+          onChange={(e) => setSettings({ ...settings, username: e.target.value })}
+          placeholder="user@example.com"
+          leadIcon={<Mail size={16} />}
+        />
 
-        <div>
-          <label className={labelClass}>{t.password}</label>
-          <input 
-            type="password" 
-            value={settings.password} 
-            onChange={(e) => setSettings({ ...settings, password: e.target.value })}
-            className={inputClass}
-          />
-        </div>
+        <StudioInput
+          label={t.password}
+          type="password"
+          value={settings.password}
+          onChange={(e) => setSettings({ ...settings, password: e.target.value })}
+          placeholder="••••••••"
+          leadIcon={<Lock size={16} />}
+        />
 
-        <div>
-          <label className={labelClass}>{t.fromAddress}</label>
-          <input 
-            type="email" 
-            value={settings.from_address} 
-            onChange={(e) => setSettings({ ...settings, from_address: e.target.value })} 
-            placeholder="noreply@example.com"
-            className={inputClass}
-          />
-        </div>
+        <StudioInput
+          label={t.fromAddress}
+          type="email"
+          value={settings.from_address}
+          onChange={(e) => setSettings({ ...settings, from_address: e.target.value })}
+          placeholder="noreply@nazstudio.art"
+          leadIcon={<Send size={16} />}
+        />
 
-        <div>
-          <label className={labelClass}>{t.fromName}</label>
-          <input 
-            type="text" 
-            value={settings.from_name} 
-            onChange={(e) => setSettings({ ...settings, from_name: e.target.value })}
-            className={inputClass}
-          />
-        </div>
+        <StudioInput
+          label={t.fromName}
+          type="text"
+          value={settings.from_name}
+          onChange={(e) => setSettings({ ...settings, from_name: e.target.value })}
+          placeholder="NazStudio"
+        />
       </div>
 
       {/* Enable Toggle */}
-      <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={settings.is_enabled} 
-            onChange={(e) => setSettings({ ...settings, is_enabled: e.target.checked })}
-            className="sr-only peer"
-          />
-          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-        </label>
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.enabled}</span>
-        {settings.is_enabled && (
-          <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 rounded-full">
-            {isRTL ? 'نشط' : 'Active'}
+      <label className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 cursor-pointer">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+            {t.enabled}
           </span>
-        )}
-      </div>
+          {settings.is_enabled && (
+            <span className="px-2 py-0.5 text-[10px] font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full">
+              ACTIVE
+            </span>
+          )}
+        </div>
+        <input
+          type="checkbox"
+          checked={settings.is_enabled}
+          onChange={(e) => setSettings({ ...settings, is_enabled: e.target.checked })}
+          className="w-4 h-4 rounded text-brand-blue focus:ring-brand-blue"
+        />
+      </label>
 
-      {/* Save Button */}
-      <div className="flex flex-wrap gap-3">
-        <button 
-          onClick={handleSave} 
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg transition-colors shadow-sm"
-        >
-          {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-          {loading ? t.loading : t.save}
-        </button>
-      </div>
+      {/* Save */}
+      <button
+        onClick={handleSave}
+        disabled={loading}
+        className="py-3 px-8 rounded-xl text-xs font-bold bg-gradient-to-r from-brand-blue to-brand-purple text-white hover:opacity-90 transition-all shadow-md shadow-brand-blue/20 flex items-center gap-2 disabled:opacity-50"
+      >
+        {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+        {loading ? t.loading : t.save}
+      </button>
 
-      {/* Test Connection Section */}
-      <div className="mt-6 p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-600">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Send size={20} className="text-indigo-500" />
+      {/* Test Connection Block */}
+      <div className="mt-4 p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 space-y-4">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <Send size={16} className="text-brand-blue" />
           {t.test}
         </h3>
         <div className="flex flex-col sm:flex-row gap-3">
-          <input 
-            type="email" 
-            value={testEmail} 
-            onChange={(e) => setTestEmail(e.target.value)} 
-            placeholder={t.testEmail}
-            className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          />
-          <button 
-            onClick={handleTest} 
+          <div className="flex-1">
+            <StudioInput
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder={t.testEmail}
+              leadIcon={<Mail size={16} />}
+            />
+          </div>
+          <button
+            onClick={handleTest}
             disabled={testLoading || !testEmail}
-            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-lg transition-colors shadow-sm whitespace-nowrap"
+            className="py-3 px-6 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 shrink-0"
           >
-            {testLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+            {testLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             {testLoading ? t.loading : t.sendTest}
           </button>
         </div>
@@ -368,6 +373,7 @@ function SettingsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }
   );
 }
 
+/* ─── Templates Tab ─── */
 function TemplatesTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
   const [templates, setTemplates] = useState<MailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -469,96 +475,120 @@ function TemplatesTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean 
 
   return (
     <div className="space-y-6">
-      {/* Success Message */}
       {message && (
-        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-400">
-          <CheckCircle size={20} />
-          <span className="text-sm font-medium">{message}</span>
+        <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/[0.06] border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+          <CheckCircle size={18} />
+          <span className="text-xs font-semibold">{message}</span>
         </div>
       )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap gap-3">
-        <button 
-          onClick={() => setEditing({ id: 0, key: '', name: '', subject: '', html_content: '', text_content: '', description: '', is_active: true, variables: [] } as MailTemplate)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+        <button
+          onClick={() =>
+            setEditing({
+              id: 0,
+              key: '',
+              name: '',
+              subject: '',
+              html_content: '',
+              text_content: '',
+              description: '',
+              is_active: true,
+              variables: [],
+            } as MailTemplate)
+          }
+          className="py-2.5 px-5 rounded-xl text-xs font-bold bg-gradient-to-r from-brand-blue to-brand-purple text-white hover:opacity-90 shadow-md shadow-brand-blue/20 flex items-center gap-2 transition-all"
         >
-          <Plus size={18} />
+          <Plus size={16} />
           {t.addTemplate}
         </button>
-        <button 
+        <button
           onClick={handleSeed}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors border border-gray-200 dark:border-gray-600"
+          className="py-2.5 px-5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
         >
-          <RefreshCw size={18} />
+          <RefreshCw size={14} />
           {t.seedDefaults}
         </button>
       </div>
 
-      {/* Templates Grid */}
+      {/* Template Cards */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 size={32} className="animate-spin text-indigo-500" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 size={28} className="animate-spin text-brand-blue" />
         </div>
       ) : templates.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          <Mail size={48} className="mx-auto mb-4 opacity-50" />
-          <p>{isRTL ? 'لا توجد قوالب' : 'No templates found'}</p>
+        <div className="text-center py-16 text-slate-500 dark:text-slate-400">
+          <Mail size={44} className="mx-auto mb-4 opacity-30" />
+          <p className="text-sm">{isRTL ? 'لا توجد قوالب' : 'No templates found'}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {templates.map((tmpl) => (
-            <div key={tmpl.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+            <div
+              key={tmpl.id}
+              className="studio-card p-5 flex flex-col gap-3 hover:border-brand-blue/30 transition-all group"
+            >
               <div className="flex justify-between items-start">
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-semibold text-gray-900 dark:text-white truncate">{tmpl.name}</h4>
-                  <span className="text-xs text-gray-400 font-mono">{tmpl.key}</span>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                    {tmpl.name}
+                  </h4>
+                  <span className="text-[11px] text-slate-400 font-mono">{tmpl.key}</span>
                 </div>
-                <span className={`shrink-0 ml-2 px-2.5 py-1 text-xs font-medium rounded-full ${
-                  tmpl.is_active 
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' 
-                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                }`}>
-                  {tmpl.is_active ? t.active : (isRTL ? 'غير نشط' : 'Inactive')}
+                <span
+                  className={`shrink-0 ms-2 px-2.5 py-1 text-[10px] font-mono font-medium rounded-full ${
+                    tmpl.is_active
+                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                      : 'bg-slate-500/10 text-slate-500 border border-slate-500/20'
+                  }`}
+                >
+                  {tmpl.is_active ? t.active : isRTL ? 'غير نشط' : 'Inactive'}
                 </span>
               </div>
-              
+
               {tmpl.description && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{tmpl.description}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                  {tmpl.description}
+                </p>
               )}
-              
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                <span className="font-medium">{t.subject}:</span> {tmpl.subject}
+
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                <span className="font-semibold text-slate-400">{t.subject}:</span> {tmpl.subject}
               </p>
-              
-              <div className="flex gap-2 mt-auto pt-3 border-t border-gray-100 dark:border-gray-700">
-                <button 
-                  onClick={() => handlePreview(tmpl)} 
+
+              <div className="flex items-center gap-1.5 mt-auto pt-3 border-t border-slate-100 dark:border-white/5">
+                <button
+                  onClick={() => handlePreview(tmpl)}
                   title={t.preview}
-                  className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 dark:hover:border-indigo-500 transition-colors"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10 transition-colors"
                 >
-                  <Eye size={16} />
+                  <Eye size={15} />
                 </button>
-                <button 
-                  onClick={() => setEditing(tmpl)} 
+                <button
+                  onClick={() => setEditing(tmpl)}
                   title={t.edit}
-                  className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-blue-600 hover:border-blue-300 dark:hover:border-blue-500 transition-colors"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-brand-purple hover:bg-brand-purple/10 transition-colors"
                 >
-                  <FileText size={16} />
+                  <FileText size={15} />
                 </button>
-                <button 
-                  onClick={() => { setTestTemplate(tmpl); setShowTest(true); }} 
+                <button
+                  onClick={() => {
+                    setTestTemplate(tmpl);
+                    setShowTest(true);
+                  }}
                   title={t.send}
-                  className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-500 transition-colors"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
                 >
-                  <Send size={16} />
+                  <Send size={15} />
                 </button>
-                <button 
-                  onClick={() => handleDelete(tmpl.id)} 
+                <div className="flex-1" />
+                <button
+                  onClick={() => handleDelete(tmpl.id)}
                   title={t.delete}
-                  className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50 dark:hover:border-red-500 dark:hover:bg-red-900/20 transition-colors"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={15} />
                 </button>
               </div>
             </div>
@@ -568,49 +598,66 @@ function TemplatesTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean 
 
       {/* Preview Modal */}
       {showPreview && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowPreview(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white">{previewSubject}</h3>
-              <button 
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPreview(false)}
+        >
+          <div
+            className="studio-card max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-white/10">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">{previewSubject}</h3>
+              <button
                 onClick={() => setShowPreview(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors"
               >
-                <XCircle size={24} />
+                <X size={18} />
               </button>
             </div>
-            <div className="p-6 bg-gray-50 dark:bg-gray-900 overflow-auto max-h-[60vh]" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+            <div
+              className="p-6 bg-white dark:bg-slate-900 overflow-auto max-h-[60vh]"
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
           </div>
         </div>
       )}
 
-      {/* Test Modal */}
+      {/* Send Test Modal */}
       {showTest && testTemplate && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowTest(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white">{t.test} - {testTemplate.name}</h3>
-              <button 
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4"
+          onClick={() => setShowTest(false)}
+        >
+          <div
+            className="studio-card max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-5 border-b border-slate-200 dark:border-white/10">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                {t.test} — {testTemplate.name}
+              </h3>
+              <button
                 onClick={() => setShowTest(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors"
               >
-                <XCircle size={24} />
+                <X size={18} />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <input 
-                type="email" 
-                value={testEmail} 
-                onChange={(e) => setTestEmail(e.target.value)} 
+              <StudioInput
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
                 placeholder={t.toEmail}
-                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                leadIcon={<Mail size={16} />}
               />
-              <button 
-                onClick={handleTest} 
+              <button
+                onClick={handleTest}
                 disabled={!testEmail || testLoading}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-lg transition-colors"
+                className="w-full py-3 px-5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {testLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                {testLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 {t.send}
               </button>
             </div>
@@ -621,7 +668,20 @@ function TemplatesTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean 
   );
 }
 
-function TemplateEditor({ template, onSave, onCancel, t, isRTL }: { template: MailTemplate; onSave: (t: Partial<MailTemplate>) => void; onCancel: () => void; t: Record<string, string>; isRTL: boolean }) {
+/* ─── Template Editor ─── */
+function TemplateEditor({
+  template,
+  onSave,
+  onCancel,
+  t,
+  isRTL,
+}: {
+  template: MailTemplate;
+  onSave: (t: Partial<MailTemplate>) => void;
+  onCancel: () => void;
+  t: Record<string, string>;
+  isRTL: boolean;
+}) {
   const [form, setForm] = useState<Partial<MailTemplate>>({
     id: template.id || undefined,
     key: template.key,
@@ -641,111 +701,120 @@ function TemplateEditor({ template, onSave, onCancel, t, isRTL }: { template: Ma
     setSaving(false);
   };
 
-  const inputClass = "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all";
-  const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {template.id ? (isRTL ? 'تعديل القالب' : 'Edit Template') : (isRTL ? 'قالب جديد' : 'New Template')}
+      <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+          {template.id
+            ? isRTL
+              ? 'تعديل القالب'
+              : 'Edit Template'
+            : isRTL
+            ? 'قالب جديد'
+            : 'New Template'}
         </h3>
-        <button 
+        <button
           onClick={onCancel}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors"
         >
-          <XCircle size={24} />
+          <X size={20} />
         </button>
       </div>
 
       {/* Form */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-        <div>
-          <label className={labelClass}>{t.templateKey}</label>
-          <input 
-            type="text" 
-            value={form.key} 
-            onChange={(e) => setForm({ ...form, key: e.target.value })}
-            placeholder="welcome_email"
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>{t.templateName}</label>
-          <input 
-            type="text" 
-            value={form.name} 
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Welcome Email"
-            className={inputClass}
-          />
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <StudioInput
+          label={t.templateKey}
+          type="text"
+          value={form.key ?? ''}
+          onChange={(e) => setForm({ ...form, key: e.target.value })}
+          placeholder="welcome_email"
+          leadIcon={<Code2 size={16} />}
+        />
+
+        <StudioInput
+          label={t.templateName}
+          type="text"
+          value={form.name ?? ''}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="Welcome Email"
+          leadIcon={<FileText size={16} />}
+        />
+
         <div className="sm:col-span-2">
-          <label className={labelClass}>{t.subject}</label>
-          <input 
-            type="text" 
-            value={form.subject} 
+          <StudioInput
+            label={t.subject}
+            type="text"
+            value={form.subject ?? ''}
             onChange={(e) => setForm({ ...form, subject: e.target.value })}
-            className={inputClass}
+            placeholder="Welcome to NazStudio"
+            leadIcon={<Mail size={16} />}
           />
         </div>
+
         <div className="sm:col-span-2">
-          <label className={labelClass}>{t.description}</label>
-          <input 
-            type="text" 
-            value={form.description ?? ''} 
+          <StudioInput
+            label={t.description}
+            type="text"
+            value={form.description ?? ''}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className={inputClass}
           />
         </div>
+
         <div className="sm:col-span-2">
-          <label className={labelClass}>{t.htmlContent}</label>
-          <textarea 
-            rows={10} 
-            value={form.html_content} 
-            onChange={(e) => setForm({ ...form, html_content: e.target.value })}
-            className={`${inputClass} font-mono text-xs`}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className={labelClass}>{t.textContent}</label>
-          <textarea 
-            rows={5} 
-            value={form.text_content ?? ''} 
-            onChange={(e) => setForm({ ...form, text_content: e.target.value })}
-            className={`${inputClass} font-mono text-xs`}
-          />
-        </div>
-        
-        {/* Active Toggle */}
-        <div className="sm:col-span-2 flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={form.is_active} 
-              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+            {t.htmlContent}
           </label>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.active}</span>
+          <textarea
+            rows={10}
+            value={form.html_content ?? ''}
+            onChange={(e) => setForm({ ...form, html_content: e.target.value })}
+            className="w-full px-4 py-3 rounded-xl bg-slate-900 dark:bg-black/40 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-brand-blue resize-y"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+            {t.textContent}
+          </label>
+          <textarea
+            rows={5}
+            value={form.text_content ?? ''}
+            onChange={(e) => setForm({ ...form, text_content: e.target.value })}
+            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-brand-blue resize-y"
+          />
+        </div>
+
+        {/* Active Toggle */}
+        <div className="sm:col-span-2">
+          <label className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 cursor-pointer">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              {t.active}
+            </span>
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              className="w-4 h-4 rounded text-brand-blue focus:ring-brand-blue"
+            />
+          </label>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button 
+      <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-200 dark:border-white/10">
+        <button
           onClick={handleSubmit}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg transition-colors shadow-sm"
+          className="py-3 px-8 rounded-xl text-xs font-bold bg-gradient-to-r from-brand-blue to-brand-purple text-white hover:opacity-90 shadow-md shadow-brand-blue/20 flex items-center gap-2 disabled:opacity-50 transition-all"
         >
-          {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
           {t.save}
         </button>
-        <button 
+        <button
           onClick={onCancel}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors border border-gray-200 dark:border-gray-600"
+          className="py-3 px-8 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all"
         >
           {t.close}
         </button>
@@ -754,6 +823,7 @@ function TemplateEditor({ template, onSave, onCancel, t, isRTL }: { template: Ma
   );
 }
 
+/* ─── Mail Logs Tab ─── */
 function LogsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
   const [logs, setLogs] = useState<MailLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -780,81 +850,98 @@ function LogsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
     void load();
   }, [load]);
 
-  // Auto-refresh logs every 10 seconds to show real-time status updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      void load();
-    }, 10000);
+    const interval = setInterval(() => void load(), 10000);
     return () => clearInterval(interval);
   }, [load]);
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      sent: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400',
-      pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400',
-      failed: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400',
-      bounced: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-400',
+  const statusStyle = (status: string) => {
+    const m: Record<string, string> = {
+      sent: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+      pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+      failed: 'bg-red-500/10 text-red-500 border-red-500/20',
+      bounced: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
     };
-    return styles[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400';
+    return m[status] || 'bg-slate-500/10 text-slate-500 border-slate-500/20';
   };
 
   return (
     <div className="space-y-6">
       {/* Search & Refresh */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <input 
-            type="text" 
-            value={search} 
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }} 
+        <div className="flex-1">
+          <StudioInput
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder={t.search}
-            className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent pl-10"
+            leadIcon={<Search size={16} />}
           />
-          <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         </div>
-        <button 
+        <button
           onClick={load}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors border border-gray-200 dark:border-gray-600"
+          className="py-3 px-5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2 shrink-0"
         >
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           <span className="hidden sm:inline">{isRTL ? 'تحديث' : 'Refresh'}</span>
         </button>
       </div>
 
-      {/* Logs Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 size={32} className="animate-spin text-indigo-500" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 size={28} className="animate-spin text-brand-blue" />
         </div>
       ) : logs.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          <Mail size={48} className="mx-auto mb-4 opacity-50" />
-          <p>{t.noLogs}</p>
+        <div className="text-center py-16 text-slate-500 dark:text-slate-400">
+          <Inbox size={44} className="mx-auto mb-4 opacity-30" />
+          <p className="text-sm">{t.noLogs}</p>
         </div>
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden md:block overflow-hidden border border-gray-200 dark:border-gray-700 rounded-xl">
+          <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10">
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t.toEmail}</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t.subject}</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t.status}</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t.date}</th>
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02]">
+                  <th className="px-5 py-3 text-start text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+                    {t.toEmail}
+                  </th>
+                  <th className="px-5 py-3 text-start text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+                    {t.subject}
+                  </th>
+                  <th className="px-5 py-3 text-start text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+                    {t.status}
+                  </th>
+                  <th className="px-5 py-3 text-start text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+                    {t.date}
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{log.to_email}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{log.subject}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full capitalize ${getStatusBadge(log.status)}`}>
+                  <tr
+                    key={log.id}
+                    className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+                  >
+                    <td className="px-5 py-3.5 text-xs font-medium text-slate-900 dark:text-white">
+                      {log.to_email}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300 max-w-xs truncate">
+                      {log.subject}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={`inline-flex px-2.5 py-1 text-[10px] font-mono font-medium rounded-full border capitalize ${statusStyle(
+                          log.status
+                        )}`}
+                      >
                         {log.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                    <td className="px-5 py-3.5 text-xs text-slate-400 font-mono">
                       {new Date(log.created_at).toLocaleString(isRTL ? 'ar' : 'en')}
                     </td>
                   </tr>
@@ -866,37 +953,48 @@ function LogsTab({ t, isRTL }: { t: Record<string, string>; isRTL: boolean }) {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-3">
             {logs.map((log) => (
-              <div key={log.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-2">
+              <div
+                key={log.id}
+                className="studio-card p-4 space-y-2"
+              >
                 <div className="flex justify-between items-start">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1">{log.to_email}</span>
-                  <span className={`shrink-0 ml-2 px-2.5 py-1 text-xs font-medium rounded-full capitalize ${getStatusBadge(log.status)}`}>
+                  <span className="text-xs font-medium text-slate-900 dark:text-white truncate flex-1">
+                    {log.to_email}
+                  </span>
+                  <span
+                    className={`shrink-0 ms-2 px-2.5 py-1 text-[10px] font-mono font-medium rounded-full border capitalize ${statusStyle(
+                      log.status
+                    )}`}
+                  >
                     {log.status}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300 truncate">{log.subject}</p>
-                <p className="text-xs text-gray-400">{new Date(log.created_at).toLocaleString(isRTL ? 'ar' : 'en')}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 truncate">{log.subject}</p>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  {new Date(log.created_at).toLocaleString(isRTL ? 'ar' : 'en')}
+                </p>
               </div>
             ))}
           </div>
 
           {/* Pagination */}
           <div className="flex items-center justify-center gap-4 pt-4">
-            <button 
-              disabled={page <= 1} 
+            <button
+              disabled={page <= 1}
               onClick={() => setPage(page - 1)}
-              className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-10 h-10 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.05] disabled:opacity-30 transition-colors flex items-center justify-center"
             >
-              {isRTL ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+              {isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {isRTL ? `${lastPage} من ${page}` : `Page ${page} of ${lastPage}`}
+            <span className="text-xs text-slate-500 font-mono">
+              {isRTL ? `${lastPage} من ${page}` : `${page} / ${lastPage}`}
             </span>
-            <button 
-              disabled={page >= lastPage} 
+            <button
+              disabled={page >= lastPage}
               onClick={() => setPage(page + 1)}
-              className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-10 h-10 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.05] disabled:opacity-30 transition-colors flex items-center justify-center"
             >
-              {isRTL ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+              {isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
             </button>
           </div>
         </>

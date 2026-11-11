@@ -1,8 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiGetBackupSettings, apiUpdateBackupSettings, apiRunBackup, apiGetDownloadBackupUrl, BackupSettings } from '@/lib/api';
+import {
+  apiGetBackupSettings,
+  apiUpdateBackupSettings,
+  apiRunBackup,
+  apiGetDownloadBackupUrl,
+  BackupSettings,
+} from '@/lib/api';
 import { useLang } from '@/context/LangContext';
+import StudioInput from '@/components/StudioInput';
 import {
   Database,
   Download,
@@ -16,6 +23,12 @@ import {
   Eye,
   EyeOff,
   ShieldAlert,
+  Sparkles,
+  HardDrive,
+  Lock,
+  Globe2,
+  Play,
+  Save,
 } from 'lucide-react';
 
 export default function BackupPage() {
@@ -23,38 +36,46 @@ export default function BackupPage() {
   const isRTL = locale === 'ar';
 
   const t = {
-    title: isRTL ? 'إدارة النسخ الاحتياطي لقاعدة البيانات' : 'Database Backup Manager',
-    subtitle: isRTL ? 'تكوين وجدولة النسخ الاحتياطية اليومية وتنزيل قاعدة البيانات يدوياً.' : 'Configure daily automated backups and download database snapshots manually.',
-    manualSection: isRTL ? 'نسخ احتياطي فوري' : 'On-Demand Database Actions',
-    manualDesc: isRTL ? 'قم بإنشاء نسخة احتياطية فورية أو تنزيل ملف SQL مضغوط بقفل Gzip مباشرة إلى جهازك.' : 'Generate an immediate backup or download a gzipped SQL file directly to your system.',
-    downloadBtn: isRTL ? 'تحميل نسخة قاعدة البيانات' : 'Download DB Snapshot',
+    title: isRTL ? 'مركز النسخ الاحتياطي' : 'Backup Control Center',
+    subtitle: isRTL
+      ? 'إنشاء نسخ احتياطية فورية، جدولة نسخ تلقائية يومية، وتحميل لقطات قاعدة البيانات'
+      : 'Create on-demand snapshots, schedule daily automated backups, and download database exports',
+    manualSection: isRTL ? 'إجراءات فورية' : 'On-Demand Actions',
+    manualDesc: isRTL
+      ? 'إنشاء نسخة احتياطية فورية للرفع السحابي، أو تنزيل ملف SQL مضغوط (Gzip) مباشرة.'
+      : 'Generate an immediate cloud backup or download a compressed SQL snapshot to your local machine.',
+    downloadBtn: isRTL ? 'تنزيل لقطة قاعدة البيانات' : 'Download DB Snapshot',
     runBtn: isRTL ? 'تشغيل نسخة احتياطية سحابية' : 'Trigger Cloud Backup',
-    running: isRTL ? 'جاري التشغيل...' : 'Running...',
-    runSuccess: isRTL ? 'تم إنشاء النسخة الاحتياطية ورفعها بنجاح!' : 'Backup generated and uploaded successfully!',
-    runError: isRTL ? 'فشل إنشاء النسخة الاحتياطية' : 'Backup generation failed',
-    scheduleSection: isRTL ? 'جدولة النسخ الاحتياطي التلقائي' : 'Automated Backup Scheduler',
-    enableBackup: isRTL ? 'تمكين النسخ الاحتياطي التلقائي اليومي' : 'Enable Daily Automated Backup',
-    destination: isRTL ? 'وجهة النسخ الاحتياطي' : 'Backup Destination',
-    time: isRTL ? 'وقت النسخ الاحتياطي (توقيت الخادم)' : 'Backup Time (Server Time)',
-    localPath: isRTL ? 'المسار المحلي (داخل مجلد storage/app)' : 'Local Storage Path (inside storage/app)',
-    saveSettings: isRTL ? 'حفظ إعدادات الجدولة' : 'Save Scheduler Settings',
+    running: isRTL ? 'جاري النسخ الاحتياطي...' : 'Backing up...',
+    runSuccess: isRTL ? 'تم إنشاء النسخة الاحتياطية بنجاح!' : 'Backup completed successfully!',
+    runError: isRTL ? 'فشل النسخ الاحتياطي' : 'Backup generation failed',
+    scheduleSection: isRTL ? 'جدولة النسخ التلقائي' : 'Automated Backup Scheduler',
+    enableBackup: isRTL ? 'تمكين النسخ الاحتياطي التلقائي اليومي' : 'Enable Daily Automated Backups',
+    destination: isRTL ? 'وجهة التخزين' : 'Storage Destination',
+    time: isRTL ? 'وقت النسخ (توقيت الخادم)' : 'Backup Time (Server Timezone)',
+    localPath: isRTL ? 'المسار المحلي (داخل storage/app)' : 'Local Path (inside storage/app)',
+    saveSettings: isRTL ? 'حفظ إعدادات الجدولة' : 'Save Scheduler Config',
     saving: isRTL ? 'جاري الحفظ...' : 'Saving...',
-    saveSuccess: isRTL ? 'تم حفظ إعدادات النسخ الاحتياطي بنجاح!' : 'Backup settings saved successfully!',
-    saveError: isRTL ? 'فشل حفظ إعدادات النسخ الاحتياطي' : 'Failed to save settings',
+    saveSuccess: isRTL ? 'تم حفظ الإعدادات بنجاح!' : 'Scheduler settings saved!',
+    saveError: isRTL ? 'فشل حفظ الإعدادات' : 'Failed to save settings',
     googleFolder: isRTL ? 'معرف مجلد Google Drive' : 'Google Drive Folder ID',
-    googleJson: isRTL ? 'مفتاح حساب الخدمة Google Service Account JSON' : 'Google Service Account JSON Key',
-    s3Key: isRTL ? 'مفتاح S3 Access Key' : 'S3 Access Key ID',
-    s3Secret: isRTL ? 'كلمة سر S3 Secret Key' : 'S3 Secret Access Key',
-    s3Region: isRTL ? 'منطقة S3 Region' : 'S3 Region',
-    s3Bucket: isRTL ? 'اسم الحاوية S3 Bucket' : 'S3 Bucket Name',
-    s3Endpoint: isRTL ? 'رابط Endpoint مخصص (اختياري للـ S3، ومطلوب للـ Wasabi)' : 'Custom Endpoint URL (optional for S3, required for Wasabi)',
+    googleJson: isRTL ? 'مفتاح حساب الخدمة (JSON)' : 'Service Account JSON Key',
+    s3Key: isRTL ? 'مفتاح Access Key ID' : 'S3 Access Key ID',
+    s3Secret: isRTL ? 'المفتاح السري (Secret Key)' : 'S3 Secret Access Key',
+    s3Region: isRTL ? 'منطقة الخادم (Region)' : 'S3 Region',
+    s3Bucket: isRTL ? 'اسم الحاوية (Bucket)' : 'S3 Bucket Name',
+    s3Endpoint: isRTL
+      ? 'رابط Endpoint (اختياري لـ S3، مطلوب لـ Wasabi)'
+      : 'Custom Endpoint URL (optional for S3, required for Wasabi)',
     destinations: {
-      local: isRTL ? 'مخزن محلي' : 'Local Disk',
-      s3: isRTL ? 'أمازون Amazon S3' : 'Amazon S3',
-      wasabi: isRTL ? 'وسابي Wasabi Storage' : 'Wasabi Cloud',
-      google_drive: isRTL ? 'جوجل درايف Google Drive' : 'Google Drive',
+      local: isRTL ? 'القرص المحلي' : 'Local Disk',
+      s3: isRTL ? 'Amazon S3' : 'Amazon S3',
+      wasabi: isRTL ? 'Wasabi Cloud' : 'Wasabi Cloud',
+      google_drive: isRTL ? 'Google Drive' : 'Google Drive',
     },
-    secNotice: isRTL ? 'تنبيه أمني: يتم تشفير جميع المفاتيح والمستندات المخزنة لقاعدة البيانات بشكل كامل عند الحفظ.' : 'Security Notice: All API keys and Google Drive JSON credentials are encrypted at rest using Laravel\'s secure Crypt wrapper.',
+    secNotice: isRTL
+      ? 'جميع مفاتيح الـ API والمستندات السرية مشفرة بالكامل عند الحفظ في قاعدة البيانات (AES-256).'
+      : 'All API keys, secrets, and Google Drive JSON credentials are encrypted at rest using AES-256.',
   };
 
   const [settings, setSettings] = useState<BackupSettings | null>(null);
@@ -118,7 +139,6 @@ export default function BackupPage() {
         google_folder_id: form.google_folder_id,
         backup_time: form.backup_time,
       };
-
       if (form.s3_key) data.s3_key = form.s3_key;
       if (form.s3_secret) data.s3_secret = form.s3_secret;
       if (form.google_json_key) data.google_json_key = form.google_json_key;
@@ -152,94 +172,123 @@ export default function BackupPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 size={40} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+      <div className="flex flex-col items-center justify-center min-h-[480px] gap-4">
+        <Loader2 size={36} className="animate-spin text-brand-blue" />
+        <p className="text-xs uppercase tracking-widest text-slate-400 font-mono">
+          Loading backup configuration...
+        </p>
       </div>
     );
   }
 
-  const inputClass = "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none";
-  const labelClass = "flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
+  const destIcons: Record<string, typeof Server> = {
+    local: HardDrive,
+    s3: Cloud,
+    wasabi: Cloud,
+    google_drive: Globe2,
+  };
+  const DestIcon = destIcons[form.destination] || Server;
 
   return (
-    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-          <Database className="text-indigo-600 dark:text-indigo-400" size={28} />
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono tracking-wider uppercase bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 mb-3">
+          <Sparkles size={13} />
+          {isRTL ? 'حماية البيانات' : 'Data Protection'}
+        </div>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
           {t.title}
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t.subtitle}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">{t.subtitle}</p>
       </div>
 
-      {/* Security Note */}
-      <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400">
-        <ShieldAlert size={20} className="shrink-0 mt-0.5" />
-        <p className="text-sm">{t.secNotice}</p>
+      {/* Security Banner */}
+      <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-amber-800 dark:text-amber-300">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+            <ShieldAlert size={18} />
+          </div>
+          <p className="text-xs leading-relaxed">{t.secNotice}</p>
+        </div>
       </div>
 
-      {/* Manual Actions Row */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-          <Server size={18} className="text-indigo-500" />
-          {t.manualSection}
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">{t.manualDesc}</p>
-        
-        <div className="flex flex-wrap gap-4">
+      {/* On-Demand Actions */}
+      <div className="studio-card p-6 md:p-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2.5 rounded-xl bg-brand-blue/10 text-brand-blue">
+            <Database size={18} />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t.manualSection}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.manualDesc}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={handleDownloadBackup}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+            className="py-3 px-6 rounded-xl text-xs font-bold bg-gradient-to-r from-brand-blue to-brand-purple text-white hover:opacity-90 transition-all shadow-md shadow-brand-blue/20 flex items-center gap-2"
           >
             <Download size={16} />
             {t.downloadBtn}
           </button>
-          
+
           <button
             onClick={handleRunBackup}
             disabled={backingUp}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+            className="py-3 px-6 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.05] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2 disabled:opacity-50"
           >
-            {backingUp ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            {backingUp ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
             {backingUp ? t.running : t.runBtn}
           </button>
         </div>
       </div>
 
-      {/* Configuration Scheduler Form */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-          <Clock size={18} className="text-indigo-500" />
-          {t.scheduleSection}
-        </h3>
+      {/* Scheduler Configuration */}
+      <div className="studio-card p-6 md:p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2.5 rounded-xl bg-brand-purple/10 text-brand-purple">
+            <Clock size={18} />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              {t.scheduleSection}
+            </h3>
+          </div>
+        </div>
 
-        <form onSubmit={handleSave} className="flex flex-col gap-6">
-          {/* Enabled Switch */}
-          <div className="pb-4 border-b border-gray-100 dark:border-gray-700">
-            <label className="flex items-center gap-2 cursor-pointer group w-fit">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={form.is_enabled}
-                  onChange={(e) => setForm({ ...form, is_enabled: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-10 h-5.5 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
-              </div>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+        <form onSubmit={handleSave} className="space-y-6">
+          {/* Enable Toggle */}
+          <label className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 cursor-pointer">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 {t.enableBackup}
               </span>
-            </label>
-          </div>
+              {form.is_enabled && (
+                <span className="px-2 py-0.5 text-[10px] font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full">
+                  ACTIVE
+                </span>
+              )}
+            </div>
+            <input
+              type="checkbox"
+              checked={form.is_enabled}
+              onChange={(e) => setForm({ ...form, is_enabled: e.target.checked })}
+              className="w-4 h-4 rounded text-brand-blue focus:ring-brand-blue"
+            />
+          </label>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Destination Selection */}
+          {/* Destination & Time */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className={labelClass}>{t.destination}</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
+                {t.destination}
+              </label>
               <select
                 value={form.destination}
                 onChange={(e) => setForm({ ...form, destination: e.target.value })}
-                className={inputClass}
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:border-brand-blue"
               >
                 <option value="local">{t.destinations.local}</option>
                 <option value="s3">{t.destinations.s3}</option>
@@ -248,168 +297,155 @@ export default function BackupPage() {
               </select>
             </div>
 
-            {/* Time Picker */}
-            <div>
-              <label className={labelClass}>{t.time}</label>
-              <input
-                type="time"
-                value={form.backup_time}
-                onChange={(e) => setForm({ ...form, backup_time: e.target.value })}
-                className={inputClass}
-                required
-              />
-            </div>
+            <StudioInput
+              label={t.time}
+              type="time"
+              value={form.backup_time}
+              onChange={(e) => setForm({ ...form, backup_time: e.target.value })}
+              leadIcon={<Clock size={16} />}
+            />
           </div>
 
-          {/* Conditional Fields based on Destination */}
-          
+          {/* Destination-specific fields */}
           {form.destination === 'local' && (
-            <div className="p-5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <FolderOpen size={16} />
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
+                <HardDrive size={15} className="text-slate-500" />
                 {t.destinations.local} Configuration
-              </h4>
-              <div>
-                <label className={labelClass}>{t.localPath}</label>
-                <input
-                  type="text"
-                  value={form.local_path}
-                  onChange={(e) => setForm({ ...form, local_path: e.target.value })}
-                  placeholder="backups"
-                  className={inputClass}
-                />
               </div>
+              <StudioInput
+                label={t.localPath}
+                type="text"
+                value={form.local_path}
+                onChange={(e) => setForm({ ...form, local_path: e.target.value })}
+                placeholder="backups"
+                leadIcon={<FolderOpen size={16} />}
+              />
             </div>
           )}
 
           {(form.destination === 's3' || form.destination === 'wasabi') && (
-            <div className="p-5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Cloud size={16} />
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
+                <DestIcon size={15} className="text-orange-500" />
                 {form.destination === 's3' ? t.destinations.s3 : t.destinations.wasabi} Configuration
-              </h4>
-              
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>{t.s3Key}</label>
-                  <input
-                    type="text"
-                    value={form.s3_key}
-                    onChange={(e) => setForm({ ...form, s3_key: e.target.value })}
-                    placeholder={settings?.has_s3_key ? 'Encrypted (leave empty to keep current)' : 'Access Key ID'}
-                    className={inputClass}
-                  />
-                </div>
-                
-                <div>
-                  <label className={labelClass}>
-                    {t.s3Secret}
-                    {settings?.has_s3_secret && (
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">✓ Configured</span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showS3Secret ? 'text' : 'password'}
-                      value={form.s3_secret}
-                      onChange={(e) => setForm({ ...form, s3_secret: e.target.value })}
-                      placeholder={settings?.has_s3_secret ? '•••••••••••••••• (leave empty to keep current)' : 'Secret Access Key'}
-                      className={inputClass}
-                    />
+                <StudioInput
+                  label={t.s3Key}
+                  type="text"
+                  value={form.s3_key}
+                  onChange={(e) => setForm({ ...form, s3_key: e.target.value })}
+                  placeholder={
+                    settings?.has_s3_key ? 'Encrypted (leave empty to keep)' : 'Access Key ID'
+                  }
+                  leadIcon={<Database size={16} />}
+                />
+
+                <StudioInput
+                  label={t.s3Secret}
+                  type={showS3Secret ? 'text' : 'password'}
+                  value={form.s3_secret}
+                  onChange={(e) => setForm({ ...form, s3_secret: e.target.value })}
+                  placeholder={
+                    settings?.has_s3_secret ? '•••••••••••••••• (leave empty to keep)' : 'Secret Key'
+                  }
+                  leadIcon={<Lock size={16} />}
+                  trailIcon={
                     <button
                       type="button"
                       onClick={() => setShowS3Secret(!showS3Secret)}
-                      className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      className="text-slate-400 hover:text-slate-200 transition-colors"
                     >
-                      {showS3Secret ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showS3Secret ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
-                  </div>
-                </div>
+                  }
+                />
 
-                <div>
-                  <label className={labelClass}>{t.s3Region}</label>
-                  <input
-                    type="text"
-                    value={form.region}
-                    onChange={(e) => setForm({ ...form, region: e.target.value })}
-                    placeholder="us-east-1"
-                    className={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>{t.s3Bucket}</label>
-                  <input
-                    type="text"
-                    value={form.bucket}
-                    onChange={(e) => setForm({ ...form, bucket: e.target.value })}
-                    placeholder="bucket-name"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>{t.s3Endpoint}</label>
-                <input
+                <StudioInput
+                  label={t.s3Region}
                   type="text"
-                  value={form.endpoint}
-                  onChange={(e) => setForm({ ...form, endpoint: e.target.value })}
-                  placeholder={form.destination === 'wasabi' ? 'https://s3.us-east-1.wasabisys.com' : 'https://custom-endpoint.com'}
-                  className={inputClass}
+                  value={form.region}
+                  onChange={(e) => setForm({ ...form, region: e.target.value })}
+                  placeholder="us-east-1"
+                />
+
+                <StudioInput
+                  label={t.s3Bucket}
+                  type="text"
+                  value={form.bucket}
+                  onChange={(e) => setForm({ ...form, bucket: e.target.value })}
+                  placeholder="my-backup-bucket"
                 />
               </div>
+
+              <StudioInput
+                label={t.s3Endpoint}
+                type="text"
+                value={form.endpoint}
+                onChange={(e) => setForm({ ...form, endpoint: e.target.value })}
+                placeholder={
+                  form.destination === 'wasabi'
+                    ? 'https://s3.us-east-1.wasabisys.com'
+                    : 'https://custom-endpoint.com'
+                }
+                leadIcon={<Globe2 size={16} />}
+              />
             </div>
           )}
 
           {form.destination === 'google_drive' && (
-            <div className="p-5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl space-y-4">
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Cloud size={16} />
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
+                <Globe2 size={15} className="text-blue-500" />
                 {t.destinations.google_drive} Configuration
-              </h4>
-              
-              <div>
-                <label className={labelClass}>{t.googleFolder}</label>
-                <input
-                  type="text"
-                  value={form.google_folder_id}
-                  onChange={(e) => setForm({ ...form, google_folder_id: e.target.value })}
-                  placeholder="Google Drive Folder ID (e.g. 1a2b3c4d5e...)"
-                  className={inputClass}
-                />
               </div>
 
+              <StudioInput
+                label={t.googleFolder}
+                type="text"
+                value={form.google_folder_id}
+                onChange={(e) => setForm({ ...form, google_folder_id: e.target.value })}
+                placeholder="1a2b3c4d5e..."
+                leadIcon={<FolderOpen size={16} />}
+              />
+
               <div>
-                <label className={labelClass}>
-                  {t.googleJson}
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                    {t.googleJson}
+                  </label>
                   {settings?.has_google_json_key && (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">✓ Configured</span>
+                    <span className="text-[10px] text-emerald-500 font-mono flex items-center gap-1">
+                      <Check size={12} /> Configured
+                    </span>
                   )}
-                </label>
-                <div className="relative">
-                  <textarea
-                    rows={4}
-                    value={form.google_json_key}
-                    onChange={(e) => setForm({ ...form, google_json_key: e.target.value })}
-                    placeholder={settings?.has_google_json_key ? 'JSON key configured. Paste new JSON contents to update.' : 'Paste full Google Cloud Service Account Credentials JSON contents here...'}
-                    className={`${inputClass} font-mono text-xs`}
-                  />
                 </div>
+                <textarea
+                  rows={4}
+                  value={form.google_json_key}
+                  onChange={(e) => setForm({ ...form, google_json_key: e.target.value })}
+                  placeholder={
+                    settings?.has_google_json_key
+                      ? 'JSON key configured. Paste new contents to update.'
+                      : 'Paste full Google Service Account JSON here...'
+                  }
+                  className="w-full px-4 py-3 rounded-xl bg-slate-900 dark:bg-black/40 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-brand-blue resize-y"
+                />
               </div>
             </div>
           )}
 
-          <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl text-sm font-medium transition-colors shadow-sm w-fit"
-            >
-              {saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={16} />}
-              {saving ? t.saving : t.saveSettings}
-            </button>
-          </div>
+          {/* Save Button */}
+          <button
+            type="submit"
+            disabled={saving}
+            className="py-3 px-8 rounded-xl text-xs font-bold bg-gradient-to-r from-brand-blue to-brand-purple text-white hover:opacity-90 transition-all shadow-md shadow-brand-blue/20 flex items-center gap-2 disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {saving ? t.saving : t.saveSettings}
+          </button>
         </form>
       </div>
     </div>

@@ -17,25 +17,24 @@ import {
   Package,
 } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
+import StudioInput from '@/components/StudioInput';
+import SplitTextReveal from '@/components/SplitTextReveal';
+import StudioCanvas3D from '@/components/StudioCanvas3D';
 import {
   Sparkles,
   ArrowRight,
-  ArrowLeft,
   Mail,
   Lock,
   User,
   ShieldCheck,
-  CheckCircle2,
   AlertCircle,
   Loader2,
   Sun,
   Moon,
   Globe,
-  Film,
-  BookOpen,
-  Palette,
   Check,
   RefreshCw,
+  KeyRound,
 } from 'lucide-react';
 
 const fadeUp = {
@@ -258,7 +257,12 @@ function RegisterForm() {
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex items-center justify-center">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-stretch">
           {/* ── Left Column: Journey Progress Sidebar (Desktop Only) ── */}
-          <div className="hidden lg:flex lg:col-span-5 flex-col justify-between p-10 rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white border border-white/10 shadow-2xl relative overflow-hidden">
+          <div className="hidden lg:flex lg:col-span-5 flex-col justify-between p-10 rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white border border-white/10 shadow-2xl relative overflow-hidden min-h-[580px]">
+            {/* Subtle 3D background object */}
+            <div className="absolute -right-10 -bottom-10 w-72 h-72 opacity-60 pointer-events-none">
+              <StudioCanvas3D variant="auth" />
+            </div>
+
             <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-blue-600/20 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-20 -right-20 w-72 h-72 rounded-full bg-purple-600/20 blur-3xl pointer-events-none" />
 
@@ -279,7 +283,7 @@ function RegisterForm() {
 
             {/* Step-by-Step Progress Pipeline */}
             <div className="relative z-10 my-8 space-y-4">
-              {stepsMeta.map((s, idx) => {
+              {stepsMeta.map((s) => {
                 const isActive = step === s.id;
                 const isPassed =
                   (step === 'details' && s.id === 'package') ||
@@ -319,8 +323,8 @@ function RegisterForm() {
                             ? 'تم الاكتمال'
                             : 'Completed'
                           : locale === 'ar'
-                          ? 'قيد الانتظار'
-                          : 'Upcoming'}
+                            ? 'قيد الانتظار'
+                            : 'Upcoming'}
                       </div>
                     </div>
                   </div>
@@ -405,7 +409,9 @@ function RegisterForm() {
                 <motion.div variants={fadeUp} initial="hidden" animate="visible">
                   <div className="mb-6">
                     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
-                      {locale === 'ar' ? 'اختر باقة الاستوديو' : 'Select Your Studio Plan'}
+                      <SplitTextReveal as="span" by="words" delay={0.1}>
+                        {locale === 'ar' ? 'اختر باقة الاستوديو' : 'Select Your Studio Plan'}
+                      </SplitTextReveal>
                     </h1>
                     <p className="text-sm text-[var(--text-2)] leading-relaxed">
                       {locale === 'ar'
@@ -485,7 +491,9 @@ function RegisterForm() {
                 <motion.div variants={fadeUp} initial="hidden" animate="visible">
                   <div className="mb-6">
                     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
-                      {t('register_title')}
+                      <SplitTextReveal as="span" by="words" delay={0.1}>
+                        {t('register_title')}
+                      </SplitTextReveal>
                     </h1>
                     <p className="text-sm text-[var(--text-2)] leading-relaxed">
                       {t('register_sub')}
@@ -525,85 +533,49 @@ function RegisterForm() {
                   </div>
 
                   <form onSubmit={onSubmitDetails} className="space-y-4">
-                    {/* Full Name */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
-                        {t('register_name')}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder={locale === 'ar' ? 'الاسم الكامل' : 'Full Name'}
-                          required
-                          className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
-                        />
-                        <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
-                          <User className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </div>
+                    {/* Full Name with StudioInput */}
+                    <StudioInput
+                      label={t('register_name')}
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={locale === 'ar' ? 'الاسم الكامل' : 'Full Name'}
+                      icon={User}
+                      required
+                    />
 
-                    {/* Email */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
-                        {t('register_email')}
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder={locale === 'ar' ? 'name@example.com' : 'you@example.com'}
-                          required
-                          className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
-                        />
-                        <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
-                          <Mail className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </div>
+                    {/* Email with StudioInput */}
+                    <StudioInput
+                      label={t('register_email')}
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={locale === 'ar' ? 'name@example.com' : 'you@example.com'}
+                      icon={Mail}
+                      required
+                    />
 
                     {/* Password & Confirm Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
-                          {t('register_password')}
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            required
-                            className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
-                          />
-                          <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
-                            <Lock className="w-4 h-4" />
-                          </div>
-                        </div>
-                      </div>
+                      <StudioInput
+                        label={t('register_password')}
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        icon={Lock}
+                        required
+                      />
 
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
-                          {t('register_confirm')}
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="password"
-                            value={confirm}
-                            onChange={(e) => setConfirm(e.target.value)}
-                            placeholder="••••••••"
-                            required
-                            className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
-                          />
-                          <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
-                            <Lock className="w-4 h-4" />
-                          </div>
-                        </div>
-                      </div>
+                      <StudioInput
+                        label={t('register_confirm')}
+                        type="password"
+                        value={confirm}
+                        onChange={(e) => setConfirm(e.target.value)}
+                        placeholder="••••••••"
+                        icon={Lock}
+                        required
+                      />
                     </div>
 
                     {/* Terms Checkbox */}
@@ -664,7 +636,9 @@ function RegisterForm() {
                 <motion.div variants={fadeUp} initial="hidden" animate="visible">
                   <div className="mb-6">
                     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
-                      {locale === 'ar' ? 'تأكيد البريد الإلكتروني' : 'Verify Your Email'}
+                      <SplitTextReveal as="span" by="words" delay={0.1}>
+                        {locale === 'ar' ? 'تأكيد البريد الإلكتروني' : 'Verify Your Email'}
+                      </SplitTextReveal>
                     </h1>
                     <p className="text-sm text-[var(--text-2)] leading-relaxed">
                       {locale === 'ar'
@@ -675,18 +649,17 @@ function RegisterForm() {
 
                   <form onSubmit={onVerifyOtp} className="space-y-6">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2 text-center">
-                        {locale === 'ar' ? 'رمز التحقق (٦ أرقام)' : 'Verification Code'}
-                      </label>
-                      <input
+                      <StudioInput
+                        label={locale === 'ar' ? 'رمز التحقق (٦ أرقام)' : 'Verification Code (6 digits)'}
                         type="text"
                         inputMode="numeric"
                         maxLength={6}
                         value={otp}
                         onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                         placeholder="123456"
+                        icon={KeyRound}
                         required
-                        className="studio-input text-center text-2xl font-mono tracking-[0.5em] py-3.5"
+                        className="text-center text-xl font-mono tracking-[0.4em]"
                       />
                     </div>
 

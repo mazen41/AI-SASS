@@ -1,8 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiGetUsers, apiSuspendUser, apiActivateUser, apiDeleteUser, apiUpdateUser, AuthUser, PaginatedResponse } from '@/lib/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  apiGetUsers,
+  apiSuspendUser,
+  apiActivateUser,
+  apiDeleteUser,
+  apiUpdateUser,
+  AuthUser,
+  PaginatedResponse,
+} from '@/lib/api';
 import { useLang } from '@/context/LangContext';
+import StudioInput from '@/components/StudioInput';
+import SplitTextReveal from '@/components/SplitTextReveal';
 import {
   Search,
   Filter,
@@ -17,17 +28,20 @@ import {
   AlertCircle,
   Loader2,
   X,
-  Pencil
+  Pencil,
+  Sparkles,
+  Users as UsersIcon,
+  Check,
 } from 'lucide-react';
 
 export default function UsersPage() {
   const { locale } = useLang();
   const isRTL = locale === 'ar';
-  
+
   const t = {
-    searchPlaceholder: isRTL ? 'البحث بالاسم أو البريد...' : 'Search by name or email...',
+    searchPlaceholder: isRTL ? 'البحث بالاسم أو البريد الإلكتروني...' : 'Search by name or email...',
     allRoles: isRTL ? 'جميع الأدوار' : 'All Roles',
-    allStatus: isRTL ? 'جميع الحالات' : 'All Status',
+    allStatus: isRTL ? 'جميع الحالات' : 'All Statuses',
     roles: {
       user: isRTL ? 'مستخدم' : 'User',
       admin: isRTL ? 'مدير' : 'Admin',
@@ -41,24 +55,26 @@ export default function UsersPage() {
     user: isRTL ? 'المستخدم' : 'User',
     role: isRTL ? 'الدور' : 'Role',
     statusLabel: isRTL ? 'الحالة' : 'Status',
-    joined: isRTL ? 'تاريخ الانضمام' : 'Joined',
+    joined: isRTL ? 'تاريخ الانضمام' : 'Joined Date',
     actions: isRTL ? 'الإجراءات' : 'Actions',
     search: isRTL ? 'بحث' : 'Search',
     suspend: isRTL ? 'تعليق' : 'Suspend',
     activate: isRTL ? 'تفعيل' : 'Activate',
     suspendConfirm: isRTL ? 'هل أنت متأكد من تعليق هذا المستخدم؟' : 'Are you sure you want to suspend this user?',
-    deleteConfirm: isRTL ? 'هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to delete this user? This action cannot be undone.',
+    deleteConfirm: isRTL
+      ? 'هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء.'
+      : 'Are you sure you want to delete this user? This action cannot be undone.',
     suspendError: isRTL ? 'فشل تعليق المستخدم' : 'Failed to suspend user',
     activateError: isRTL ? 'فشل تفعيل المستخدم' : 'Failed to activate user',
     deleteError: isRTL ? 'فشل حذف المستخدم' : 'Failed to delete user',
     edit: isRTL ? 'تعديل' : 'Edit',
-    save: isRTL ? 'حفظ' : 'Save',
+    save: isRTL ? 'حفظ التغييرات' : 'Save Changes',
     cancel: isRTL ? 'إلغاء' : 'Cancel',
-    nameLabel: isRTL ? 'الاسم' : 'Name',
-    emailLabel: isRTL ? 'البريد الإلكتروني' : 'Email',
-    roleLabel: isRTL ? 'الدور' : 'Role',
+    nameLabel: isRTL ? 'الاسم الكامل' : 'Full Name',
+    emailLabel: isRTL ? 'البريد الإلكتروني' : 'Email Address',
+    roleLabel: isRTL ? 'الدور والصلاحية' : 'User Role',
     updateError: isRTL ? 'فشل تحديث المستخدم' : 'Failed to update user',
-    noUsers: isRTL ? 'لا يوجد مستخدمين' : 'No users found',
+    noUsers: isRTL ? 'لم يتم العثور على أي مستخدمين' : 'No storytellers found',
     previous: isRTL ? 'السابق' : 'Previous',
     next: isRTL ? 'التالي' : 'Next',
     showing: isRTL ? 'عرض' : 'Showing',
@@ -74,12 +90,14 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editRole, setEditRole] = useState('');
   const [editLoading, setEditLoading] = useState(false);
-  const refresh = () => setRefreshKey(k => k + 1);
+
+  const refresh = () => setRefreshKey((k) => k + 1);
 
   const openEdit = (user: AuthUser) => {
     setEditingUser(user);
@@ -99,7 +117,11 @@ export default function UsersPage() {
     if (!editingUser) return;
     setEditLoading(true);
     try {
-      await apiUpdateUser(editingUser.id, { name: editName, email: editEmail, role: editRole as AuthUser['role'] });
+      await apiUpdateUser(editingUser.id, {
+        name: editName,
+        email: editEmail,
+        role: editRole as AuthUser['role'],
+      });
       closeEdit();
       refresh();
     } catch (err) {
@@ -162,69 +184,98 @@ export default function UsersPage() {
     }
   };
 
-  const getRoleIcon = (role: string) => {
-    if (role === 'super_admin') return <Crown size={14} />;
-    if (role === 'admin') return <Shield size={14} />;
-    return <User size={14} />;
-  };
-
-  const getRoleClasses = (role: string) => {
-    switch (role) {
-      case 'super_admin':
-        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
-      case 'admin':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      default:
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+  const getRoleBadge = (role: string) => {
+    if (role === 'super_admin') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30">
+          <Crown size={12} />
+          <span>{t.roles.super_admin}</span>
+        </span>
+      );
     }
-  };
-
-  const getStatusClasses = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-      case 'suspended':
-        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-      case 'banned':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-      default:
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+    if (role === 'admin') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+          <Shield size={12} />
+          <span>{t.roles.admin}</span>
+        </span>
+      );
     }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-500/15 text-slate-400 border border-slate-500/30">
+        <User size={12} />
+        <span>{t.roles.user}</span>
+      </span>
+    );
   };
 
-  const getRoleLabel = (role: string) => {
-    return t.roles[role as keyof typeof t.roles] || role.replace('_', ' ');
-  };
-
-  const getStatusLabel = (status: string) => {
-    return t.status[status as keyof typeof t.status] || status;
+  const getStatusBadge = (status: string) => {
+    if (status === 'active') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>{t.status.active}</span>
+        </span>
+      );
+    }
+    if (status === 'suspended') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <span>{t.status.suspended}</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+        <span>{t.status.banned}</span>
+      </span>
+    );
   };
 
   return (
-    <div className="flex flex-col gap-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t.user}</h2>
+    <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* ── Page Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--border)]">
+        <div>
+          <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--k-blue)] uppercase tracking-wider mb-1">
+            <UsersIcon size={14} />
+            <span>{isRTL ? 'إدارة المنصة' : 'COMMUNITY DIRECTORY'}</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-[var(--text)]">
+            <SplitTextReveal as="span" by="words" delay={0.1}>
+              {isRTL ? 'إدارة المستخدمين ورواة القصص' : 'Storytellers & Users Management'}
+            </SplitTextReveal>
+          </h1>
+        </div>
+
+        {users && (
+          <div className="text-xs font-mono font-bold px-3 py-1.5 rounded-full bg-[var(--surface-2)] text-[var(--text-3)] border border-[var(--border)] shrink-0">
+            {users.total} {isRTL ? 'مستخدم مسجل' : 'REGISTERED USERS'}
+          </div>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
-        <form onSubmit={handleSearch} className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px] relative">
-            <Search size={18} className="absolute left-3 rtl:right-3 rtl:left-auto top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
+      {/* ── Filter Bar ── */}
+      <div className="studio-card-glass p-4 sm:p-5">
+        <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <div className="sm:col-span-6 lg:col-span-7">
+            <StudioInput
               type="text"
-              placeholder={t.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 rtl:pl-3 rtl:pr-10 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+              placeholder={t.searchPlaceholder}
+              icon={Search}
             />
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
-            <Filter size={16} className="text-gray-500" />
+
+          <div className="sm:col-span-3 lg:col-span-2">
             <select
               value={roleFilter}
-              onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-              className="bg-transparent border-none text-gray-900 dark:text-white text-sm outline-none cursor-pointer"
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setPage(1);
+              }}
+              className="studio-input h-[3.25rem] text-xs sm:text-sm font-semibold"
             >
               <option value="">{t.allRoles}</option>
               <option value="user">{t.roles.user}</option>
@@ -232,11 +283,15 @@ export default function UsersPage() {
               <option value="super_admin">{t.roles.super_admin}</option>
             </select>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+
+          <div className="sm:col-span-3 lg:col-span-3">
             <select
               value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="bg-transparent border-none text-gray-900 dark:text-white text-sm outline-none cursor-pointer"
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="studio-input h-[3.25rem] text-xs sm:text-sm font-semibold"
             >
               <option value="">{t.allStatus}</option>
               <option value="active">{t.status.active}</option>
@@ -244,96 +299,104 @@ export default function UsersPage() {
               <option value="banned">{t.status.banned}</option>
             </select>
           </div>
-          <button type="submit" className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
-            <Search size={16} />
-            {t.search}
-          </button>
         </form>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+      {/* ── Users Table ── */}
+      <div className="studio-card-glass overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider font-semibold">
-              <tr>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 rtl:text-right">{t.user}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 rtl:text-right">{t.role}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 rtl:text-right">{t.statusLabel}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 rtl:text-right">{t.joined}</th>
-                <th className="p-4 border-b border-gray-200 dark:border-gray-700 text-right rtl:text-left">{t.actions}</th>
+          <table className="w-full text-left rtl:text-right border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-[var(--surface-2)] text-xs font-mono font-bold uppercase tracking-wider text-[var(--text-3)]">
+                <th className="py-4 px-6">{t.user}</th>
+                <th className="py-4 px-4">{t.role}</th>
+                <th className="py-4 px-4">{t.statusLabel}</th>
+                <th className="py-4 px-4">{t.joined}</th>
+                <th className="py-4 px-6 text-right rtl:text-left">{t.actions}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-[var(--border)] text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-8">
-                    <div className="flex justify-center">
-                      <Loader2 size={32} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+                  <td colSpan={5} className="py-16 text-center text-[var(--text-3)]">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="w-8 h-8 animate-spin text-[var(--k-blue)]" />
+                      <span className="text-xs font-mono">{isRTL ? 'جارٍ التحميل...' : 'LOADING USERS...'}</span>
                     </div>
                   </td>
                 </tr>
-              ) : users?.data.length === 0 ? (
+              ) : !users || users.data.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12">
-                    <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
-                      <AlertCircle size={32} className="mb-3 opacity-50" />
-                      <p className="text-lg">{t.noUsers}</p>
-                    </div>
+                  <td colSpan={5} className="py-16 text-center text-[var(--text-3)]">
+                    <UsersIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">{t.noUsers}</p>
                   </td>
                 </tr>
               ) : (
-                users?.data.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
-                    <td className="p-4">
+                users.data.map((u) => (
+                  <tr
+                    key={u.id}
+                    className="hover:bg-[var(--surface-hover)] transition-colors group"
+                  >
+                    {/* User Identity */}
+                    <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shadow-inner shrink-0">
-                          {user.name.charAt(0).toUpperCase()}
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[var(--k-blue)] to-[var(--k-navy)] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                          {u.name?.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <button
-                            onClick={() => openEdit(user)}
-                            className="font-semibold text-gray-900 dark:text-white leading-none mb-1 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left rtl:text-right"
-                          >
-                            {user.name}
-                          </button>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+                        <div className="min-w-0">
+                          <div className="font-bold text-[var(--text)] truncate">{u.name}</div>
+                          <div className="text-xs text-[var(--text-3)] truncate font-mono">{u.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold capitalize ${getRoleClasses(user.role)}`}>
-                        {getRoleIcon(user.role)}
-                        {getRoleLabel(user.role)}
-                      </span>
+
+                    {/* Role */}
+                    <td className="py-4 px-4">{getRoleBadge(u.role)}</td>
+
+                    {/* Status */}
+                    <td className="py-4 px-4">{getStatusBadge(u.status || 'active')}</td>
+
+                    {/* Joined Date */}
+                    <td className="py-4 px-4 text-xs font-mono text-[var(--text-3)]">
+                      {new Date(u.created_at).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US')}
                     </td>
-                    <td className="p-4">
-                      <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold capitalize ${getStatusClasses(user.status)}`}>
-                        {getStatusLabel(user.status)}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                      {new Date(user.created_at).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </td>
-                    <td className="p-4 text-right rtl:text-left">
-                      <div className="flex items-center justify-end rtl:justify-start gap-2">
-                        {user.status === 'active' ? (
-                          <button onClick={() => handleSuspend(user.id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
-                            <UserX size={14} />
-                            {t.suspend}
+
+                    {/* Actions */}
+                    <td className="py-4 px-6 text-right rtl:text-left">
+                      <div className="flex items-center justify-end rtl:justify-start gap-1.5">
+                        <button
+                          onClick={() => openEdit(u)}
+                          className="p-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:text-[var(--k-blue)] hover:border-[var(--k-blue)] transition-all"
+                          title={t.edit}
+                        >
+                          <Pencil size={15} />
+                        </button>
+
+                        {u.status === 'suspended' ? (
+                          <button
+                            onClick={() => handleActivate(u.id)}
+                            className="p-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all"
+                            title={t.activate}
+                          >
+                            <UserCheck size={15} />
                           </button>
                         ) : (
-                          <button onClick={() => handleActivate(user.id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
-                            <UserCheck size={14} />
-                            {t.activate}
+                          <button
+                            onClick={() => handleSuspend(u.id)}
+                            className="p-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-all"
+                            title={t.suspend}
+                          >
+                            <UserX size={15} />
                           </button>
                         )}
-                        <button onClick={() => handleDelete(user.id)} className="flex items-center justify-center p-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" title={t.deleteConfirm}>
-                          <Trash2 size={14} />
+
+                        <button
+                          onClick={() => handleDelete(u.id)}
+                          className="p-2 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                          title={isRTL ? 'حذف' : 'Delete'}
+                        >
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     </td>
@@ -344,92 +407,120 @@ export default function UsersPage() {
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* ── Pagination ── */}
         {users && users.last_page > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-gray-100 dark:border-gray-700 gap-4 bg-gray-50/50 dark:bg-gray-800/30">
-            <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-              {t.showing} {((users.current_page - 1) * users.per_page) + 1} {t.to} {Math.min(users.current_page * users.per_page, users.total)} {t.of} {users.total} {t.users}
-            </p>
-            <div className="flex items-center gap-2">
+          <div className="p-4 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-3)]">
+            <div>
+              {t.showing} <span className="font-bold text-[var(--text)]">{(users.current_page - 1) * users.per_page + 1}</span> {t.to}{' '}
+              <span className="font-bold text-[var(--text)]">{Math.min(users.current_page * users.per_page, users.total)}</span> {t.of}{' '}
+              <span className="font-bold text-[var(--text)]">{users.total}</span> {t.users}
+            </div>
+
+            <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed hover:border-[var(--k-blue)] transition-all flex items-center gap-1"
               >
-                {isRTL ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-                {t.previous}
+                <ChevronLeft size={14} className="rtl:rotate-180" />
+                <span>{t.previous}</span>
               </button>
+
+              <span className="px-3 py-1.5 rounded-xl bg-[var(--surface-2)] font-mono font-bold text-[var(--k-blue)]">
+                {page} / {users.last_page}
+              </span>
+
               <button
-                onClick={() => setPage(p => Math.min(users.last_page, p + 1))}
-                disabled={page === users.last_page}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={page >= users.last_page}
+                onClick={() => setPage((p) => Math.min(users.last_page, p + 1))}
+                className="px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed hover:border-[var(--k-blue)] transition-all flex items-center gap-1"
               >
-                {t.next}
-                {isRTL ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+                <span>{t.next}</span>
+                <ChevronRight size={14} className="rtl:rotate-180" />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Edit User Modal */}
-      {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t.edit}</h3>
-              <button onClick={closeEdit} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.nameLabel}</label>
-                <input
+      {/* ── Edit User Modal ── */}
+      <AnimatePresence>
+        {editingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg studio-card-glass p-6 sm:p-8 shadow-2xl relative"
+            >
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-[var(--border)]">
+                <h3 className="text-lg font-bold font-display text-[var(--text)]">
+                  {t.edit} {editingUser.name}
+                </h3>
+                <button
+                  onClick={closeEdit}
+                  className="p-1.5 rounded-xl border border-[var(--border)] text-[var(--text-3)] hover:text-[var(--text)]"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <StudioInput
+                  label={t.nameLabel}
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                  icon={User}
+                  required
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.emailLabel}</label>
-                <input
+
+                <StudioInput
+                  label={t.emailLabel}
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+                  icon={User}
+                  required
                 />
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
+                    {t.roleLabel}
+                  </label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="studio-input h-[3.25rem] text-sm font-semibold"
+                  >
+                    <option value="user">{t.roles.user}</option>
+                    <option value="admin">{t.roles.admin}</option>
+                    <option value="super_admin">{t.roles.super_admin}</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.roleLabel}</label>
-                <select
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
+
+              <div className="mt-6 pt-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeEdit}
+                  className="studio-btn-secondary px-5 py-2.5 text-xs font-bold"
                 >
-                  <option value="user">{t.roles.user}</option>
-                  <option value="admin">{t.roles.admin}</option>
-                  <option value="super_admin">{t.roles.super_admin}</option>
-                </select>
+                  {t.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={editLoading}
+                  className="studio-btn-primary px-6 py-2.5 text-xs font-bold"
+                >
+                  {editLoading ? <Loader2 size={14} className="animate-spin" /> : t.save}
+                </button>
               </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-              <button onClick={closeEdit} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                {t.cancel}
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={editLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-              >
-                {editLoading ? <Loader2 size={16} className="animate-spin" /> : <Pencil size={16} />}
-                {t.save}
-              </button>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

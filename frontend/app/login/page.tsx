@@ -9,6 +9,9 @@ import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
 import { apiLogin } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
+import StudioInput from '@/components/StudioInput';
+import SplitTextReveal from '@/components/SplitTextReveal';
+import StudioCanvas3D from '@/components/StudioCanvas3D';
 import {
   Sparkles,
   ArrowRight,
@@ -16,12 +19,10 @@ import {
   EyeOff,
   Mail,
   Lock,
-  ArrowLeft,
   Sun,
   Moon,
   Globe,
   Film,
-  CheckCircle2,
   ShieldCheck,
   AlertCircle,
   Loader2,
@@ -126,7 +127,12 @@ export default function LoginPage() {
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex items-center justify-center">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-stretch">
           {/* ── Left Column: Cinematic Visual Showcase (Desktop Only) ── */}
-          <div className="hidden lg:flex lg:col-span-7 flex-col justify-between p-10 rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white border border-white/10 shadow-2xl relative overflow-hidden">
+          <div className="hidden lg:flex lg:col-span-7 flex-col justify-between p-10 rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white border border-white/10 shadow-2xl relative overflow-hidden min-h-[580px]">
+            {/* Subtle 3D background object */}
+            <div className="absolute -right-10 -bottom-10 w-72 h-72 opacity-60 pointer-events-none">
+              <StudioCanvas3D variant="auth" />
+            </div>
+
             <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-blue-600/20 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-pink-600/20 blur-3xl pointer-events-none" />
 
@@ -161,7 +167,9 @@ export default function LoginPage() {
                   {locale === 'ar' ? 'مغامرة رائد الفضاء الصغير' : 'The Little Starlight Pioneer'}
                 </div>
                 <div className="text-xs text-slate-300 mt-1">
-                  {locale === 'ar' ? '٤ فصول كاملة · تعليق صوتي سينمائي · كتاب جاهز للطباعة' : '4 chapters · Dolby Voice Narration · 36-page storybook'}
+                  {locale === 'ar'
+                    ? '٤ فصول كاملة · تعليق صوتي سينمائي · كتاب جاهز للطباعة'
+                    : '4 chapters · Dolby Voice Narration · 36-page storybook'}
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
@@ -190,7 +198,9 @@ export default function LoginPage() {
             >
               <div className="mb-8">
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
-                  {t('login_title')}
+                  <SplitTextReveal as="span" by="words" delay={0.1}>
+                    {t('login_title')}
+                  </SplitTextReveal>
                 </h1>
                 <p className="text-sm text-[var(--text-2)] leading-relaxed">
                   {t('login_sub')}
@@ -209,34 +219,21 @@ export default function LoginPage() {
                 </motion.div>
               )}
 
-              {/* Form */}
+              {/* Form with Dedicated Non-Overlapping StudioInput */}
               <form onSubmit={onSubmit} className="space-y-5">
-                {/* Email Field */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
-                    {t('login_email')}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder={locale === 'ar' ? 'name@example.com' : 'you@example.com'}
-                      required
-                      className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
-                    />
-                    <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
-                      <Mail className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
+                <StudioInput
+                  label={t('login_email')}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={locale === 'ar' ? 'name@example.com' : 'you@example.com'}
+                  icon={Mail}
+                  required
+                />
 
-                {/* Password Field */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)]">
-                      {t('login_password')}
-                    </label>
+                <StudioInput
+                  label={t('login_password')}
+                  labelRight={
                     <a
                       href="#"
                       onClick={(e) => {
@@ -251,29 +248,24 @@ export default function LoginPage() {
                     >
                       {t('login_forgot')}
                     </a>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showPass ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      className="studio-input pl-11 pr-11 rtl:pr-11 rtl:pl-11"
-                    />
-                    <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
-                      <Lock className="w-4 h-4" />
-                    </div>
+                  }
+                  type={showPass ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  icon={Lock}
+                  required
+                  trailAction={
                     <button
                       type="button"
                       onClick={() => setShowPass(!showPass)}
-                      className="absolute top-1/2 -translate-y-1/2 right-3.5 rtl:right-auto rtl:left-3.5 text-[var(--text-3)] hover:text-[var(--text)] transition-colors p-1"
+                      className="text-[var(--text-3)] hover:text-[var(--text)] transition-colors p-1"
                       aria-label="Toggle password visibility"
                     >
                       {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  </div>
-                </div>
+                  }
+                />
 
                 {/* Submit Button */}
                 <div className="pt-2">
