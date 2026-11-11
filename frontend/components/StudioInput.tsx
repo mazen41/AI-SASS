@@ -1,15 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { isValidElement } from 'react';
 import { LucideIcon } from 'lucide-react';
 
 export interface StudioInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   labelRight?: React.ReactNode;
   icon?: LucideIcon | React.ReactNode;
-  leadIcon?: React.ReactNode;
+  leadIcon?: LucideIcon | React.ReactNode;
   trailAction?: React.ReactNode;
-  trailIcon?: React.ReactNode;
+  trailIcon?: LucideIcon | React.ReactNode;
   error?: string;
   containerClassName?: string;
 }
@@ -49,14 +49,19 @@ export const StudioInput = React.forwardRef<HTMLInputElement, StudioInputProps>(
       .filter(Boolean)
       .join(' ');
 
-    const renderLeadIcon = () => {
-      if (!effectiveLead) return null;
-      // If it's a component function (LucideIcon)
-      if (typeof effectiveLead === 'function') {
-        const IconComponent = effectiveLead as LucideIcon;
+    const renderIconNode = (item: unknown) => {
+      if (!item) return null;
+      if (isValidElement(item)) {
+        return item;
+      }
+      if (
+        typeof item === 'function' ||
+        (typeof item === 'object' && item !== null && ('render' in item || '$$typeof' in item))
+      ) {
+        const IconComponent = item as React.ComponentType<{ className?: string }>;
         return <IconComponent className="w-4 h-4" />;
       }
-      return effectiveLead;
+      return item as React.ReactNode;
     };
 
     return (
@@ -78,13 +83,17 @@ export const StudioInput = React.forwardRef<HTMLInputElement, StudioInputProps>(
         <div className="studio-input-wrap">
           {hasLead && (
             <div className="studio-input-icon-lead" aria-hidden="true">
-              {renderLeadIcon()}
+              {renderIconNode(effectiveLead)}
             </div>
           )}
 
           <input ref={ref} id={inputId} className={classNames} {...props} />
 
-          {hasTrail && <div className="studio-input-icon-trail">{effectiveTrail}</div>}
+          {hasTrail && (
+            <div className="studio-input-icon-trail">
+              {renderIconNode(effectiveTrail)}
+            </div>
+          )}
         </div>
 
         {error && (
