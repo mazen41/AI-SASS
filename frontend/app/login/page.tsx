@@ -9,20 +9,43 @@ import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
 import { apiLogin } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
+import {
+  Sparkles,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  ArrowLeft,
+  Sun,
+  Moon,
+  Globe,
+  Film,
+  CheckCircle2,
+  ShieldCheck,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 20 },
   visible: (i: number = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.65, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      delay: i * 0.08,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+    },
   }),
 };
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const { theme } = useTheme();
-  const { t, locale } = useLang();
+  const { theme, toggleTheme } = useTheme();
+  const { t, locale, toggleLocale, isRTL } = useLang();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,103 +61,261 @@ export default function LoginPage() {
       login(res.token, res.user);
       router.push('/dashboard');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div data-theme={theme} style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div
+      data-theme={theme}
+      className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col justify-between relative overflow-hidden"
+    >
       <CustomCursor />
-      <main className="auth-layout">
 
-        {/* ── Left: Illustration Panel ── */}
-        <div className="auth-illustration">
-          <div className="auth-illus-blob auth-illus-blob-1" />
-          <div className="auth-illus-blob auth-illus-blob-2" />
-          <div className="auth-illus-blob auth-illus-blob-3" />
-          <div style={{ position: 'absolute', top: '12%', left: '10%', fontSize: '2rem', animation: 'float 7s ease-in-out infinite', animationDelay: '-1s', pointerEvents: 'none', zIndex: 1 }}>⭐</div>
-          <div style={{ position: 'absolute', top: '18%', right: '12%', fontSize: '1.5rem', animation: 'float 9s ease-in-out infinite', animationDelay: '-3s', pointerEvents: 'none', zIndex: 1 }}>✨</div>
-          <div style={{ position: 'absolute', bottom: '15%', right: '10%', fontSize: '2.5rem', animation: 'float 6s ease-in-out infinite', animationDelay: '-2s', pointerEvents: 'none', zIndex: 1 }}>🌙</div>
-          <div style={{ position: 'absolute', bottom: '22%', left: '8%', fontSize: '1.8rem', animation: 'float 8s ease-in-out infinite', animationDelay: '-4s', pointerEvents: 'none', zIndex: 1 }}>💫</div>
+      {/* ── Volumetric Ambient Background ── */}
+      <div className="studio-mesh-bg pointer-events-none">
+        <div className="studio-glow-orb-1" />
+        <div className="studio-glow-orb-2" />
+        <div className="absolute inset-0 studio-grid-pattern opacity-25" />
+      </div>
 
-          <motion.div className="auth-illus-content" initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}>
-            <span className="auth-illus-big-icon">🧸</span>
-            <h2 className="auth-illus-title">{locale === 'ar' ? 'مرحباً بعودتك!' : 'Welcome back!'}</h2>
-            <p className="auth-illus-sub">{locale === 'ar' ? 'طفلك ينتظرك لتبدأ مغامرته السينمائية الجديدة.' : 'Your child is waiting for their next magical adventure.'}</p>
-            <div className="auth-char-cards">
-              {[{ emoji: '🚀', delay: 0.5 }, { emoji: '🐉', delay: 0.65 }, { emoji: '🧜', delay: 0.8 }, { emoji: '🦁', delay: 0.95 }].map((item, i) => (
-                <motion.div key={i} className="auth-char-card" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: item.delay, duration: 0.5 }}>
-                  {item.emoji}
-                </motion.div>
-              ))}
-            </div>
-            <div className="auth-stats">
-              {[
-                { num: '10K+', label: locale === 'ar' ? 'أسرة' : 'Families' },
-                { num: '50K+', label: locale === 'ar' ? 'قصة' : 'Stories' },
-                { num: '4.9★', label: locale === 'ar' ? 'تقييم' : 'Rating' },
-              ].map((stat) => (
-                <div key={stat.label} style={{ textAlign: 'center' }}>
-                  <div className="auth-stat-num">{stat.num}</div>
-                  <div className="auth-stat-label">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+      {/* ── Global Header Bar ── */}
+      <header className="relative z-20 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 group transition-transform hover:scale-[1.02]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="NazStudio" className="h-10 w-auto object-contain" />
+          <div className="flex flex-col">
+            <span className="font-extrabold tracking-tight text-lg gradient-text font-display">
+              NazStudio
+            </span>
+            <span className="text-[9px] uppercase tracking-widest text-[var(--text-3)] font-mono">
+              AI CREATIVE SUITE
+            </span>
+          </div>
+        </Link>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleLocale}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:border-[var(--k-blue)] transition-all"
+            aria-label="Toggle language"
+          >
+            <Globe className="w-3.5 h-3.5 text-[var(--k-sky)]" />
+            <span className="uppercase">{locale === 'en' ? 'العربية' : 'EN'}</span>
+          </button>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:text-[var(--text)]"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-[var(--k-yellow)]" />
+            ) : (
+              <Moon className="w-4 h-4 text-[var(--k-navy)]" />
+            )}
+          </button>
         </div>
+      </header>
 
-        {/* ── Right: Form Panel ── */}
-        <div className="auth-form-side">
-          <motion.div className="auth-card" initial={{ opacity: 0, x: 36 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
+      {/* ── Main Split Screen Workstation ── */}
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex items-center justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-stretch">
+          {/* ── Left Column: Cinematic Visual Showcase (Desktop Only) ── */}
+          <div className="hidden lg:flex lg:col-span-7 flex-col justify-between p-10 rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white border border-white/10 shadow-2xl relative overflow-hidden">
+            <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-blue-600/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-pink-600/20 blur-3xl pointer-events-none" />
 
-            <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1.75rem' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Logo" style={{ height: '72px', width: 'auto', objectFit: 'contain' }} />
-            </Link>
+            {/* Top Brand Deck */}
+            <div className="relative z-10">
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-white/10 text-cyan-300 border border-white/20 inline-block mb-6">
+                {locale === 'ar' ? 'استوديو الإنتاج السينمائي' : 'CREATIVE STUDIO ACCESS'}
+              </span>
+              <h2 className="text-3xl xl:text-4xl font-extrabold tracking-tight font-display max-w-md leading-tight">
+                {locale === 'ar'
+                  ? 'أهلاً بك مجدداً في عالم الذكاء الاصطناعي والإبداع'
+                  : 'Step Back Into Your Personalized Universe'}
+              </h2>
+              <p className="text-slate-300 text-sm mt-3 max-w-md leading-relaxed">
+                {locale === 'ar'
+                  ? 'مغامرات طفلك بانتظارك. تابع إنتاج الفيديوهات السينمائية، والكتب المصورة، وصفحات التلوين بكل سهولة.'
+                  : 'Access your story archives, render new 4K animated chapters, and export keepsake storybooks in minutes.'}
+              </p>
+            </div>
 
-            <motion.div variants={fadeUp} initial="hidden" animate="visible">
-              <h1 className="auth-form-title">{t('login_title')}</h1>
-              <p className="auth-form-sub">{t('login_sub')}</p>
-            </motion.div>
-
-            <motion.form onSubmit={onSubmit} style={{ display: 'grid', gap: 0 }} initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } } }}>
-              <motion.div className="inp-group" variants={fadeUp}>
-                <label className="inp-label">{t('login_email')}</label>
-                <input className="inp" type="email" placeholder={locale === 'ar' ? 'بريدك الإلكتروني' : 'you@example.com'} value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </motion.div>
-
-              <motion.div className="inp-group" variants={fadeUp}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                  <label className="inp-label" style={{ margin: 0 }}>{t('login_password')}</label>
-                  <a href="#" style={{ fontSize: '0.8rem', color: 'var(--k-blue)', textDecoration: 'none', fontWeight: 600, fontFamily: 'Fredoka, sans-serif' }}>{t('login_forgot')}</a>
+            {/* Center Story Mockup Card */}
+            <div className="relative z-10 my-8 p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs font-mono text-cyan-300">
+                <span className="flex items-center gap-1.5">
+                  <Film className="w-3.5 h-3.5" />
+                  {locale === 'ar' ? 'المشروع الأخير' : 'LATEST PRODUCTION'}
+                </span>
+                <span className="text-emerald-400">4K RENDERED</span>
+              </div>
+              <div className="mt-3">
+                <div className="text-base font-bold text-white font-display">
+                  {locale === 'ar' ? 'مغامرة رائد الفضاء الصغير' : 'The Little Starlight Pioneer'}
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <input className="inp" type={showPass ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ paddingRight: '3rem' }} />
-                  <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: '0.9rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', opacity: 0.5, padding: 0 }} aria-label="Toggle password">
-                    {showPass ? '🙈' : '👁️'}
+                <div className="text-xs text-slate-300 mt-1">
+                  {locale === 'ar' ? '٤ فصول كاملة · تعليق صوتي سينمائي · كتاب جاهز للطباعة' : '4 chapters · Dolby Voice Narration · 36-page storybook'}
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Character Likeness: 99.4%</span>
+                <span>Fal.ai + Claude</span>
+              </div>
+            </div>
+
+            {/* Bottom Testimonial / Telemetry */}
+            <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>SSL Encrypted Connection</span>
+              </div>
+              <span>Over 50K Stories Generated</span>
+            </div>
+          </div>
+
+          {/* ── Right Column: Authentication Form Card ── */}
+          <div className="lg:col-span-5 flex items-center">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={fadeUp}
+              className="w-full studio-card-glass p-8 sm:p-10 shadow-2xl relative"
+            >
+              <div className="mb-8">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
+                  {t('login_title')}
+                </h1>
+                <p className="text-sm text-[var(--text-2)] leading-relaxed">
+                  {t('login_sub')}
+                </p>
+              </div>
+
+              {/* Error Banner */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 text-xs sm:text-sm flex items-start gap-3"
+                >
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </motion.div>
+              )}
+
+              {/* Form */}
+              <form onSubmit={onSubmit} className="space-y-5">
+                {/* Email Field */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
+                    {t('login_email')}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={locale === 'ar' ? 'name@example.com' : 'you@example.com'}
+                      required
+                      className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
+                    />
+                    <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password Field */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)]">
+                      {t('login_password')}
+                    </label>
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        alert(
+                          locale === 'ar'
+                            ? 'لإعادة تعيين كلمة المرور، يرجى التواصل مع الدعم الفني: support@nazstudio.art'
+                            : 'To reset your password, please contact support: support@nazstudio.art'
+                        );
+                      }}
+                      className="text-xs font-semibold text-[var(--k-blue)] hover:underline"
+                    >
+                      {t('login_forgot')}
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="studio-input pl-11 pr-11 rtl:pr-11 rtl:pl-11"
+                    />
+                    <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute top-1/2 -translate-y-1/2 right-3.5 rtl:right-auto rtl:left-3.5 text-[var(--text-3)] hover:text-[var(--text)] transition-colors p-1"
+                      aria-label="Toggle password visibility"
+                    >
+                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="studio-btn-primary w-full py-4 text-sm font-bold shadow-lg"
+                  >
+                    {loading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{t('login_loading')}</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <span>{t('login_submit')}</span>
+                        <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                      </span>
+                    )}
                   </button>
                 </div>
-              </motion.div>
+              </form>
 
-              {error && <motion.div className="auth-error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{error}</motion.div>}
-
-              <motion.div variants={fadeUp} style={{ marginTop: '0.5rem' }}>
-                <motion.button className="btn btn-primary" type="submit" disabled={loading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', justifyContent: 'center' }}>
-                  {loading
-                    ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ animation: 'spin-star 1s linear infinite', display: 'inline-block' }}>⏳</span>{t('login_loading')}</span>
-                    : <>{t('login_submit')} ✦</>}
-                </motion.button>
-              </motion.div>
-            </motion.form>
-
-            <p className="auth-link" style={{ marginTop: '1.5rem' }}>
-              {t('login_no_account')}{' '}<Link href="/register">{t('login_register_link')}</Link>
-            </p>
-          </motion.div>
+              {/* Bottom Sign-Up Link */}
+              <div className="mt-8 pt-6 border-t border-[var(--border)] text-center text-xs sm:text-sm text-[var(--text-2)]">
+                {t('login_no_account')}{' '}
+                <Link
+                  href="/register"
+                  className="font-bold text-[var(--k-blue)] hover:underline ml-1 rtl:mr-1"
+                >
+                  {t('login_register_link')}
+                </Link>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </main>
+
+      {/* ── Footer ── */}
+      <footer className="relative z-20 py-4 text-center text-xs text-[var(--text-3)] border-t border-[var(--border)]">
+        <span>{t('footer_rights')}</span>
+      </footer>
     </div>
   );
 }

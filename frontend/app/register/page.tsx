@@ -3,7 +3,7 @@
 import { FormEvent, useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
@@ -17,28 +17,55 @@ import {
   Package,
 } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
+import {
+  Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  Mail,
+  Lock,
+  User,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Sun,
+  Moon,
+  Globe,
+  Film,
+  BookOpen,
+  Palette,
+  Check,
+  RefreshCw,
+} from 'lucide-react';
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 20 },
   visible: (i: number = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.65, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      delay: i * 0.08,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+    },
   }),
 };
 
-// Multi-step flow, in order. A package MUST be picked before 'details' is
-// reachable, and 'details' MUST succeed (OTP sent) before 'otp' is reachable.
 type Step = 'package' | 'details' | 'otp';
 
 export default function RegisterPage() {
-  return <Suspense fallback={null}><RegisterForm /></Suspense>;
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
+  );
 }
 
 function RegisterForm() {
   const router = useRouter();
   const { login } = useAuth();
-  const { theme } = useTheme();
-  const { t, locale } = useLang();
+  const { theme, toggleTheme } = useTheme();
+  const { t, locale, toggleLocale, isRTL } = useLang();
 
   const searchParams = useSearchParams();
   const urlPackageId = searchParams.get('package') ? Number(searchParams.get('package')) : undefined;
@@ -60,19 +87,23 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Pre-selected via ?package=ID (e.g. coming from the pricing section)
+  // Pre-selected via ?package=ID (e.g. from Pricing section)
   useEffect(() => {
     if (!urlPackageId) return;
     apiGetPublicPackage(urlPackageId, locale)
-      .then((res) => { setSelectedPackage(res.package); setStep('details'); })
+      .then((res) => {
+        setSelectedPackage(res.package);
+        setStep('details');
+      })
       .catch(() => {});
   }, [urlPackageId, locale]);
 
-  // If no package pre-selected, load the list so the user can pick one —
-  // this is the frontend half of "package required before registration".
+  // Load packages if none is preselected
   useEffect(() => {
     if (urlPackageId || selectedPackage) return;
-    apiGetPublicPackages(locale).then((res) => setPackages(res.packages)).catch(() => setPackages([]));
+    apiGetPublicPackages(locale)
+      .then((res) => setPackages(res.packages.filter((p) => p.is_active)))
+      .catch(() => setPackages([]));
   }, [urlPackageId, selectedPackage, locale]);
 
   const formatSar = (amount: number) =>
@@ -84,8 +115,8 @@ function RegisterForm() {
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
+    const interval = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(interval);
   }, [resendCooldown]);
 
   function choosePackage(pkg: Package) {
@@ -96,20 +127,32 @@ function RegisterForm() {
 
   async function onSubmitDetails(e: FormEvent) {
     e.preventDefault();
-    if (!selectedPackage) return; // guarded by UI, but double-check
-    if (password !== confirm) return setError(locale === 'ar' ? 'كلمات المرور غير متطابقة' : 'Passwords do not match');
-    if (!termsAccepted) return setError(locale === 'ar' ? 'يجب الموافقة على الشروط والأحكام' : 'You must accept the Terms and Conditions');
+    if (!selectedPackage) return;
+    if (password !== confirm) {
+      return setError(locale === 'ar' ? 'كلمات المرور غير متطابقة' : 'Passwords do not match');
+    }
+    if (!termsAccepted) {
+      return setError(
+        locale === 'ar'
+          ? 'يجب الموافقة على الشروط والأحكام للمتابعة'
+          : 'You must accept the Terms & Conditions'
+      );
+    }
     setLoading(true);
     setError('');
     try {
       const res = await apiRegisterInitiate({
-        name, email, password, password_confirmation: confirm, package_id: selectedPackage.id,
+        name,
+        email,
+        password,
+        password_confirmation: confirm,
+        package_id: selectedPackage.id,
       });
       setPendingId(res.pending_registration_id);
       setResendCooldown(60);
       setStep('otp');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : 'Registration failed. Please check your details.');
     } finally {
       setLoading(false);
     }
@@ -133,234 +176,584 @@ function RegisterForm() {
     setError('');
     try {
       await apiRegisterVerifyOtp(pendingId, otp);
-
-      // Both free and paid packages call the same /register/complete —
-      // the backend decides what to return based on the package price.
       const completeRes = await apiRegisterComplete(pendingId);
 
       if ('token' in completeRes) {
-        // Free package: account created immediately.
+        // Free tier: direct login
         login(completeRes.token, completeRes.user);
         router.push('/dashboard');
       } else {
-        // Paid package: hand off to Moyasar. No account exists yet — it's
-        // created by the webhook once payment clears (see /register/success).
+        // Paid tier: redirect to Moyasar payment checkout
         window.location.href = completeRes.url;
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
+      setError(err instanceof Error ? err.message : 'Invalid verification code');
     } finally {
       setLoading(false);
     }
   }
 
+  const stepsMeta = [
+    { id: 'package', num: '01', label: locale === 'ar' ? 'اختيار الباقة' : 'Choose Plan' },
+    { id: 'details', num: '02', label: locale === 'ar' ? 'بيانات الحساب' : 'Account Details' },
+    { id: 'otp', num: '03', label: locale === 'ar' ? 'التحقق الآمن' : 'Verification' },
+  ];
+
   return (
-    <div data-theme={theme} style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div
+      data-theme={theme}
+      className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col justify-between relative overflow-hidden"
+    >
       <CustomCursor />
-      <main className="auth-layout">
 
-        {/* ── Left: Illustration Panel ── */}
-        <div className="auth-illustration">
-          <div className="auth-illus-blob auth-illus-blob-1" />
-          <div className="auth-illus-blob auth-illus-blob-2" />
-          <div className="auth-illus-blob auth-illus-blob-3" />
-          <div style={{ position: 'absolute', top: '12%', left: '10%', fontSize: '2rem', animation: 'float 7s ease-in-out infinite', animationDelay: '-1s', pointerEvents: 'none', zIndex: 1 }}>⭐</div>
-          <div style={{ position: 'absolute', top: '18%', right: '12%', fontSize: '1.5rem', animation: 'float 9s ease-in-out infinite', animationDelay: '-3s', pointerEvents: 'none', zIndex: 1 }}>✨</div>
-          <div style={{ position: 'absolute', bottom: '15%', right: '10%', fontSize: '2.5rem', animation: 'float 6s ease-in-out infinite', animationDelay: '-2s', pointerEvents: 'none', zIndex: 1 }}>🌙</div>
-          <div style={{ position: 'absolute', bottom: '22%', left: '8%', fontSize: '1.8rem', animation: 'float 8s ease-in-out infinite', animationDelay: '-4s', pointerEvents: 'none', zIndex: 1 }}>💫</div>
+      {/* ── Volumetric Ambient Background ── */}
+      <div className="studio-mesh-bg pointer-events-none">
+        <div className="studio-glow-orb-1" />
+        <div className="studio-glow-orb-3" />
+        <div className="absolute inset-0 studio-grid-pattern opacity-25" />
+      </div>
 
-          <motion.div className="auth-illus-content" initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}>
-            <span className="auth-illus-big-icon">🌟</span>
-            <h2 className="auth-illus-title">{locale === 'ar' ? 'ابدأ الإبداع اليوم!' : 'Start creating today!'}</h2>
-            <p className="auth-illus-sub">{locale === 'ar' ? 'آلاف الأسر تصنع ذكريات سينمائية مع أطفالها كل يوم.' : 'Thousands of families are creating cinematic memories with their children every day.'}</p>
-            <div className="auth-char-cards">
-              {[{ emoji: '🚀', delay: 0.5 }, { emoji: '🐉', delay: 0.65 }, { emoji: '🧜', delay: 0.8 }, { emoji: '🦁', delay: 0.95 }].map((item, i) => (
-                <motion.div key={i} className="auth-char-card" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: item.delay, duration: 0.5 }}>
-                  {item.emoji}
-                </motion.div>
-              ))}
-            </div>
-            <div className="auth-stats">
-              {[
-                { num: '10K+', label: locale === 'ar' ? 'أسرة' : 'Families' },
-                { num: '50K+', label: locale === 'ar' ? 'قصة' : 'Stories' },
-                { num: '4.9★', label: locale === 'ar' ? 'تقييم' : 'Rating' },
-              ].map((stat) => (
-                <div key={stat.label} style={{ textAlign: 'center' }}>
-                  <div className="auth-stat-num">{stat.num}</div>
-                  <div className="auth-stat-label">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+      {/* ── Global Header Bar ── */}
+      <header className="relative z-20 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 group transition-transform hover:scale-[1.02]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="NazStudio" className="h-10 w-auto object-contain" />
+          <div className="flex flex-col">
+            <span className="font-extrabold tracking-tight text-lg gradient-text font-display">
+              NazStudio
+            </span>
+            <span className="text-[9px] uppercase tracking-widest text-[var(--text-3)] font-mono">
+              AI CREATIVE SUITE
+            </span>
+          </div>
+        </Link>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleLocale}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:border-[var(--k-blue)] transition-all"
+            aria-label="Toggle language"
+          >
+            <Globe className="w-3.5 h-3.5 text-[var(--k-sky)]" />
+            <span className="uppercase">{locale === 'en' ? 'العربية' : 'EN'}</span>
+          </button>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:text-[var(--text)]"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-[var(--k-yellow)]" />
+            ) : (
+              <Moon className="w-4 h-4 text-[var(--k-navy)]" />
+            )}
+          </button>
         </div>
+      </header>
 
-        {/* ── Right: Form Panel ── */}
-        <div className="auth-form-side">
-          <motion.div className="auth-card" initial={{ opacity: 0, x: 36 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
+      {/* ── Main Split Screen Workstation ── */}
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex items-center justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-stretch">
+          {/* ── Left Column: Journey Progress Sidebar (Desktop Only) ── */}
+          <div className="hidden lg:flex lg:col-span-5 flex-col justify-between p-10 rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white border border-white/10 shadow-2xl relative overflow-hidden">
+            <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full bg-blue-600/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -right-20 w-72 h-72 rounded-full bg-purple-600/20 blur-3xl pointer-events-none" />
 
-            <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1.75rem' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Logo" style={{ height: '72px', width: 'auto', objectFit: 'contain' }} />
-            </Link>
+            {/* Top Brand Header */}
+            <div className="relative z-10">
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-white/10 text-cyan-300 border border-white/20 inline-block mb-6">
+                {locale === 'ar' ? 'رحلة الانضمام إلى الاستوديو' : 'STUDIO ONBOARDING'}
+              </span>
+              <h2 className="text-3xl font-extrabold tracking-tight font-display leading-tight">
+                {locale === 'ar' ? 'ابدأ رحلة الإبداع السينمائي' : 'Design Your Hero’s Cinematic Legacy'}
+              </h2>
+              <p className="text-slate-300 text-xs sm:text-sm mt-3 leading-relaxed">
+                {locale === 'ar'
+                  ? 'ثلاث خطوات سريعة لتأكيد حسابك والانطلاق في تأليف أفلام وكتب مخصصة لطفلك.'
+                  : 'Complete three simple steps to access the AI generation studio and export archival assets.'}
+              </p>
+            </div>
 
-            {/* ── Step 1: choose a package — cannot proceed without this ── */}
-            {step === 'package' && (
-              <motion.div variants={fadeUp} initial="hidden" animate="visible">
-                <h1 className="auth-form-title">{locale === 'ar' ? 'اختر باقتك أولاً' : 'Choose your package first'}</h1>
-                <p className="auth-form-sub">{locale === 'ar' ? 'يجب اختيار باقة قبل إنشاء الحساب.' : 'A package must be selected before you can create an account.'}</p>
+            {/* Step-by-Step Progress Pipeline */}
+            <div className="relative z-10 my-8 space-y-4">
+              {stepsMeta.map((s, idx) => {
+                const isActive = step === s.id;
+                const isPassed =
+                  (step === 'details' && s.id === 'package') ||
+                  (step === 'otp' && (s.id === 'package' || s.id === 'details'));
 
-                {packages === null && <p style={{ marginTop: '1.5rem', color: 'var(--text-3)' }}>{locale === 'ar' ? 'جارِ التحميل...' : 'Loading...'}</p>}
-
-                {packages && packages.length === 0 && (
-                  <p style={{ marginTop: '1.5rem', color: 'var(--text-3)' }}>{locale === 'ar' ? 'لا توجد باقات متاحة حالياً.' : 'No packages available right now.'}</p>
-                )}
-
-                <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1.5rem' }}>
-                  {packages?.map((pkg) => (
-                    <button
-                      key={pkg.id}
-                      type="button"
-                      onClick={() => choosePackage(pkg)}
-                      style={{
-                        textAlign: 'left', border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)',
-                        padding: '0.9rem 1.1rem', background: 'var(--surface)', cursor: 'pointer',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem',
-                      }}
+                return (
+                  <div
+                    key={s.id}
+                    className={`flex items-center gap-3.5 p-3 rounded-2xl border transition-all ${
+                      isActive
+                        ? 'bg-white/10 border-cyan-400 text-white shadow-lg'
+                        : isPassed
+                        ? 'bg-white/5 border-emerald-500/40 text-emerald-400'
+                        : 'border-white/5 text-slate-500'
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-xl font-mono text-xs font-bold flex items-center justify-center shrink-0 ${
+                        isActive
+                          ? 'bg-cyan-400 text-slate-950 font-extrabold'
+                          : isPassed
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-white/10 text-slate-400'
+                      }`}
                     >
-                      <div>
-                        <div style={{ fontWeight: 700 }}>{pkg.name}</div>
-                        {pkg.description && <div style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginTop: '0.2rem' }}>{pkg.description}</div>}
+                      {isPassed ? <Check className="w-4 h-4" /> : s.num}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">{s.label}</div>
+                      <div className="text-[10px] opacity-70">
+                        {isActive
+                          ? locale === 'ar'
+                            ? 'الخطوة الحالية'
+                            : 'In Progress'
+                          : isPassed
+                          ? locale === 'ar'
+                            ? 'تم الاكتمال'
+                            : 'Completed'
+                          : locale === 'ar'
+                          ? 'قيد الانتظار'
+                          : 'Upcoming'}
                       </div>
-                      <div style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
-                        {Number(pkg.total_price) === 0
-                          ? (locale === 'ar' ? 'مجاني' : 'Free')
-                          : formatSar(Number(pkg.total_price))}
-                      </div>
-                    </button>
-                  ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Selected Package Banner Summary if selected */}
+            {selectedPackage && (
+              <div className="relative z-10 p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-slate-300">
+                <div className="flex items-center justify-between text-white font-bold mb-1">
+                  <span>{selectedPackage.name}</span>
+                  <span className="text-cyan-400">
+                    {Number(selectedPackage.total_price) === 0
+                      ? locale === 'ar'
+                        ? 'مجاني'
+                        : 'Free'
+                      : formatSar(Number(selectedPackage.total_price))}
+                  </span>
                 </div>
-              </motion.div>
+                <p className="text-[11px] text-slate-400">
+                  {selectedPackage.description || (locale === 'ar' ? 'باقة شاملة' : 'Complete package')}
+                </p>
+              </div>
             )}
 
-            {/* ── Step 2: registration details ── */}
-            {step === 'details' && selectedPackage && (
-              <>
-                <motion.div variants={fadeUp} initial="hidden" animate="visible">
-                  <h1 className="auth-form-title">{t('register_title')}</h1>
-                  <p className="auth-form-sub">{t('register_sub')}</p>
-                </motion.div>
+            {/* Bottom Security Note */}
+            <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Zero Data Sharing Guarantee</span>
+              </span>
+              <span>NazStudio v2.4</span>
+            </div>
+          </div>
 
+          {/* ── Right Column: Interactive Step Engine ── */}
+          <div className="lg:col-span-7 flex items-center">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={fadeUp}
+              className="w-full studio-card-glass p-8 sm:p-10 shadow-2xl relative"
+            >
+              {/* Step indicator on mobile */}
+              <div className="flex lg:hidden items-center justify-between mb-6 pb-4 border-b border-[var(--border)] text-xs font-bold text-[var(--k-blue)]">
+                <span>
+                  {locale === 'ar' ? 'الخطوة' : 'Step'}{' '}
+                  {step === 'package' ? '1/3' : step === 'details' ? '2/3' : '3/3'}
+                </span>
+                <span className="text-[var(--text-3)] font-normal">
+                  {step === 'package'
+                    ? locale === 'ar'
+                      ? 'اختيار الباقة'
+                      : 'Choose Package'
+                    : step === 'details'
+                    ? locale === 'ar'
+                      ? 'بيانات الحساب'
+                      : 'Details'
+                    : locale === 'ar'
+                    ? 'التحقق'
+                    : 'Verification'}
+                </span>
+              </div>
+
+              {/* Error Notification */}
+              {error && (
                 <motion.div
-                  initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(84,120,255,0.12), rgba(84,120,255,0.05))',
-                    border: '1.5px solid rgba(84,120,255,0.25)', borderRadius: 'var(--r-md)',
-                    padding: '0.85rem 1rem', marginBottom: '1.25rem', marginTop: '1rem',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
-                  }}
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 text-xs sm:text-sm flex items-start gap-3"
                 >
-                  <div>
-                    <p style={{ fontWeight: 700, fontSize: '0.9rem', margin: 0, color: 'var(--text)' }}>📦 {selectedPackage.name}</p>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', margin: '0.15rem 0 0' }}>
-                      {Number(selectedPackage.total_price) === 0
-                        ? (locale === 'ar' ? 'باقة مجانية — لا يلزم دفع' : 'Free package — no payment required')
-                        : `${formatSar(Number(selectedPackage.total_price))} — ${locale === 'ar' ? 'سيُطلب الدفع بعد التحقق من البريد' : 'payment requested after email verification'}`}
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </motion.div>
+              )}
+
+              {/* ════════════════════════════════════════════
+                  STEP 1: PACKAGE SELECTION
+              ═════════════════════════════════════════════ */}
+              {step === 'package' && (
+                <motion.div variants={fadeUp} initial="hidden" animate="visible">
+                  <div className="mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
+                      {locale === 'ar' ? 'اختر باقة الاستوديو' : 'Select Your Studio Plan'}
+                    </h1>
+                    <p className="text-sm text-[var(--text-2)] leading-relaxed">
+                      {locale === 'ar'
+                        ? 'اختر الخطة المناسبة لبدء إنتاج قصتك السينمائية الأولى.'
+                        : 'Choose your desired studio plan to begin personalizing stories.'}
                     </p>
                   </div>
-                  <button type="button" onClick={() => { setSelectedPackage(null); setStep('package'); router.replace('/register'); }}
-                    style={{ fontSize: '0.75rem', color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    {locale === 'ar' ? 'تغيير →' : 'Change →'}
-                  </button>
+
+                  {packages === null ? (
+                    <div className="space-y-3">
+                      {[0, 1, 2].map((i) => (
+                        <div
+                          key={i}
+                          className="h-20 rounded-2xl bg-[var(--surface-2)] animate-pulse"
+                        />
+                      ))}
+                    </div>
+                  ) : packages.length === 0 ? (
+                    <div className="text-center py-8 text-[var(--text-3)] text-sm">
+                      {locale === 'ar' ? 'لا توجد باقات متاحة حالياً.' : 'No packages available right now.'}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 mt-4">
+                      {packages.map((pkg) => {
+                        const price =
+                          Number(pkg.total_price) === 0
+                            ? locale === 'ar'
+                              ? 'مجاني'
+                              : 'Free'
+                            : formatSar(Number(pkg.total_price));
+
+                        return (
+                          <button
+                            key={pkg.id}
+                            type="button"
+                            onClick={() => choosePackage(pkg)}
+                            className="w-full text-left rtl:text-right p-4 sm:p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--k-blue)] hover:bg-[var(--surface-hover)] transition-all flex items-center justify-between gap-4 group"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-base text-[var(--text)] group-hover:text-[var(--k-blue)] transition-colors">
+                                  {pkg.name}
+                                </span>
+                                {Number(pkg.total_price) === 0 && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500">
+                                    {locale === 'ar' ? 'تجربة مجانية' : 'Free Trial'}
+                                  </span>
+                                )}
+                              </div>
+                              {pkg.description && (
+                                <p className="text-xs text-[var(--text-3)] mt-1 line-clamp-1">
+                                  {pkg.description}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="font-extrabold text-base sm:text-lg gradient-text whitespace-nowrap">
+                                {price}
+                              </span>
+                              <div className="w-8 h-8 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--text-3)] group-hover:text-[var(--k-blue)] group-hover:border-[var(--k-blue)] transition-all">
+                                <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </motion.div>
+              )}
 
-                <motion.form onSubmit={onSubmitDetails} style={{ display: 'grid', gap: 0 }} initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } } }}>
-                  <motion.div className="inp-group" variants={fadeUp}>
-                    <label className="inp-label">{t('register_name')}</label>
-                    <input className="inp" type="text" placeholder={locale === 'ar' ? 'الاسم الكامل' : 'Full name'} value={name} onChange={(e) => setName(e.target.value)} required />
-                  </motion.div>
-
-                  <motion.div className="inp-group" variants={fadeUp}>
-                    <label className="inp-label">{t('register_email')}</label>
-                    <input className="inp" type="email" placeholder={locale === 'ar' ? 'بريدك الإلكتروني' : 'you@example.com'} value={email} onChange={(e) => setEmail(e.target.value)} required />
-                  </motion.div>
-
-                  <motion.div className="inp-group" variants={fadeUp}>
-                    <label className="inp-label">{t('register_password')}</label>
-                    <input className="inp" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                  </motion.div>
-
-                  <motion.div className="inp-group" variants={fadeUp}>
-                    <label className="inp-label">{t('register_confirm')}</label>
-                    <input className="inp" type="password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
-                  </motion.div>
-
-                  {error && <motion.div className="auth-error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{error}</motion.div>}
-
-                  <motion.div variants={fadeUp} style={{ marginTop: '0.5rem' }}>
-                    <label className="flex items-start gap-2 cursor-pointer" style={{ fontSize: '0.8rem', color: 'var(--text-2)', lineHeight: 1.5 }}>
-                      <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5" required />
-                      <span>
-                        {locale === 'ar' ? 'أوافق على ' : 'I agree to the '}
-                        <Link href="/terms" className="underline font-semibold" style={{ color: 'var(--primary)' }}>{locale === 'ar' ? 'الشروط والأحكام' : 'Terms & Conditions'}</Link>
-                        {' ' + (locale === 'ar' ? 'و' : 'and ') + ' '}
-                        <Link href="/privacy" className="underline font-semibold" style={{ color: 'var(--primary)' }}>{locale === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</Link>
-                      </span>
-                    </label>
-
-                    <motion.button className="btn btn-primary" type="submit" disabled={loading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
-                      {loading
-                        ? <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ animation: 'spin-star 1s linear infinite', display: 'inline-block' }}>⏳</span>{locale === 'ar' ? 'جارِ الإرسال...' : 'Sending code...'}</span>
-                        : <>{locale === 'ar' ? 'إرسال رمز التحقق' : 'Send verification code'} ✦</>}
-                    </motion.button>
-                  </motion.div>
-                </motion.form>
-              </>
-            )}
-
-            {/* ── Step 3: verify the emailed OTP — required before completion ── */}
-            {step === 'otp' && (
-              <motion.div variants={fadeUp} initial="hidden" animate="visible">
-                <h1 className="auth-form-title">{locale === 'ar' ? 'تحقق من بريدك الإلكتروني' : 'Check your email'}</h1>
-                <p className="auth-form-sub">
-                  {locale === 'ar' ? `أرسلنا رمزاً مكوناً من 6 أرقام إلى ${email}` : `We sent a 6-digit code to ${email}`}
-                </p>
-
-                <form onSubmit={onVerifyOtp} style={{ display: 'grid', gap: 0, marginTop: '1.25rem' }}>
-                  <div className="inp-group">
-                    <label className="inp-label">{locale === 'ar' ? 'رمز التحقق' : 'Verification code'}</label>
-                    <input
-                      className="inp" type="text" inputMode="numeric" maxLength={6} placeholder="123456"
-                      value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} required
-                      style={{ letterSpacing: '0.4em', textAlign: 'center', fontSize: '1.2rem' }}
-                    />
+              {/* ════════════════════════════════════════════
+                  STEP 2: CREATOR DETAILS
+              ═════════════════════════════════════════════ */}
+              {step === 'details' && selectedPackage && (
+                <motion.div variants={fadeUp} initial="hidden" animate="visible">
+                  <div className="mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
+                      {t('register_title')}
+                    </h1>
+                    <p className="text-sm text-[var(--text-2)] leading-relaxed">
+                      {t('register_sub')}
+                    </p>
                   </div>
 
-                  {error && <div className="auth-error" style={{ marginTop: '0.5rem' }}>{error}</div>}
+                  {/* Selected Package Banner */}
+                  <div className="mb-6 p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold text-[var(--text)]">
+                        {locale === 'ar' ? 'الباقة المختارة:' : 'Selected Plan:'}{' '}
+                        <span className="text-[var(--k-blue)]">{selectedPackage.name}</span>
+                      </span>
+                      <div className="text-[11px] text-[var(--text-3)] mt-0.5">
+                        {Number(selectedPackage.total_price) === 0
+                          ? locale === 'ar'
+                            ? 'مجاني — لا يلزم دفع'
+                            : 'Free — No payment required'
+                          : `${formatSar(Number(selectedPackage.total_price))} — ${
+                              locale === 'ar'
+                                ? 'سيتم الدفع بأمان بعد تأكيد البريد'
+                                : 'Payment after email confirmation'
+                            }`}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPackage(null);
+                        setStep('package');
+                        router.replace('/register');
+                      }}
+                      className="text-xs font-bold text-[var(--k-blue)] hover:underline whitespace-nowrap"
+                    >
+                      {locale === 'ar' ? 'تغيير' : 'Change'}
+                    </button>
+                  </div>
 
-                  <button className="btn btn-primary" type="submit" disabled={loading || otp.length !== 6}
-                    style={{ width: '100%', justifyContent: 'center', marginTop: '1rem' }}>
-                    {loading
-                      ? (locale === 'ar' ? 'جارِ التحقق...' : 'Verifying...')
-                      : (locale === 'ar' ? 'تحقق وتابع' : 'Verify & continue')}
-                  </button>
+                  <form onSubmit={onSubmitDetails} className="space-y-4">
+                    {/* Full Name */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
+                        {t('register_name')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder={locale === 'ar' ? 'الاسم الكامل' : 'Full Name'}
+                          required
+                          className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
+                        />
+                        <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
+                          <User className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
 
-                  <button type="button" onClick={onResendOtp} disabled={resendCooldown > 0}
-                    style={{ marginTop: '0.85rem', background: 'none', border: 'none', fontSize: '0.8rem', color: resendCooldown > 0 ? 'var(--text-3)' : 'var(--primary)', cursor: resendCooldown > 0 ? 'default' : 'pointer' }}>
-                    {resendCooldown > 0
-                      ? (locale === 'ar' ? `أعد الإرسال خلال ${resendCooldown}ث` : `Resend in ${resendCooldown}s`)
-                      : (locale === 'ar' ? 'إعادة إرسال الرمز' : 'Resend code')}
-                  </button>
-                </form>
-              </motion.div>
-            )}
+                    {/* Email */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
+                        {t('register_email')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder={locale === 'ar' ? 'name@example.com' : 'you@example.com'}
+                          required
+                          className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
+                        />
+                        <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
+                          <Mail className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
 
-            <p className="auth-link" style={{ marginTop: '1.5rem' }}>
-              {t('register_have_account')}{' '}<Link href="/login">{t('register_login_link')}</Link>
-            </p>
-          </motion.div>
+                    {/* Password & Confirm Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
+                          {t('register_password')}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            required
+                            className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
+                          />
+                          <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
+                            <Lock className="w-4 h-4" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2">
+                          {t('register_confirm')}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="password"
+                            value={confirm}
+                            onChange={(e) => setConfirm(e.target.value)}
+                            placeholder="••••••••"
+                            required
+                            className="studio-input pl-11 rtl:pl-4 rtl:pr-11"
+                          />
+                          <div className="absolute top-1/2 -translate-y-1/2 left-3.5 rtl:left-auto rtl:right-3.5 text-[var(--text-3)]">
+                            <Lock className="w-4 h-4" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Terms Checkbox */}
+                    <div className="pt-2">
+                      <label className="flex items-start gap-2.5 cursor-pointer text-xs text-[var(--text-2)] leading-relaxed">
+                        <input
+                          type="checkbox"
+                          checked={termsAccepted}
+                          onChange={(e) => setTermsAccepted(e.target.checked)}
+                          className="mt-0.5 rounded border-[var(--border)] text-[var(--k-blue)]"
+                          required
+                        />
+                        <span>
+                          {locale === 'ar' ? 'أوافق على ' : 'I agree to the '}
+                          <Link href="/terms" className="font-bold text-[var(--k-blue)] hover:underline">
+                            {locale === 'ar' ? 'الشروط والأحكام' : 'Terms & Conditions'}
+                          </Link>
+                          {' ' + (locale === 'ar' ? 'و' : 'and ') + ' '}
+                          <Link href="/privacy" className="font-bold text-[var(--k-blue)] hover:underline">
+                            {locale === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}
+                          </Link>
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="studio-btn-primary w-full py-4 text-sm font-bold shadow-lg"
+                      >
+                        {loading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>
+                              {locale === 'ar' ? 'جارٍ إرسال الرمز...' : 'Sending Verification Code...'}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-center gap-2">
+                            <span>
+                              {locale === 'ar' ? 'إرسال رمز التحقق' : 'Send Verification Code'}
+                            </span>
+                            <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* ════════════════════════════════════════════
+                  STEP 3: OTP VERIFICATION
+              ═════════════════════════════════════════════ */}
+              {step === 'otp' && (
+                <motion.div variants={fadeUp} initial="hidden" animate="visible">
+                  <div className="mb-6">
+                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
+                      {locale === 'ar' ? 'تأكيد البريد الإلكتروني' : 'Verify Your Email'}
+                    </h1>
+                    <p className="text-sm text-[var(--text-2)] leading-relaxed">
+                      {locale === 'ar'
+                        ? `أرسلنا رمز تحقق أمان مكون من ٦ أرقام إلى ${email}`
+                        : `We have dispatched a 6-digit verification code to ${email}`}
+                    </p>
+                  </div>
+
+                  <form onSubmit={onVerifyOtp} className="space-y-6">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-3)] mb-2 text-center">
+                        {locale === 'ar' ? 'رمز التحقق (٦ أرقام)' : 'Verification Code'}
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                        placeholder="123456"
+                        required
+                        className="studio-input text-center text-2xl font-mono tracking-[0.5em] py-3.5"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading || otp.length !== 6}
+                      className="studio-btn-primary w-full py-4 text-sm font-bold shadow-lg"
+                    >
+                      {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>{locale === 'ar' ? 'جارٍ التحقق...' : 'Verifying & Continuing...'}</span>
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <span>{locale === 'ar' ? 'تأكيد الحساب ومتابعة' : 'Verify & Continue'}</span>
+                          <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                        </span>
+                      )}
+                    </button>
+
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={onResendOtp}
+                        disabled={resendCooldown > 0}
+                        className={`text-xs font-bold flex items-center justify-center gap-1.5 mx-auto ${
+                          resendCooldown > 0
+                            ? 'text-[var(--text-3)] cursor-default'
+                            : 'text-[var(--k-blue)] hover:underline cursor-pointer'
+                        }`}
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${resendCooldown > 0 ? '' : 'hover:rotate-180 transition-transform'}`} />
+                        <span>
+                          {resendCooldown > 0
+                            ? locale === 'ar'
+                              ? `إعادة الإرسال خلال ${resendCooldown} ثانية`
+                              : `Resend code in ${resendCooldown}s`
+                            : locale === 'ar'
+                            ? 'إعادة إرسال رمز التحقق'
+                            : 'Resend Verification Code'}
+                        </span>
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* Bottom Login Link */}
+              <div className="mt-8 pt-6 border-t border-[var(--border)] text-center text-xs sm:text-sm text-[var(--text-2)]">
+                {t('register_have_account')}{' '}
+                <Link
+                  href="/login"
+                  className="font-bold text-[var(--k-blue)] hover:underline ml-1 rtl:mr-1"
+                >
+                  {t('register_login_link')}
+                </Link>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </main>
+
+      {/* ── Footer ── */}
+      <footer className="relative z-20 py-4 text-center text-xs text-[var(--text-3)] border-t border-[var(--border)]">
+        <span>{t('footer_rights')}</span>
+      </footer>
     </div>
   );
 }
