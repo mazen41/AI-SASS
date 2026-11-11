@@ -13,6 +13,7 @@ import {
   apiSubscribeStripe,
   apiSubscribePaypal,
   apiSubscribeMoyasar,
+  apiSubscribeMyfatoorah,
   apiUserCancelSubscription,
   Plan,
   Subscription,
@@ -63,7 +64,7 @@ export default function BillingPage() {
   const [activeSub, setActiveSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [availableGateways, setAvailableGateways] = useState<string[]>([]);
-  const [gateway, setGateway] = useState<'stripe' | 'paypal' | 'moyasar'>('stripe');
+  const [gateway, setGateway] = useState<'stripe' | 'paypal' | 'moyasar' | 'myfatoorah'>('stripe');
   const [checkoutPlanId, setCheckoutPlanId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -85,7 +86,7 @@ export default function BillingPage() {
         setActiveSub(subRes.subscription);
         if (plansRes.gateways?.length) {
           setAvailableGateways(plansRes.gateways);
-          setGateway(plansRes.gateways[0] as 'stripe' | 'paypal' | 'moyasar');
+          setGateway(plansRes.gateways[0] as 'stripe' | 'paypal' | 'moyasar' | 'myfatoorah');
         }
       } catch (err) {
         console.error('Error loading billing data', err);
@@ -115,6 +116,9 @@ export default function BillingPage() {
         url = response.url;
       } else if (gateway === 'moyasar') {
         const response = await apiSubscribeMoyasar(planId);
+        url = response.url;
+      } else if (gateway === 'myfatoorah') {
+        const response = await apiSubscribeMyfatoorah(planId);
         url = response.url;
       }
       
@@ -255,6 +259,11 @@ export default function BillingPage() {
                   >
                     <CreditCard size={16} />
                     Moyasar
+                  </button>
+                )}
+                {availableGateways.includes('myfatoorah') && (
+                  <button onClick={() => setGateway('myfatoorah')} className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${gateway === 'myfatoorah' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}>
+                    <CreditCard size={16} /> MyFatoorah
                   </button>
                 )}
               </div>

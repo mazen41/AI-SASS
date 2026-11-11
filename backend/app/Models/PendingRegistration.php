@@ -13,7 +13,7 @@ class PendingRegistration extends Model
         'name', 'email', 'password_hash', 'package_id',
         'otp_hash', 'otp_expires_at', 'otp_attempts', 'otp_resend_count',
         'last_otp_sent_at', 'email_verified_at', 'status',
-        'moyasar_payment_id', 'created_user_id', 'token_claimed_at', 'expires_at',
+        'moyasar_payment_id', 'myfatoorah_invoice_id', 'created_user_id', 'token_claimed_at', 'expires_at',
     ];
 
     // Never expose hashes to any accidental json()/toArray() response.

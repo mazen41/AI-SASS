@@ -9,6 +9,8 @@ use App\Models\Invoice;
 use App\Models\PaymentSetting;
 use App\Models\ActivityLog;
 use App\Models\MailTemplate;
+use App\Models\MyFatoorahCheckoutSession;
+use App\Services\MyFatoorahService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -27,10 +29,12 @@ class BillingController extends Controller
         $stripe  = PaymentSetting::getStripe();
         $paypal  = PaymentSetting::getPaypal();
         $moyasar = PaymentSetting::getMoyasar();
+        $myfatoorah = PaymentSetting::getMyfatoorah();
         $gateways = [];
         if ($stripe  && $stripe->is_enabled  && $stripe->secret_key)  $gateways[] = 'stripe';
         if ($paypal  && $paypal->is_enabled  && $paypal->secret_key)  $gateways[] = 'paypal';
         if ($moyasar && $moyasar->is_enabled && $moyasar->secret_key) $gateways[] = 'moyasar';
+        if ($myfatoorah && $myfatoorah->is_enabled && $myfatoorah->secret_key && $myfatoorah->webhook_secret) $gateways[] = 'myfatoorah';
 
         return response()->json([
             'plans'    => $plans,
@@ -46,10 +50,12 @@ class BillingController extends Controller
         $stripe  = PaymentSetting::getStripe();
         $paypal  = PaymentSetting::getPaypal();
         $moyasar = PaymentSetting::getMoyasar();
+        $myfatoorah = PaymentSetting::getMyfatoorah();
         $gateways = [];
         if ($stripe  && $stripe->is_enabled  && $stripe->secret_key)  $gateways[] = 'stripe';
         if ($paypal  && $paypal->is_enabled  && $paypal->secret_key)  $gateways[] = 'paypal';
         if ($moyasar && $moyasar->is_enabled && $moyasar->secret_key) $gateways[] = 'moyasar';
+        if ($myfatoorah && $myfatoorah->is_enabled && $myfatoorah->secret_key && $myfatoorah->webhook_secret) $gateways[] = 'myfatoorah';
 
         return response()->json([
             'subscription' => $subscription ? $subscription->load('plan') : null,
@@ -299,6 +305,54 @@ class BillingController extends Controller
             Log::error('Moyasar subscribe error', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Moyasar payment error: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function subscribeMyfatoorah(Request $request): JsonResponse
+    {
+        $request->validate(['plan_id' => ['required', 'exists:plans,id']]);
+        $plan = Plan::findOrFail($request->integer('plan_id'));
+        $user = $request->user();
+        $gateway = MyFatoorahService::configured();
+        if (!$gateway || (float) $plan->price <= 0) {
+            return response()->json(['message' => 'MyFatoorah is not configured for paid checkout.'], 503);
+        }
+
+        $checkout = MyFatoorahCheckoutSession::create([
+            'user_id' => $user->id, 'plan_id' => $plan->id, 'amount' => $plan->price,
+            'currency' => strtoupper((string) data_get($gateway->setting()->additional_settings, 'currency', 'SAR')),
+            'status' => 'pending',
+        ]);
+        $frontendUrl = rtrim(config('app.frontend_url', 'http://localhost:3000'), '/');
+        try {
+            $invoice = $gateway->sendPayment([
+                'CustomerName' => $user->name ?: $user->email,
+                'CustomerEmail' => $user->email,
+                'InvoiceValue' => (float) $plan->price,
+                'DisplayCurrencyIso' => $checkout->currency,
+                'NotificationOption' => 'LNK',
+                'Language' => app()->getLocale() === 'ar' ? 'AR' : 'EN',
+                'CustomerReference' => $checkout->id,
+                'UserDefinedField' => $checkout->id,
+                'CallBackUrl' => $frontendUrl . '/billing/success?gateway=myfatoorah&checkout_id=' . $checkout->id,
+                'ErrorUrl' => $frontendUrl . '/billing?status=cancel&gateway=myfatoorah',
+                'WebhookUrl' => url('/api/webhooks/myfatoorah'),
+            ]);
+            $checkout->update(['invoice_id' => (string) $invoice['InvoiceId'], 'gateway_response' => ['invoice_status' => $invoice['InvoiceStatus'] ?? null]]);
+            return response()->json(['url' => $invoice['InvoiceURL'], 'invoice_id' => (string) $invoice['InvoiceId']]);
+        } catch (\Throwable $e) {
+            $checkout->update(['status' => 'failed']);
+            Log::error('MyFatoorah subscription invoice creation failed', ['checkout_id' => $checkout->id, 'exception' => get_class($e)]);
+            return response()->json(['message' => 'Could not start MyFatoorah checkout. Verify the gateway settings and try again.'], 502);
+        }
+    }
+
+    public function myfatoorahCheckoutStatus(Request $request, string $checkoutId): JsonResponse
+    {
+        $checkout = MyFatoorahCheckoutSession::whereKey($checkoutId)
+            ->where('user_id', $request->user()->id)
+            ->first();
+        if (!$checkout) return response()->json(['message' => 'Checkout not found.'], 404);
+        return response()->json(['status' => $checkout->status]);
     }
 
     /**

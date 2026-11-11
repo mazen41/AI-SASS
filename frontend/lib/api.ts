@@ -278,6 +278,8 @@ export interface ActivityLog {
 export interface PaymentSettings {
   stripe: PaymentGatewaySettings;
   paypal: PaymentGatewaySettings;
+  moyasar: PaymentGatewaySettings;
+  myfatoorah: PaymentGatewaySettings;
 }
 
 export interface PaymentGatewaySettings {
@@ -371,7 +373,7 @@ export async function apiGetPaymentSettings(): Promise<{ settings: PaymentSettin
 }
 
 export async function apiUpdatePaymentSettings(
-  gateway: 'stripe' | 'paypal',
+  gateway: 'stripe' | 'paypal' | 'moyasar' | 'myfatoorah',
   data: Partial<PaymentGatewaySettings> & { secret_key?: string; webhook_secret?: string }
 ): Promise<{ setting: PaymentGatewaySettings }> {
   return apiFetch<{ setting: PaymentGatewaySettings }>(`/admin/payment-settings/${gateway}`, {
@@ -380,7 +382,7 @@ export async function apiUpdatePaymentSettings(
   });
 }
 
-export async function apiTestPaymentConnection(gateway: 'stripe' | 'paypal'): Promise<{ success: boolean; message: string }> {
+export async function apiTestPaymentConnection(gateway: 'stripe' | 'paypal' | 'moyasar' | 'myfatoorah'): Promise<{ success: boolean; message: string }> {
   return apiFetch<{ success: boolean; message: string }>(`/admin/payment-settings/${gateway}/test`, {
     method: 'POST',
   });
@@ -734,6 +736,17 @@ export async function apiSubscribeMoyasar(planId: number): Promise<{ url: string
     method: 'POST',
     body: JSON.stringify({ plan_id: planId }),
   });
+}
+
+export async function apiSubscribeMyfatoorah(planId: number): Promise<{ url: string; invoice_id: string }> {
+  return apiFetch<{ url: string; invoice_id: string }>('/billing/subscribe/myfatoorah', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId }),
+  });
+}
+
+export async function apiGetMyfatoorahCheckoutStatus(checkoutId: string): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/billing/myfatoorah/checkouts/${encodeURIComponent(checkoutId)}`);
 }
 
 export async function apiUserCancelSubscription(): Promise<{ message: string; subscription: Subscription }> {

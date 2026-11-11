@@ -41,6 +41,7 @@ export default function PaymentSettingsPage() {
       : 'Security Notice: API keys and storage credentials are encrypted at rest. Secret keys are never displayed after saving.',
     stripe: isRTL ? 'Stripe' : 'Stripe',
     paypal: isRTL ? 'PayPal' : 'PayPal',
+    myfatoorah: 'MyFatoorah',
     enabled: isRTL ? 'مفعل' : 'Enabled',
     disabled: isRTL ? 'غير مفعل' : 'Disabled',
     sandbox: isRTL ? 'وضع الرمل' : 'Sandbox',
@@ -103,6 +104,7 @@ export default function PaymentSettingsPage() {
     secret_key: '',
     webhook_secret: '',
   });
+  const [myfatoorahForm, setMyfatoorahForm] = useState({ is_enabled: false, is_sandbox: true, secret_key: '', webhook_secret: '', country: 'SA' });
 
   // Storage settings state
   const [storageSettings, setStorageSettings] = useState<StorageSettings | null>(null);
@@ -152,6 +154,14 @@ export default function PaymentSettingsPage() {
             public_key: payData.settings.paypal.public_key || '',
             secret_key: '',
             webhook_secret: '',
+          });
+        }
+        if (payData.settings.myfatoorah) {
+          setMyfatoorahForm({
+            is_enabled: payData.settings.myfatoorah.is_enabled,
+            is_sandbox: payData.settings.myfatoorah.is_sandbox,
+            secret_key: '', webhook_secret: '',
+            country: String(payData.settings.myfatoorah.additional_settings?.country || 'SA'),
           });
         }
 
@@ -235,16 +245,30 @@ export default function PaymentSettingsPage() {
     }
   };
 
-  const handleTestConnection = async (gateway: 'stripe' | 'paypal') => {
-    setTesting(gateway);
+  const handleSaveMyfatoorah = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving('myfatoorah');
     try {
-      const result = await apiTestPaymentConnection(gateway);
-      alert(result.message);
+      const data: Record<string, unknown> = {
+        is_enabled: myfatoorahForm.is_enabled,
+        is_sandbox: myfatoorahForm.is_sandbox,
+        additional_settings: { country: myfatoorahForm.country, currency: myfatoorahForm.country === 'EG' ? 'EGP' : myfatoorahForm.country === 'KW' ? 'KWD' : myfatoorahForm.country === 'AE' ? 'AED' : myfatoorahForm.country === 'BH' ? 'BHD' : myfatoorahForm.country === 'QA' ? 'QAR' : myfatoorahForm.country === 'OM' ? 'OMR' : 'SAR' },
+      };
+      if (myfatoorahForm.secret_key) data.secret_key = myfatoorahForm.secret_key;
+      if (myfatoorahForm.webhook_secret) data.webhook_secret = myfatoorahForm.webhook_secret;
+      await apiUpdatePaymentSettings('myfatoorah', data);
+      alert(t.saveSuccess);
+      window.location.reload();
     } catch (err) {
-      alert(err instanceof Error ? err.message : t.testError);
-    } finally {
-      setTesting(null);
-    }
+      alert(err instanceof Error ? err.message : t.saveError);
+    } finally { setSaving(null); }
+  };
+
+  const handleTestConnection = async (gateway: 'stripe' | 'paypal' | 'myfatoorah') => {
+    setTesting(gateway);
+    try { alert((await apiTestPaymentConnection(gateway)).message); }
+    catch (err) { alert(err instanceof Error ? err.message : t.testError); }
+    finally { setTesting(null); }
   };
 
   // Storage Form Submissions
@@ -702,6 +726,44 @@ export default function PaymentSettingsPage() {
                   {testing === 'paypal' ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
                   {testing === 'paypal' ? t.testing : t.testConnection}
                 </button>
+              </div>
+            </form>
+          </div>
+          {/* MyFatoorah hosted checkout */}
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white shrink-0"><CreditCard size={24} /></div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t.myfatoorah}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Hosted checkout · API token encrypted after saving</p>
+              </div>
+            </div>
+            <form onSubmit={handleSaveMyfatoorah} className="flex flex-col gap-5">
+              <div className="flex flex-wrap gap-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+                <label className="flex items-center gap-2"><input type="checkbox" checked={myfatoorahForm.is_enabled} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, is_enabled: e.target.checked })} />{isRTL ? 'تفعيل MyFatoorah' : 'Enable MyFatoorah'}</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={myfatoorahForm.is_sandbox} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, is_sandbox: e.target.checked })} />{t.sandboxMode}</label>
+              </div>
+              <div>
+                <label className={labelClass}>{isRTL ? 'دولة حساب MyFatoorah' : 'MyFatoorah account country'}</label>
+                <select className={inputClass} value={myfatoorahForm.country} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, country: e.target.value })}>
+                  <option value="SA">Saudi Arabia (SAR)</option><option value="AE">UAE (AED)</option><option value="KW">Kuwait (KWD)</option><option value="BH">Bahrain (BHD)</option><option value="QA">Qatar (QAR)</option><option value="OM">Oman (OMR)</option><option value="EG">Egypt (EGP)</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>{isRTL ? 'رمز API' : 'API token'}{paymentSettings?.myfatoorah?.has_secret_key && <span className="text-xs text-emerald-600"><Lock size={12} className="inline" /> {t.configured}</span>}</label>
+                <input type="password" autoComplete="new-password" className={inputClass} value={myfatoorahForm.secret_key} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, secret_key: e.target.value })} placeholder={isRTL ? 'ألصق رمز API؛ اتركه فارغاً للإبقاء على الحالي' : 'Paste API token; leave blank to keep current'} />
+              </div>
+              <div>
+                <label className={labelClass}>{isRTL ? 'مفتاح توقيع Webhook' : 'Webhook signing secret'}{paymentSettings?.myfatoorah?.has_webhook_secret && <span className="text-xs text-emerald-600"><Lock size={12} className="inline" /> {t.configured}</span>}</label>
+                <input type="password" autoComplete="new-password" className={inputClass} value={myfatoorahForm.webhook_secret} onChange={(e) => setMyfatoorahForm({ ...myfatoorahForm, webhook_secret: e.target.value })} placeholder={isRTL ? 'مفتاح Webhook السري' : 'Webhook secret from MyFatoorah portal'} />
+              </div>
+              <div className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
+                <div className="flex justify-between items-center mb-2"><span className="text-sm">{t.webhookUrl}</span><button type="button" onClick={() => copyToClipboard(paymentSettings?.myfatoorah?.webhook_url || '', 'myfatoorah-webhook')} className="text-xs text-indigo-600">{copied === 'myfatoorah-webhook' ? t.copied : t.copy}</button></div>
+                <code className="block text-xs break-all">{paymentSettings?.myfatoorah?.webhook_url}</code>
+              </div>
+              <div className="flex gap-3">
+                <button type="submit" disabled={saving === 'myfatoorah'} className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg">{saving === 'myfatoorah' ? t.saving : t.saveSettings}</button>
+                <button type="button" onClick={() => handleTestConnection('myfatoorah')} disabled={testing === 'myfatoorah' || !paymentSettings?.myfatoorah?.is_enabled} className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 rounded-lg disabled:opacity-50">{testing === 'myfatoorah' ? t.testing : t.testConnection}</button>
               </div>
             </form>
           </div>

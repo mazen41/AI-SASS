@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Admin\AuthSettingsController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use App\Http\Controllers\Webhook\PaypalWebhookController;
 use App\Http\Controllers\Webhook\MoyasarWebhookController;
+use App\Http\Controllers\Webhook\MyFatoorahWebhookController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\StorybookViewerController;
@@ -73,6 +74,7 @@ Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'
 Route::post('/webhooks/stripe',  [StripeWebhookController::class,  'handle']);
 Route::post('/webhooks/paypal',  [PaypalWebhookController::class,   'handle']);
 Route::post('/webhooks/moyasar', [MoyasarWebhookController::class,  'handle']);
+Route::post('/webhooks/myfatoorah', [MyFatoorahWebhookController::class, 'handle']);
 
 // Backup download (uses api_token query param for authentication)
 Route::get('/admin/backup-settings/download', [BackupSettingsController::class, 'downloadBackup']);
@@ -105,6 +107,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/billing/subscribe/stripe', [BillingController::class, 'subscribeStripe']);
     Route::post('/billing/subscribe/paypal', [BillingController::class, 'subscribePaypal']);
     Route::post('/billing/subscribe/moyasar', [BillingController::class, 'subscribeMoyasar']);
+    Route::post('/billing/subscribe/myfatoorah', [BillingController::class, 'subscribeMyfatoorah']);
+    Route::get('/billing/myfatoorah/checkouts/{checkoutId}', [BillingController::class, 'myfatoorahCheckoutStatus'])->whereUuid('checkoutId');
     Route::post('/billing/subscription/cancel', [BillingController::class, 'cancelSubscription']);
     Route::post('/billing/upgrade', [BillingController::class, 'upgradePlan']);
     Route::post('/billing/downgrade', [BillingController::class, 'downgradePlan']);

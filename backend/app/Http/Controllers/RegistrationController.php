@@ -7,6 +7,8 @@ use App\Models\MailTemplate;
 use App\Models\Package;
 use App\Models\PaymentSetting;
 use App\Models\PendingRegistration;
+use App\Models\MyFatoorahCheckoutSession;
+use App\Services\MyFatoorahService;
 use App\Models\User;
 use App\Services\MailService;
 use Illuminate\Http\JsonResponse;
@@ -25,12 +27,12 @@ use Illuminate\Support\Str;
  *   1. POST /register/initiate    — validate details + REQUIRED package_id, send OTP
  *   2. POST /register/verify-otp  — must succeed before anything else can happen
  *   3. POST /register/complete    — free package -> account created now;
- *                                    paid package -> returns a Moyasar payment_url
- *   4. Moyasar webhook (payment.paid) creates the account for paid packages.
+ *                                    paid package -> returns a hosted payment URL
+ *   4. Verified payment webhook creates the account for paid packages.
  *   5. GET  /register/status/{id} — frontend polls this after payment redirect
  *
- * No `users` row is ever created for a paid package until MoyasarWebhookController
- * confirms payment — this is what makes "no fake/failed payment gets access" hold.
+ * No `users` row is ever created for a paid package until a payment webhook
+ * confirms payment — this is what prevents unpaid access.
  */
 class RegistrationController extends Controller
 {
@@ -218,8 +220,51 @@ class RegistrationController extends Controller
             return response()->json(['message' => 'Registration successful.', 'user' => $user, 'token' => $token], 201);
         }
 
+        // Prefer MyFatoorah when enabled; otherwise preserve the existing Moyasar checkout.
+        if (MyFatoorahService::configured()) {
+            return $this->initiateMyFatoorahPayment($pending, $package);
+        }
+
         // ── Paid package: create a Moyasar payment, no account yet ──────────
         return $this->initiateMoyasarPayment($pending, $package);
+    }
+
+    private function initiateMyFatoorahPayment(PendingRegistration $pending, Package $package): JsonResponse
+    {
+        $gateway = MyFatoorahService::configured();
+        if (!$gateway || (float) $package->total_price <= 0) {
+            return response()->json(['message' => 'MyFatoorah checkout is unavailable.'], 503);
+        }
+        $checkout = MyFatoorahCheckoutSession::create([
+            'pending_registration_id' => $pending->id,
+            'amount' => $package->total_price,
+            'currency' => strtoupper((string) data_get($gateway->setting()->additional_settings, 'currency', 'SAR')),
+            'status' => 'pending',
+        ]);
+        $frontendUrl = rtrim(config('app.frontend_url', 'http://localhost:3000'), '/');
+        try {
+            $invoice = $gateway->sendPayment([
+                'CustomerName' => $pending->name,
+                'CustomerEmail' => $pending->email,
+                'InvoiceValue' => (float) $package->total_price,
+                'DisplayCurrencyIso' => $checkout->currency,
+                'NotificationOption' => 'LNK',
+                'Language' => app()->getLocale() === 'ar' ? 'AR' : 'EN',
+                'CustomerReference' => $checkout->id,
+                'UserDefinedField' => $checkout->id,
+                'CallBackUrl' => $frontendUrl . '/register/success?pending_id=' . $pending->id,
+                'ErrorUrl' => $frontendUrl . '/register?payment=failed',
+                'WebhookUrl' => url('/api/webhooks/myfatoorah'),
+            ]);
+            $invoiceId = (string) $invoice['InvoiceId'];
+            $checkout->update(['invoice_id' => $invoiceId, 'gateway_response' => ['invoice_status' => $invoice['InvoiceStatus'] ?? null]]);
+            $pending->update(['status' => 'awaiting_payment', 'myfatoorah_invoice_id' => $invoiceId]);
+            return response()->json(['url' => $invoice['InvoiceURL'], 'pending_registration_id' => $pending->id, 'gateway' => 'myfatoorah']);
+        } catch (\Throwable $e) {
+            $checkout->update(['status' => 'failed']);
+            Log::error('Registration MyFatoorah invoice creation failed', ['pending_id' => $pending->id, 'exception' => get_class($e)]);
+            return response()->json(['message' => 'Could not start payment. Check the payment settings and try again.'], 502);
+        }
     }
 
     /**

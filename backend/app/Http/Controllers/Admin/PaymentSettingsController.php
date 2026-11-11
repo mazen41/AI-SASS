@@ -18,7 +18,7 @@ class PaymentSettingsController extends Controller
         })->keyBy('gateway');
 
         // Ensure all gateways exist
-        $gateways = ['stripe', 'paypal', 'moyasar'];
+        $gateways = ['stripe', 'paypal', 'moyasar', 'myfatoorah'];
         foreach ($gateways as $gateway) {
             if (!isset($settings[$gateway])) {
                 $settings[$gateway] = PaymentSetting::create([
@@ -50,7 +50,7 @@ class PaymentSettingsController extends Controller
 
     public function update(Request $request, string $gateway): JsonResponse
     {
-        if (!in_array($gateway, ['stripe', 'paypal', 'moyasar'])) {
+        if (!in_array($gateway, ['stripe', 'paypal', 'moyasar', 'myfatoorah'])) {
             return response()->json(['message' => 'Invalid gateway.'], 422);
         }
 
@@ -127,6 +127,8 @@ class PaymentSettingsController extends Controller
                 return $this->testPaypalConnection($setting);
             } elseif ($gateway === 'moyasar') {
                 return $this->testMoyasarConnection($setting);
+            } elseif ($gateway === 'myfatoorah') {
+                return $this->testMyfatoorahConnection($setting);
             }
         } catch (\Exception $e) {
             return response()->json([
@@ -214,5 +216,40 @@ class PaymentSettingsController extends Controller
             'success' => false,
             'message' => 'Moyasar authentication failed. Check your secret key.',
         ]);
+    }
+
+    private function testMyfatoorahConnection(PaymentSetting $setting): JsonResponse
+    {
+        if (!$setting->secret_key) {
+            return response()->json(['success' => false, 'message' => 'MyFatoorah API token is not configured.']);
+        }
+
+        $baseUrl = $this->myfatoorahBaseUrl($setting);
+        $response = \Illuminate\Support\Facades\Http::withToken($setting->secret_key)
+            ->acceptJson()->asJson()->timeout(15)->post($baseUrl . '/v2/InitiatePayment', [
+                'InvoiceAmount' => 1,
+                'CurrencyIso' => data_get($setting->additional_settings, 'currency', 'SAR'),
+            ]);
+
+        if ($response->successful() && $response->json('IsSuccess') !== false) {
+            return response()->json(['success' => true, 'message' => 'MyFatoorah API token is valid.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'MyFatoorah authentication failed. Check the API token and country environment.']);
+    }
+
+    private function myfatoorahBaseUrl(PaymentSetting $setting): string
+    {
+        if ($setting->is_sandbox) return 'https://apitest.myfatoorah.com';
+        $country = strtoupper((string) data_get($setting->additional_settings, 'country', 'SA'));
+        return match ($country) {
+            'KW' => 'https://api-kw.myfatoorah.com',
+            'BH' => 'https://api-bh.myfatoorah.com',
+            'AE' => 'https://api-ae.myfatoorah.com',
+            'QA' => 'https://api-qa.myfatoorah.com',
+            'OM' => 'https://api-om.myfatoorah.com',
+            'EG' => 'https://api-eg.myfatoorah.com',
+            default => 'https://api-sa.myfatoorah.com',
+        };
     }
 }
