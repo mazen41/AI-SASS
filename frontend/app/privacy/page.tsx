@@ -1,186 +1,273 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLang } from '@/context/LangContext';
 import { useTheme } from '@/context/ThemeContext';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
 import Link from 'next/link';
+import { Shield, ArrowRight, Lock, EyeOff, Server, UserCheck, HardDrive, HelpCircle } from 'lucide-react';
 
 export default function PrivacyPolicyPage() {
   const { locale } = useLang();
   const { theme } = useTheme();
   const isRTL = locale === 'ar';
+  const [activeSection, setActiveSection] = useState(0);
 
   const content = {
+    badge: isRTL ? 'حماية البيانات والخصوصية الفائقة' : 'Data Protection & Privacy Safeguards',
     title: isRTL ? 'سياسة الخصوصية' : 'Privacy Policy',
-    subtitle: isRTL ? 'منصة Naz Studio' : 'Naz Studio Platform',
+    subtitle: isRTL ? 'التزام منصة NazStudio بحماية بياناتك وصور أطفالك' : 'NazStudio Commitment to Family and Child Data Privacy',
     lastUpdated: isRTL ? 'آخر تحديث: أغسطس 2026' : 'Last Updated: August 2026',
-    
+    tocTitle: isRTL ? 'فهرس الخصوصية' : 'Privacy Index',
+    backBtn: isRTL ? 'العودة إلى الاستوديو' : 'Back to Studio Home',
+    termsPrompt: isRTL ? 'هل تود مراجعة الشروط والأحكام العامة للمنصة؟' : 'Looking for the general Terms and Conditions?',
+    termsLink: isRTL ? 'عرض الشروط والأحكام' : 'View Terms & Conditions',
+
     sections: [
       {
-        title: isRTL ? '1. تعريف الخدمة' : '1. Service Definition',
-        content: isRTL 
-          ? 'منصة Naz Studio هي منصة رقمية تعتمد على تقنيات الذكاء الاصطناعي المتقدمة لتوليد محتوى مخصص للأطفال (قصص رقمية، مقاطع فيديو سينمائية متحركة، تعليق صوتي، كتب تلوين، وخلفيات شاشات)، بناءً على المدخلات والصور التي يرفعها المستخدم.'
-          : 'Naz Studio is a digital platform that uses advanced AI technologies to generate custom content for children (digital stories, cinematic animated videos, voice narration, coloring books, and wallpapers), based on the inputs and photos uploaded by users.'
+        id: 'intro',
+        icon: Shield,
+        title: isRTL ? '1. التزامنا بحماية الخصوصية' : '1. Our Privacy Commitment',
+        content: isRTL
+          ? 'نولي في NazStudio أولوية قصوى لخصوصية عملائنا وأطفالهم. توضح هذه السياسة آلية جمع البيانات والصور، وكيفية معالجتها عبر خوارزميات الذكاء الاصطناعي، والإجراءات المشددة المتخذة لمنع أي وصول غير مصرح به.'
+          : 'At NazStudio, we treat the privacy of our users and their children with the highest level of vigilance. This Privacy Policy details how data and photos are collected, securely processed by our AI pipelines, and safeguarded against unauthorized access.',
       },
       {
-        title: isRTL ? '2. شروط الحساب والبيانات والخصوصية' : '2. Account, Data, and Privacy Terms',
+        id: 'collected-data',
+        icon: UserCheck,
+        title: isRTL ? '2. البيانات التي نجمعها' : '2. Information We Collect',
         points: [
-          isRTL ? 'يلتزم المستخدم بتقديم معلومات دقيقة وصحيحة عند التسجيل (مثل الاسم، البريد الإلكتروني، وعمر الطفل).' : 'Users are required to provide accurate and correct information during registration (such as name, email, and child\'s age).',
-          isRTL ? 'عند رفع صور الأطفال، يُقر المستخدم بأنه الولي الشرعي أو يملك الحق القانوني الكامل لاستخدام هذه الصور وتوليد محتوى كرتوني بناءً عليها.' : 'When uploading children\'s photos, the user acknowledges that they are the legal guardian or have full legal rights to use these photos and generate cartoon content based on them.',
-          isRTL ? 'تتعهد المنصة بالمحافظة على خصوصية الصور المرفوعة والبيانات الشخصية وفقاً لسياسة الخصوصية المعتمدة لدينا، ويتم معالجتها أوتوماتيكياً عبر الـ APIs المشفرة لإنتاج المحتوى دون أي تدخل بشري أو استخدام تجاري خارجي للصور الأصلية.' : 'The platform is committed to maintaining the privacy of uploaded photos and personal data in accordance with our approved privacy policy. They are processed automatically through encrypted APIs to produce content without any human intervention or external commercial use of the original photos.'
-        ]
+          isRTL
+            ? 'معلومات الحساب الأساسية: الاسم، عنوان البريد الإلكتروني، وتفضيلات لغة الاستوديو.'
+            : 'Basic Account Data: User name, email address, password hash, and studio locale preference.',
+          isRTL
+            ? 'بيانات بطل القصة: اسم الطفل المستعار أو الحقيقي، جنسه، وفئته العمرية لتكييف السرد واللغة التربوية المناسبة.'
+            : 'Hero Identity Data: Child’s first name or hero alias, gender, and age bracket to tailor age-appropriate educational storytelling.',
+          isRTL
+            ? 'الصور المرفوعة: صور الوجه المرفوعة بهدف تدريب واستخلاص الملامح الكرتونية لشخصية القصة فقط دون أي استخدام آخر.'
+            : 'Uploaded Hero Photos: Facial imagery uploaded strictly to synthesize cartoon representations and character consistency across story frames.',
+          isRTL
+            ? 'بيانات المعاملات والاشتراكات: معرّفات الدفع وتاريخ الفواتير (لا نخزن أرقام البطاقات الائتمانية الكاملة نهائياً).'
+            : 'Billing & Transaction Identifiers: Tokenized transaction records and subscription tiers (NazStudio never stores raw credit card details).',
+        ],
       },
       {
-        title: isRTL ? '3. حقوق الملكية الفكرية' : '3. Intellectual Property Rights',
-        points: [
+        id: 'usage-purpose',
+        icon: EyeOff,
+        title: isRTL ? '3. كيف نستخدم البيانات والصور' : '3. How We Process Media and Information',
+        subSections: [
           {
-            subtitle: isRTL ? 'ملكية المنصة:' : 'Platform Ownership:',
-            content: isRTL 
-              ? 'جميع البرمجيات، الواجهات، خوارزميات الأتمتة، التصاميم، والشعارات الخاصة بـ Naz Studio هي ملكية فكرية مطلقة للمنصة ولا يجوز نسخها أو إعادة هندستها.'
-              : 'All software, interfaces, automation algorithms, designs, and logos specific to Naz Studio are the absolute intellectual property of the platform and may not be copied or reverse engineered.'
+            subtitle: isRTL ? 'أ. التوليد الفني والسينمائي المخصص:' : 'A. Personalized Creative Synthesis:',
+            text: isRTL
+              ? 'تُستخدم الصور المرفوعة كنقطة مرجعية رقمية (Face Vector Embeddings) لتحويل ملامح الطفل إلى شخصية كرتونية في مشاهد القصة والفيديوهات والكتب.'
+              : 'Uploaded photos serve exclusively as visual feature embeddings to render character-consistent cartoon artwork across storybook illustrations, videos, and coloring pages.',
           },
           {
-            subtitle: isRTL ? 'ملكية المحتوى المُولد:' : 'Generated Content Ownership:',
-            content: isRTL 
-              ? 'تمنح المنصة العميل رخصة استخدام شخصية، دائمية، وغير حصرية للقصص والفيديوهات التي تم توليدها لطفله. لا يحق للعميل إعادة بيع المحتوى المُولد لأغراض تجارية أو استخدامه في منصات إعلامية ربحية خارج النطاق الشخصي أو العائلي دون إذن خطي مسبق من المنصة.'
-              : 'The platform grants the client a personal, perpetual, and non-exclusive license for the stories and videos generated for their child. The client may not resell the generated content for commercial purposes or use it on profit-making media platforms outside the personal or family scope without prior written permission from the platform.'
-          }
-        ]
-      },
-      {
-        title: isRTL ? '4. سياسة الدفع، الباقات، والاشتراكات' : '4. Payment, Packages, and Subscription Policy',
-        points: [
-          isRTL ? 'تتوفر خدماتنا عبر نظام باقات رقمية (توليد فوري) أو باقات مطبوعة (حسب الطلب).' : 'Our services are available through digital packages (instant generation) or printed packages (on demand).',
-          isRTL ? 'يتم تحصيل الرسوم عبر بوابات الدفع الإلكترونية المعتمدة في المنصة، وتخضع الأسعار للتحديث والتغيير بناءً على العروض والمواسم.' : 'Fees are collected through approved electronic payment gateways on the platform, and prices are subject to updates and changes based on offers and seasons.',
-          isRTL ? 'يتحمل المستخدم تكلفة استهلاك النقاط (Credits) داخل باقته بناءً على حجم المحتوى الذي تم توليده فعلياً.' : 'The user bears the cost of consuming credits within their package based on the actual volume of content generated.'
-        ]
-      },
-      {
-        title: isRTL ? '5. سياسة إلغاء الطلب والاسترجاع' : '5. Cancellation and Refund Policy',
-        points: [
-          {
-            subtitle: isRTL ? 'المنتجات الرقمية (القصص، الفيديوهات، الملفات):' : 'Digital Products (Stories, Videos, Files):',
-            content: isRTL 
-              ? 'بمجرد بدء النظام في معالجة الطلب وتوليد الصور أو الفيديو عبر أدوات الذكاء الاصطناعي، لا يحق للعميل إلغاء الطلب أو طلب استرجاع المبالغ النقدية تملقاً بطبيعة المنتجات الرقمية الفورية القابلة للاستهلاك.'
-              : 'Once the system begins processing the request and generating images or videos through AI tools, the client may not cancel the request or request cash refunds due to the nature of instant, consumable digital products.'
+            subtitle: isRTL ? 'ب. عدم استخدام الصور في الإعلانات أو النماذج العامة:' : 'B. Zero Commercial or Public Model Training:',
+            text: isRTL
+              ? 'لا نقوم إطلاقاً ببيع أو تأجير صور أطفالكم أو بياناتكم الشخصية لأي طرف ثالث، ولا تُستخدم صور العملاء لتدريب نماذج ذكاء اصطناعي عامة متاحة للجمهور.'
+              : 'We strictly never sell, license, or broker your children’s images or personal data. Customer photos are never used to train publicly distributed AI models.',
           },
-          {
-            subtitle: isRTL ? 'المنتجات المادية المطبوعة (حسب الطلب):' : 'Printed Physical Products (On Demand):',
-            content: isRTL 
-              ? 'يتم طباعة الكتب والصناديق بشكل مخصص لاسم وملامح طفلك فور تأكيد الطلب، وبالتالي لا يمكن إلغاؤها أو استرجاعها إلا في حالتين فقط: وجود خطأ مطبعي واضح ناتج من طرفنا يختلف عن البيانات التي أدخلها العميل، أو تلف المنتج أثناء عملية الشحن والتوصيل، ويجب الإبلاغ عن ذلك خلال 48 ساعة من الاستلام مدعوماً بالصور للتعويض.'
-              : 'Books and boxes are printed specifically for your child\'s name and features immediately upon order confirmation, and therefore cannot be cancelled or refunded except in two cases only: clear printing error on our part that differs from the data entered by the client, or product damage during shipping and delivery, which must be reported within 48 hours of receipt supported by photos for compensation.'
-          }
-        ]
+        ],
       },
       {
-        title: isRTL ? '6. إخلاء المسؤولية وحدودها' : '6. Disclaimer and Limitations',
+        id: 'child-protection',
+        icon: Lock,
+        title: isRTL ? '4. حماية خصوصية الأطفال (COPPA & GDPR-K)' : '4. Child Privacy Protection Standards',
+        content: isRTL
+          ? 'نحن ملتزمون بالمعايير العالمية لحماية خصوصية الأطفال على الإنترنت (COPPA و GDPR-K). يُشترط أن تتم عملية إنشاء الحساب ورفع الصور ودفع الاشتراكات حصراً من قبل الولي الشرعي أو الأب أو الأم الراشدين.'
+          : 'NazStudio strictly complies with global children’s online privacy frameworks including COPPA and GDPR-K. Account registration, image uploads, and billing must be conducted exclusively by adult parents or legal guardians.',
+      },
+      {
+        id: 'infrastructure-security',
+        icon: Server,
+        title: isRTL ? '5. أمان البنية السحابية ومعالجة الذكاء الاصطناعي' : '5. Cloud Security & AI Processing',
         points: [
-          isRTL ? 'مخرجات الذكاء الاصطناعي (الصور والفيديوهات والنصوص) تعتمد بالكامل على مدخلات المستخدم وجودة الصورة المرفوعة. المنصة غير مسؤولة عن عدم الرضا الفني الشخصي للعميل عن النتيجة الكرتونية طالما أن النظام قام بالتوليد بناءً على معايير الجودة التقنية المعمول بها.' : 'AI outputs (images, videos, and texts) depend entirely on user inputs and the quality of the uploaded photo. The platform is not responsible for the client\'s personal technical dissatisfaction with the cartoon result as long as the system performed generation based on applicable technical quality standards.',
-          isRTL ? 'تبذل المنصة قصارى جهدها لضمان عمل السيرفرات على مدار الساعة، ولكنها لا تضمن عدم حدوث انقطاعات مؤقتة ناتجة عن صيانة السيرفرات أو توقف مفاجئ في خدمات الـ APIs العالمية (مثل OpenAI أو Kling أو ElevenLabs)، وفي هذه الحالة يتم معالجة الطلبات المتأخرة فور عودة الخدمة دون أدنى مسؤولية مالية أو تعويضية على المنصة.' : 'The platform makes its best efforts to ensure servers operate around the clock, but does not guarantee that temporary interruptions will not occur due to server maintenance or sudden stops in global API services (such as OpenAI, Kling, or ElevenLabs). In such cases, delayed requests are processed as soon as service returns without any financial or compensatory liability on the platform.'
-        ]
+          isRTL
+            ? 'تُشفر كافة البيانات المتدفقة بين متصفحك وسيرفراتنا باستخدام بروتوكولات التشفير المتقدمة (TLS 1.3 / SSL 256-bit).'
+            : 'All network traffic between user devices and our backend clusters is encrypted via TLS 1.3 with 256-bit cipher suites.',
+          isRTL
+            ? 'تتم المعالجة عبر خوادم سحابية معزولة ومؤمنة (sandboxed ephemeral GPU nodes)، وتُحذف الملفات المؤقتة المستخدمة في مراحل التوليد فور اكتمال معالجة المشهد.'
+            : 'AI generation executes in ephemeral, isolated GPU sandboxes, and intermediate raster tiles are scrubbed immediately once the scene finishes rendering.',
+          isRTL
+            ? 'مزودو نماذج الذكاء الاصطناعي الموثوقون (مثل Fal.ai و Anthropic) ملزمون باتفاقيات خصوصية مشددة تمنعهم من الاحتفاظ بالصور المدخلة لأغراضهم الخاصة.'
+            : 'Our enterprise AI compute partners (e.g. Fal.ai, Anthropic) operate under stringent data processing agreements prohibiting secondary retention or ingestion of user inputs.',
+        ],
       },
       {
-        title: isRTL ? '7. القانون الواجب التطبيق' : '7. Applicable Law',
-        content: isRTL 
-          ? 'تخضع هذه الشروط والأحكام وتُفسر وفقاً للأنظمة والقوانين السارية في المملكة العربية السعودية، وأي نزاع ينشأ عنها يتم حله ودياً، وفي حال تعذر ذلك يُحال إلى المحاكم المختصة بمدينة المدينة المنورة.'
-          : 'These terms and conditions are subject to and interpreted in accordance with the laws and regulations in force in the Kingdom of Saudi Arabia, and any dispute arising from them is resolved amicably, and if that is not possible, it is referred to the competent courts in the city of Medina.'
-      }
-    ]
+        id: 'data-retention',
+        icon: HardDrive,
+        title: isRTL ? '6. الاحتفاظ بالبيانات وحق الحذف الفوري' : '6. Data Retention & Right to Erasure',
+        points: [
+          isRTL
+            ? 'يمكن للعميل في أي وقت حذف أي قصة أو صورة بطل من لوحة التحكم الخاصة به، وسيتم شطب الملفات نهائياً من وحدات التخزين السحابية خلال مهلة أقصاها 24 ساعة.'
+            : 'Users maintain continuous control to delete any story project, video asset, or uploaded hero portrait directly from the Studio Dashboard, triggering permanent deletion within 24 hours.',
+          isRTL
+            ? 'يحق للمستخدم طلب إغلاق الحساب ومحو كافة السجلات المرتبطة به بالتواصل مع فريق الدعم الفني، مع تأكيد الحذف غير القابل للاسترجاع.'
+            : 'Users can request complete account closure and cryptographic erasure of all historical activity by reaching out to our privacy desk.',
+        ],
+      },
+      {
+        id: 'inquiries',
+        icon: HelpCircle,
+        title: isRTL ? '7. التواصل ومسؤول الخصوصية' : '7. Contact & Privacy Inquiries',
+        content: isRTL
+          ? 'إذا كان لديك أي استفسار أو طلب يتعلق بحماية بياناتك وخصوصية طفلك على منصة NazStudio، يُرجى مراسلة فريق الخصوصية والأمن السيبراني على: privacy@nazstudio.art وسيتم الرد على طلبك خلال 48 ساعة عمل.'
+          : 'For questions, rights requests, or regulatory clarifications regarding family data safety at NazStudio, please direct inquiries to our data compliance desk at privacy@nazstudio.art — we respond within 48 business hours.',
+      },
+    ],
   };
 
   return (
-    <div data-theme={theme} style={{ background: 'var(--bg)', minHeight: '100vh' }}>
+    <div data-theme={theme} style={{ background: 'var(--bg)', minHeight: '100vh' }} className="flex flex-col relative overflow-hidden">
       <CustomCursor />
       <Navbar />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12" dir={isRTL ? 'rtl' : 'ltr'}>
-        {/* Header */}
+      {/* Ambient gradient */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-brand-violet/10 via-brand-pink/10 to-transparent blur-[120px] pointer-events-none" />
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-1 w-full relative z-10" dir={isRTL ? 'rtl' : 'ltr'}>
+        {/* Hero Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center max-w-3xl mx-auto mb-14"
         >
-          <span className="kido-badge">
-            <span className="kido-badge-star">🔒</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-violet/10 border border-brand-violet/20 text-brand-violet text-xs font-semibold mb-5">
+            <Lock className="w-3.5 h-3.5" />
+            <span>{content.badge}</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-4">
             {content.title}
-          </span>
-          <h1 className="text-4xl font-black mt-6 mb-4" style={{ color: 'var(--text)' }}>
-            {content.subtitle}
           </h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {content.lastUpdated}
+
+          <p className="text-base text-gray-600 dark:text-gray-400 font-medium">
+            {content.subtitle} · <span className="text-xs text-gray-400 dark:text-gray-500">{content.lastUpdated}</span>
           </p>
         </motion.div>
 
-        {/* Content Sections */}
-        <div className="space-y-8">
-          {content.sections.map((section, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700"
-              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-            >
-              <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>
-                {section.title}
+        {/* Two-column layout: Sticky Index + Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Index Sidebar */}
+          <aside className="lg:col-span-4 sticky top-24 hidden lg:block">
+            <div className="studio-card p-5 rounded-2xl border border-white/10 dark:border-white/10 shadow-xl backdrop-blur-xl">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 px-2">
+                {content.tocTitle}
               </h2>
-              
-              {section.content && (
-                <p className="text-base leading-relaxed mb-4" style={{ color: 'var(--text-muted)' }}>
-                  {section.content}
-                </p>
-              )}
-              
-              {section.points && (
-                <div className="space-y-4">
-                  {section.points.map((point, pointIndex) => (
-                    <div key={pointIndex}>
-                      {typeof point === 'string' ? (
-                        <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                          {point}
-                        </p>
-                      ) : (
-                        <div className="mb-4">
-                          <h3 className="font-semibold mb-2" style={{ color: 'var(--text)' }}>
-                            {point.subtitle}
+              <nav className="space-y-1">
+                {content.sections.map((sec, idx) => {
+                  const Icon = sec.icon;
+                  const isActive = activeSection === idx;
+                  return (
+                    <a
+                      key={sec.id}
+                      href={`#${sec.id}`}
+                      onClick={() => setActiveSection(idx)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        isActive
+                          ? 'bg-brand-violet/15 text-brand-violet border border-brand-violet/30 shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{sec.title}</span>
+                    </a>
+                  );
+                })}
+              </nav>
+
+              <div className="mt-6 pt-5 border-t border-white/10 dark:border-white/10 text-xs">
+                <p className="text-gray-500 dark:text-gray-400 mb-2">{content.termsPrompt}</p>
+                <Link
+                  href="/terms"
+                  className="inline-flex items-center gap-1.5 font-bold text-brand-violet hover:text-brand-pink transition-colors"
+                >
+                  <span>{content.termsLink}</span>
+                  <ArrowRight className={`w-3 h-3 ${isRTL ? 'rotate-180' : ''}`} />
+                </Link>
+              </div>
+            </div>
+          </aside>
+
+          {/* Policy Sections */}
+          <div className="lg:col-span-8 space-y-6">
+            {content.sections.map((section, idx) => {
+              const Icon = section.icon;
+              return (
+                <motion.section
+                  key={section.id}
+                  id={section.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-50px' }}
+                  transition={{ duration: 0.5, delay: idx * 0.05 }}
+                  className="studio-card p-6 sm:p-8 rounded-2xl border border-white/10 dark:border-white/10 shadow-lg backdrop-blur-xl relative overflow-hidden group"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-9 h-9 rounded-xl bg-brand-violet/10 border border-brand-violet/20 flex items-center justify-center text-brand-violet shrink-0 group-hover:scale-105 transition-transform">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">
+                      {section.title}
+                    </h2>
+                  </div>
+
+                  {section.content && (
+                    <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300 font-normal">
+                      {section.content}
+                    </p>
+                  )}
+
+                  {section.points && (
+                    <ul className="space-y-3 mt-3">
+                      {section.points.map((pt, pIdx) => (
+                        <li key={pIdx} className="flex items-start gap-2.5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-violet shrink-0 mt-2" />
+                          <span>{pt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {section.subSections && (
+                    <div className="space-y-4 mt-4">
+                      {section.subSections.map((sub, sIdx) => (
+                        <div key={sIdx} className="p-4 rounded-xl bg-white/5 dark:bg-white/[0.03] border border-white/10 dark:border-white/5">
+                          <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-1.5">
+                            {sub.subtitle}
                           </h3>
-                          <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                            {point.content}
+                          <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                            {sub.text}
                           </p>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </div>
+                  )}
+                </motion.section>
+              );
+            })}
 
-        {/* Back to Home */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="text-center mt-12"
-        >
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all"
-            style={{
-              background: 'var(--primary)',
-              color: 'white',
-            }}
-          >
-            {isRTL ? 'العودة إلى الصفحة الرئيسية' : 'Back to Home'}
-          </Link>
-        </motion.div>
-      </div>
+            {/* Bottom action */}
+            <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <Link
+                href="/"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-brand-violet to-brand-pink text-white text-sm font-bold shadow-lg shadow-brand-violet/25 hover:shadow-brand-violet/40 transition-all hover:scale-[1.02]"
+              >
+                <span>{content.backBtn}</span>
+                <ArrowRight className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
+              </Link>
+              <div className="text-xs text-gray-500 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-brand-violet" />
+                <span>Encrypted & Privacy Compliant · 2026</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

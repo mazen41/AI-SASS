@@ -34,6 +34,7 @@ import {
   Sparkles,
   ExternalLink,
   ShieldCheck,
+  BookOpen,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -55,6 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       group: isRTL ? 'التحكم العام' : 'STUDIO CONTROL',
       items: [
         { href: '/admin', label: isRTL ? 'نظرة عامة' : 'Overview', icon: LayoutDashboard },
+        { href: '/admin/stories', label: isRTL ? 'القصص والتوليد' : 'Stories & Content', icon: BookOpen },
       ],
     },
     {

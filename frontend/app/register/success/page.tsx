@@ -8,14 +8,18 @@ import { useLang } from '@/context/LangContext';
 import Navbar from '@/components/Navbar';
 import CustomCursor from '@/components/CustomCursor';
 import { apiRegisterStatus, ApiError } from '@/lib/api';
-import { CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowRight, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 
 // Landing spot after a Moyasar redirect for a PAID-package registration.
 // Account creation happens asynchronously via the Moyasar webhook, not on
 // this redirect — so this page polls /register/status/{id} until the
 // webhook finishes and hands us a login token.
 export default function RegisterSuccessPage() {
-  return <Suspense fallback={null}><RegisterSuccessInner /></Suspense>;
+  return (
+    <Suspense fallback={null}>
+      <RegisterSuccessInner />
+    </Suspense>
+  );
 }
 
 function RegisterSuccessInner() {
@@ -33,25 +37,25 @@ function RegisterSuccessInner() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const t = {
-    title: isRTL ? 'جارِ تأكيد الدفع...' : 'Confirming your payment...',
+    badge: isRTL ? 'إعداد استوديو الإبداع' : 'Studio Workspace Setup',
+    title: isRTL ? 'جارِ تأكيد الدفع وتجهيز الحساب...' : 'Confirming payment & provisioning account...',
     sub: isRTL
-      ? 'يرجى الانتظار بينما نؤكد الدفع وننشئ حسابك. لا تغلق هذه الصفحة.'
-      : 'Please wait while we confirm your payment and create your account. Do not close this page.',
-    done: isRTL ? 'تم إنشاء حسابك بنجاح!' : 'Your account is ready!',
-    doneSub: isRTL ? 'جاري تحويلك إلى لوحة التحكم...' : 'Redirecting you to the dashboard...',
-    errorTitle: isRTL ? 'حدث خطأ ما' : 'Something went wrong',
-    dashboardBtn: isRTL ? 'الذهاب للوحة التحكم' : 'Go to Dashboard',
-    registerAgain: isRTL ? 'العودة للتسجيل' : 'Back to registration',
+      ? 'يرجى الانتظار بينما نؤكد الدفع عبر بوابة الدفع وننشئ استوديو الإبداع الخاص بك. لا تغلق هذه الصفحة.'
+      : 'Please wait while we confirm your payment gateway webhook and configure your creative studio. Do not close this page.',
+    done: isRTL ? 'تم تفعيل حسابك بنجاح!' : 'Your Studio is Ready!',
+    doneSub: isRTL ? 'تم تخصيص رصيدك بنجاح، جاري نقلك إلى لوحة التحكم...' : 'Your studio credits are active. Redirecting you to the dashboard...',
+    errorTitle: isRTL ? 'تعذر إكمال التفعيل' : 'Activation Incomplete',
+    dashboardBtn: isRTL ? 'دخول لوحة التحكم الآن' : 'Launch Studio Dashboard',
+    registerAgain: isRTL ? 'العودة لصفحة التسجيل' : 'Back to Registration',
   };
 
   useEffect(() => {
     if (!pendingId) {
       setState('error');
-      setErrorMsg(isRTL ? 'رابط غير صالح.' : 'Invalid link.');
+      setErrorMsg(isRTL ? 'معرّف المعاملة غير صالح أو مفقود.' : 'Invalid or missing transaction identifier.');
       return;
     }
 
-    // Webhook delivery can take a few seconds. Poll every 2s, up to ~2 minutes.
     const MAX_ATTEMPTS = 60;
 
     async function poll() {
@@ -76,15 +80,16 @@ function RegisterSuccessInner() {
 
         if (attemptsRef.current >= MAX_ATTEMPTS) {
           setState('error');
-          setErrorMsg(isRTL
-            ? 'استغرقت عملية التأكيد وقتاً أطول من المتوقع. إذا خُصم المبلغ، سيتم تفعيل حسابك تلقائياً خلال دقائق.'
-            : 'Confirmation is taking longer than expected. If you were charged, your account will activate automatically within a few minutes.');
+          setErrorMsg(
+            isRTL
+              ? 'استغرقت عملية التأكيد وقتاً أطول من المتوقع. إذا خُصم المبلغ، سيتم تفعيل حسابك تلقائياً خلال دقائق.'
+              : 'Confirmation is taking longer than expected. If you were charged, your account will activate automatically within a few minutes.'
+          );
           return;
         }
 
         timerRef.current = setTimeout(poll, 2000);
       } catch (err: unknown) {
-        // Network/5xx hiccup — keep retrying rather than failing hard, up to the cap.
         if (attemptsRef.current >= MAX_ATTEMPTS) {
           setState('error');
           setErrorMsg(err instanceof ApiError ? err.message : 'Could not confirm registration status.');
@@ -95,58 +100,86 @@ function RegisterSuccessInner() {
     }
 
     poll();
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingId]);
 
   return (
-    <div data-theme={theme} style={{ background: 'var(--bg)', minHeight: '100vh' }} className="flex flex-col">
+    <div data-theme={theme} style={{ background: 'var(--bg)', minHeight: '100vh' }} className="flex flex-col relative overflow-hidden">
       <CustomCursor />
       <Navbar />
 
-      <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto px-6 py-12 text-center" dir={isRTL ? 'rtl' : 'ltr'}>
-        {state === 'polling' && (
-          <>
-            <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mb-6">
-              <span style={{ animation: 'spin-star 1.2s linear infinite', display: 'inline-block', fontSize: '2rem' }}>⏳</span>
-            </div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white font-sans tracking-tight">{t.title}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 leading-relaxed">{t.sub}</p>
-          </>
-        )}
+      {/* Decorative ambient background glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-tr from-brand-blue/15 via-brand-violet/15 to-brand-pink/15 rounded-full blur-[140px] pointer-events-none" />
 
-        {state === 'done' && (
-          <>
-            <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/10 animate-bounce">
-              <CheckCircle2 size={48} />
-            </div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white font-sans tracking-tight">{t.done}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 leading-relaxed">{t.doneSub}</p>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm"
-            >
-              {t.dashboardBtn}
-              <ArrowRight size={16} className={isRTL ? 'rotate-180' : ''} />
-            </button>
-          </>
-        )}
+      <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto px-6 py-16 relative z-10 w-full" dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className="studio-card p-8 sm:p-10 text-center w-full shadow-2xl relative overflow-hidden backdrop-blur-xl border border-white/10 dark:border-white/10">
+          {/* Top subtle glow */}
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-brand-blue/20 rounded-full blur-3xl pointer-events-none" />
 
-        {state === 'error' && (
-          <>
-            <div className="w-20 h-20 bg-red-100 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mb-6">
-              <XCircle size={48} />
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-blue/10 border border-brand-blue/25 text-brand-blue text-xs font-semibold mb-6">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{t.badge}</span>
+          </div>
+
+          {state === 'polling' && (
+            <div className="flex flex-col items-center">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-brand-blue/20 to-brand-violet/20 border border-brand-blue/30 flex items-center justify-center shadow-lg shadow-brand-blue/10">
+                  <Loader2 className="w-9 h-9 text-brand-blue animate-spin" />
+                </div>
+                <div className="absolute -inset-1 rounded-2xl bg-brand-blue/20 blur-sm -z-10 animate-pulse" />
+              </div>
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{t.title}</h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-3 leading-relaxed">{t.sub}</p>
+              <div className="mt-8 flex items-center justify-center gap-2 text-xs font-medium text-gray-400">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                <span>{isRTL ? 'اتصال مشفر وآمن مع بوابة الدفع' : 'Encrypted & secure gateway sync'}</span>
+              </div>
             </div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white font-sans tracking-tight">{t.errorTitle}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 leading-relaxed">{errorMsg}</p>
-            <button
-              onClick={() => router.push('/register')}
-              className="mt-8 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm"
-            >
-              {t.registerAgain}
-            </button>
-          </>
-        )}
+          )}
+
+          {state === 'done' && (
+            <div className="flex flex-col items-center">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-emerald-500">
+                  <CheckCircle2 className="w-10 h-10 animate-bounce" />
+                </div>
+                <div className="absolute -inset-1 rounded-2xl bg-emerald-500/20 blur-sm -z-10" />
+              </div>
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{t.done}</h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-3 leading-relaxed">{t.doneSub}</p>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="mt-8 w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-brand-blue via-brand-violet to-brand-pink text-white rounded-xl text-sm font-bold shadow-lg shadow-brand-blue/25 hover:shadow-brand-blue/40 hover:scale-[1.01] active:scale-[0.99] transition-all"
+              >
+                <span>{t.dashboardBtn}</span>
+                <ArrowRight className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          )}
+
+          {state === 'error' && (
+            <div className="flex flex-col items-center">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 rounded-2xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center shadow-lg shadow-rose-500/20 text-rose-500">
+                  <XCircle className="w-10 h-10" />
+                </div>
+              </div>
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{t.errorTitle}</h1>
+              <p className="text-sm text-rose-500/90 dark:text-rose-400 mt-3 leading-relaxed font-medium">{errorMsg}</p>
+              <button
+                onClick={() => router.push('/register')}
+                className="mt-8 w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-white/10 hover:bg-white/15 dark:bg-white/5 dark:hover:bg-white/10 border border-white/15 text-gray-900 dark:text-white rounded-xl text-sm font-bold transition-all"
+              >
+                <span>{t.registerAgain}</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
