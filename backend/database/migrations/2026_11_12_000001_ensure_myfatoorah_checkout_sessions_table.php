@@ -12,11 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('myfatoorah_checkout_sessions')) {
+        if (Schema::hasTable('my_fatoorah_checkout_sessions')) {
             return;
         }
 
-        Schema::create('myfatoorah_checkout_sessions', function (Blueprint $table) {
+        Schema::create('my_fatoorah_checkout_sessions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('plan_id')->nullable()->constrained()->nullOnDelete();
