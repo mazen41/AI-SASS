@@ -740,13 +740,15 @@ function RegisterForm() {
 
                     <button
                       type="submit"
-                      disabled={loading || otp.length !== 6}
+                      disabled={loading || (!emailVerified && otp.length !== 6)}
                       className="studio-btn-primary w-full py-4 text-sm font-bold shadow-lg"
                     >
                       {loading ? (
                         <span className="flex items-center justify-center gap-2">
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>{locale === 'ar' ? 'جارٍ التحقق...' : 'Verifying & Continuing...'}</span>
+                          <span>{emailVerified
+                            ? (locale === 'ar' ? 'جارٍ تجهيز الدفع...' : 'Starting secure checkout...')
+                            : (locale === 'ar' ? 'جارٍ التحقق...' : 'Verifying & Continuing...')}</span>
                         </span>
                       ) : (
                         <span className="flex items-center justify-center gap-2">
