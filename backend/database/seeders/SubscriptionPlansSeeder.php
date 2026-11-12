@@ -262,7 +262,7 @@ class SubscriptionPlansSeeder extends Seeder
             }
 
             // Also ensure packages table has matching active packages
-            Package::firstOrCreate(
+            Package::updateOrCreate(
                 ['name' => $planData['name']],
                 [
                     'description' => $planData['description'],
@@ -271,9 +271,6 @@ class SubscriptionPlansSeeder extends Seeder
                 ]
             );
         }
-
-        // Deactivate old legacy test package
-        Package::where('name', 'starter')->where('total_price', 100)->update(['is_active' => false]);
 
         Cache::forget('active_plans');
     }
