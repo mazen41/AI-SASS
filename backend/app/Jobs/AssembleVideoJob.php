@@ -189,25 +189,16 @@ class AssembleVideoJob implements ShouldQueue
 
             $durStr = number_format($narrationDuration, 3, '.', '');
 
-            // If concatenated clips are shorter than narration (e.g. some parallel scenes
-            // failed or timed out), loop the clips to fill the gap rather than crashing.
+            // Never repeat clips to conceal a short or incomplete timeline. A mismatch
+            // is a failed output and is refunded by this job's terminal handler.
             if ($videoDuration + 0.25 < $narrationDuration) {
-                Log::warning('AssembleVideoJob: video shorter than narration — looping clips to fill gap', [
+                Log::error('AssembleVideoJob: video shorter than narration; rejecting output', [
                     'story_id'        => $story->id,
                     'video_duration'  => round($videoDuration, 1),
                     'narration_s'     => round($narrationDuration, 1),
                     'gap_s'           => round($narrationDuration - $videoDuration, 1),
                 ]);
-                $loopedConcat = "{$tmpDir}/looped.mp4";
-                $cmdLoop = "\"{$ffmpeg}\" -y -stream_loop -1 -i \"{$outputConcat}\" -t {$durStr}"
-                    . " -c:v libx264 -crf 20 -preset fast -an"
-                    . " \"{$loopedConcat}\" 2>&1";
-                exec($cmdLoop, $outLoop, $codeLoop);
-                if ($codeLoop !== 0 || !file_exists($loopedConcat)) {
-                    throw new \RuntimeException('FFmpeg loop-fill failed (exit ' . $codeLoop . '): ' . implode("\n", array_slice($outLoop, -20)));
-                }
-                $outputConcat = $loopedConcat;
-                $videoDuration = $narrationDuration; // treat as covered
+                throw new \RuntimeException('Generated video is shorter than narration; refusing to repeat scenes to fill the timeline.');
             }
 
             if ($videoDuration > $narrationDuration + 0.25) {

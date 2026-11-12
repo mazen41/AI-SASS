@@ -36,8 +36,13 @@ class StorybookGenerationService
             'child_name' => $story->child_name,
             'theme' => $story->theme,
             'language' => $story->language,
-            'page_count' => (int)env('TEST_IMAGE_COUNT', 16),
+            'page_count' => (int) data_get($story->generation_settings, 'page_count', 8),
         ]);
+
+        $expectedPageCount = max(8, min(20, (int) data_get($story->generation_settings, 'page_count', 8)));
+        if (!isset($pagesData['pages']) || !is_array($pagesData['pages']) || count($pagesData['pages']) !== $expectedPageCount) {
+            throw new \RuntimeException("Storybook provider did not return exactly {$expectedPageCount} pages.");
+        }
 
         Log::info("SERVICE STEP 1 COMPLETE: GeminiService::generateStorybookPages() returned", [
             'story_id' => $story->id,

@@ -69,6 +69,7 @@ export default function StoryViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pdfGenerating, setPdfGenerating] = useState<string | null>(null);
+  const [pdfGenerationError, setPdfGenerationError] = useState('');
 
   // ─── PDF Generation: delegates to html2pdf on hidden templates ──
   const generateAndUploadPdf = useCallback(
@@ -76,6 +77,7 @@ export default function StoryViewPage() {
       if (!story || pdfGenerating) return;
       const label = outputType === 'story_book_pdf' ? 'Story Book' : 'Coloring Book';
       setPdfGenerating(label);
+      setPdfGenerationError('');
 
       try {
         await document.fonts.ready;
@@ -116,6 +118,7 @@ export default function StoryViewPage() {
         setOutputs((prev) => ({ ...prev, [outputType]: res.output }));
       } catch (err) {
         console.error('Failed to generate PDF:', err);
+        setPdfGenerationError(err instanceof Error ? err.message : 'PDF generation failed. Please retry.');
       } finally {
         setPdfGenerating(null);
       }
@@ -124,11 +127,11 @@ export default function StoryViewPage() {
   );
 
   useEffect(() => {
-    if (!story || pdfGenerating) return;
+    if (!story || pdfGenerating || pdfGenerationError) return;
     if (outputs.story_book_pdf?.status === 'planned') generateAndUploadPdf('story_book_pdf');
     else if (outputs.coloring_book_pdf?.status === 'planned')
       generateAndUploadPdf('coloring_book_pdf');
-  }, [story, outputs, pdfGenerating, generateAndUploadPdf]);
+  }, [story, outputs, pdfGenerating, pdfGenerationError, generateAndUploadPdf]);
 
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopPolling = () => {
@@ -353,6 +356,19 @@ export default function StoryViewPage() {
       </div>
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 space-y-8">
+        {pdfGenerationError && (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+            <span>{pdfGenerationError}</span>
+            <button
+              type="button"
+              onClick={() => generateAndUploadPdf(outputs.story_book_pdf?.status === 'planned' ? 'story_book_pdf' : 'coloring_book_pdf')}
+              disabled={Boolean(pdfGenerating)}
+              className="rounded-lg border border-red-400/40 px-3 py-2 font-semibold disabled:opacity-50"
+            >
+              {isRtl ? 'إعادة المحاولة' : 'Retry PDF upload'}
+            </button>
+          </div>
+        )}
         {/* Story Header Card */}
         <section className="studio-card p-6 sm:p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
@@ -705,7 +721,7 @@ export default function StoryViewPage() {
         <div id="story-book-pdf-template" className="p-8 bg-white text-black font-serif">
           <h1 className="text-3xl font-bold mb-4">{story.title}</h1>
           <p className="mb-6">{story.content}</p>
-          {imageAssets.map((asset) => (
+          {imageAssets.slice(0, story.generation_settings?.page_count ?? imageAssets.length).map((asset) => (
             <div key={asset.id} className="mb-6 page-break-after">
               {asset.url && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -722,7 +738,7 @@ export default function StoryViewPage() {
 
         <div id="coloring-book-pdf-template" className="p-8 bg-white text-black font-serif">
           <h1 className="text-3xl font-bold mb-4">{story.title} - Coloring Book</h1>
-          {coloringAssets.map((asset) => (
+          {coloringAssets.slice(0, story.generation_settings?.page_count ?? coloringAssets.length).map((asset) => (
             <div key={asset.id} className="mb-6 page-break-after">
               {asset.url && (
                 // eslint-disable-next-line @next/next/no-img-element

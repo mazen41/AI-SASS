@@ -192,9 +192,8 @@ class StoryProductService
         try {
             // Check if we already have coloring_page assets (black and white)
             $coloringAssets = $story->assets()->where('asset_type', 'coloring_page')->get();
-            $images = $coloringAssets->isNotEmpty()
-                ? $coloringAssets->sortBy('scene_number')  // Use existing B&W assets
-                : $story->imageAssets()->get()->sortBy('scene_number');  // Or convert colored assets
+            $requestedPages = max(8, min(20, (int) data_get($story->generation_settings, 'page_count', 8)));
+            $sourceImages = $story->imageAssets()->orderBy('scene_number')->limit($requestedPages)->get()->values();
 
             $scenes = collect($story->scenes ?? [])->keyBy('scene_number');
             $isRtl  = ($story->language ?? 'en') === 'ar';
@@ -205,12 +204,15 @@ class StoryProductService
             }
 
             // Limit to TEST_IMAGE_COUNT for testing
-            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
-            $originalImages = $images; // Keep original for conversion logic
+            $testImageCount = app()->environment('testing') ? (int) env('TEST_IMAGE_COUNT', 0) : 0;
+            $originalImages = $sourceImages;
+            $expectedPageCount = $testImageCount > 0
+                ? min($originalImages->count(), $testImageCount)
+                : $originalImages->count();
+            $needsConversion = $coloringAssets->count() !== $expectedPageCount;
+            $images = $needsConversion ? $sourceImages : $coloringAssets->sortBy('scene_number')->values();
 
             // Only generate B&W conversion if we don't already have coloring_page assets
-            $needsConversion = $coloringAssets->isEmpty();
-
             if ($needsConversion) {
                 // Convert existing story book images to line art using Fal.ai
                 // (nano-banana / nano-banana-pro image-edit models). Gemini's
@@ -227,8 +229,7 @@ class StoryProductService
                     // Get the local path of the story book image
                     $localPath = $this->resolveLocalPath($asset->url);
                     if (!$localPath || !file_exists($localPath)) {
-                        Log::warning("Story book image not found locally for line art conversion", ['url' => $asset->url]);
-                        continue;
+                        throw new \RuntimeException("Source illustration for scene {$asset->scene_number} is unavailable.");
                     }
 
                     try {
@@ -238,7 +239,11 @@ class StoryProductService
                         
                         // Extract base64 data from data URI
                         if (preg_match('/^data:image\/(\w+);base64,(.+)$/', $lineArtDataUri, $matches)) {
-                            $imageData = base64_decode($matches[2]);
+                            $imageData = base64_decode($matches[2], true);
+                            if ($imageData === false || $imageData === '') {
+                                throw new \RuntimeException('Line art response contained invalid image data.');
+                            }
+                            $this->assertColoringPageImage($imageData, (int) $asset->scene_number);
                             
                             // Save line art image to temp file
                             $lineArtPath = "{$tmpDir}/bw_lineart_{$asset->scene_number}.jpg";
@@ -246,7 +251,9 @@ class StoryProductService
                             
                             // Store the line art as the coloring page asset
                             $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
-                            Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public']);
+                            if (!Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public'])) {
+                                throw new \RuntimeException("Could not store coloring page for scene {$asset->scene_number}.");
+                            }
 
                             StoryAsset::updateOrCreate(
                                 ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
@@ -265,8 +272,7 @@ class StoryProductService
                             'scene_number' => $asset->scene_number,
                             'error' => $e->getMessage()
                         ]);
-                        // Continue with other images even if one fails
-                        continue;
+                        throw new \RuntimeException("Coloring page conversion failed for scene {$asset->scene_number}.", 0, $e);
                     }
                 }
 
@@ -275,6 +281,10 @@ class StoryProductService
             } else {
                 // Use existing coloring_page assets
                 $images = $coloringAssets->sortBy('scene_number');
+            }
+
+            if ($images->count() !== $expectedPageCount) {
+                throw new \RuntimeException('Coloring book is incomplete; not every requested page was converted.');
             }
             
             // B&W images generated. Now mark the output as planned for frontend PDF generation.
@@ -295,6 +305,40 @@ class StoryProductService
             return $this->markFailed($output, $e);
         } finally {
             $this->cleanupDirectory($tmpDir);
+        }
+    }
+
+    private function assertColoringPageImage(string $bytes, int $sceneNumber): void
+    {
+        $image = @imagecreatefromstring($bytes);
+        if (!$image) {
+            throw new \RuntimeException("Coloring page for scene {$sceneNumber} is not a decodable image.");
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        if ($width < 300 || $height < 300) {
+            imagedestroy($image);
+            throw new \RuntimeException("Coloring page for scene {$sceneNumber} is below the minimum print resolution.");
+        }
+
+        $stepX = max(1, (int) floor($width / 64));
+        $stepY = max(1, (int) floor($height / 64));
+        $sampled = 0;
+        $colored = 0;
+        for ($y = 0; $y < $height; $y += $stepY) {
+            for ($x = 0; $x < $width; $x += $stepX) {
+                $rgb = imagecolorsforindex($image, imagecolorat($image, $x, $y));
+                if (max($rgb['red'], $rgb['green'], $rgb['blue']) - min($rgb['red'], $rgb['green'], $rgb['blue']) > 30) {
+                    $colored++;
+                }
+                $sampled++;
+            }
+        }
+        imagedestroy($image);
+
+        if ($sampled === 0 || ($colored / $sampled) > 0.05) {
+            throw new \RuntimeException("Coloring page for scene {$sceneNumber} contains too much color to be accepted as line art.");
         }
     }
 

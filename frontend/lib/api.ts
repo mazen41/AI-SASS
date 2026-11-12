@@ -494,6 +494,7 @@ export interface Story {
   updated_at: string;
   storybook_url?: string | null;
   storybook_data?: any;
+  generation_settings?: { page_count?: number; scene_count?: number } | null;
   user?: AuthUser;
   outputs?: StoryOutput[];
 }

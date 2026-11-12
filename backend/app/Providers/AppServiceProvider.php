@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\ClaudeService;
 use App\Services\Contracts\StoryTextGeneratorInterface;
 use App\Services\GeminiService;
+use App\Services\OpenAIService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -15,12 +16,13 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Story text / storybook page generation provider.
-        // Switch via AI_TEXT_PROVIDER in .env (gemini | claude), then
+        // Switch via AI_TEXT_PROVIDER in .env (gemini | claude | openai), then
         // `php artisan config:clear`. Add new cases here to support more
         // providers later.
         $this->app->bind(StoryTextGeneratorInterface::class, function () {
             return match (config('services.ai.text_provider', 'gemini')) {
                 'claude' => $this->app->make(ClaudeService::class),
+                'openai' => $this->app->make(OpenAIService::class),
                 default  => $this->app->make(GeminiService::class),
             };
         });

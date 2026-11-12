@@ -47,7 +47,7 @@ class GenerateColoringBookJob implements ShouldQueue
             throw $e;
         }
 
-        $story->decrementPendingOutputs();
+        // A planned output still awaits the browser-rendered PDF upload.
     }
 
     public function failed(Throwable $exception): void

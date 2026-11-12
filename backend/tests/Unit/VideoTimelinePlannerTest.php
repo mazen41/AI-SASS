@@ -28,7 +28,9 @@ class VideoTimelinePlannerTest extends TestCase
         $durations = VideoTimelinePlanner::computeClipDurations(75.0, 12);
 
         $this->assertCount(12, $durations);
-        $this->assertGreaterThanOrEqual(75, array_sum($durations));
+        $effectiveTimeline = array_sum($durations)
+            - max(0, count($durations) - 1) * VideoTimelinePlanner::XFADE_SECONDS;
+        $this->assertGreaterThanOrEqual(75, $effectiveTimeline);
         $this->assertContains(5, $durations);
         $this->assertContains(8, $durations);
     }
@@ -50,7 +52,8 @@ class VideoTimelinePlannerTest extends TestCase
         // threw a RuntimeException in computeClipDurations() during video
         // generation. This asserts the two are consistent.
         $maxAllowedNarration = 90.0;
-        $sceneCapacity = VideoTimelinePlanner::TARGET_SCENE_COUNT * VideoTimelinePlanner::CLIP_MAX_SECONDS;
+        $sceneCapacity = VideoTimelinePlanner::TARGET_SCENE_COUNT * VideoTimelinePlanner::CLIP_MAX_SECONDS
+            - (VideoTimelinePlanner::TARGET_SCENE_COUNT - 1) * VideoTimelinePlanner::XFADE_SECONDS;
         $this->assertGreaterThanOrEqual($maxAllowedNarration, $sceneCapacity);
 
         // And confirm it actually plans successfully at that ceiling.
@@ -58,7 +61,9 @@ class VideoTimelinePlannerTest extends TestCase
             $maxAllowedNarration,
             VideoTimelinePlanner::sceneCountForMaxDuration($maxAllowedNarration)
         );
-        $this->assertGreaterThanOrEqual($maxAllowedNarration, array_sum($durations));
+        $effectiveTimeline = array_sum($durations)
+            - (count($durations) - 1) * VideoTimelinePlanner::XFADE_SECONDS;
+        $this->assertGreaterThanOrEqual($maxAllowedNarration, $effectiveTimeline);
     }
 
     public function test_short_story_word_count_is_detected(): void

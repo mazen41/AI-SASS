@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Story;
 use App\Models\StoryAsset;
+use App\Models\StoryOutput;
 use App\Models\AiJobLog;
 use App\Services\FalAiService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -163,23 +164,14 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
             ->where('id', $story->id)
             ->update(['completed_video_scenes' => DB::raw('completed_video_scenes + 1')]);
 
-        // Still check barrier — assemble with whatever scenes succeeded
+        // Wait for every scene, then either assemble the complete video or
+        // fail/refund the output. Never hide missing scenes by repeating clips.
         $this->checkAndTriggerAssembly($story);
 
         Log::error("GenerateSingleSceneVideoJob permanently failed for story #{$this->storyId}, scene {$this->sceneNumber}", [
             'error' => $exception->getMessage(),
         ]);
 
-        // Refund only if less than 80% of scenes succeeded
-        $totalScenes    = $story->imageAssets()->count();
-        $successScenes  = $story->assets()->where('asset_type', 'video')->distinct('scene_number')->count('scene_number');
-        if ($successScenes < ($totalScenes * 0.8)) {
-            $user = $story->user;
-            if ($user) {
-                $user->refundProductByOutputType('video', $story->id);
-                $story->decrementPendingOutputs();
-            }
-        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -214,11 +206,33 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
                 ->update(['video_assembly_triggered' => true]);
 
             if ($affected > 0) {
-                Log::info('Barrier reached: all scenes complete, triggering assembly', [
-                    'story_id'    => $story->id,
-                    'scene_count' => $totalScenes,
-                ]);
-                AssembleVideoJob::dispatch($story->id, $this->selectedOutputs);
+                if ($completedScenes !== $totalScenes) {
+                    $failedCount = $totalScenes - $completedScenes;
+                    $reason = "Video generation failed for {$failedCount} of {$totalScenes} scenes.";
+                    $story->update([
+                        'status' => 'failed',
+                        'error_message' => $reason,
+                        'processing_step' => null,
+                    ]);
+                    StoryOutput::updateOrCreate(
+                        ['story_id' => $story->id, 'output_type' => StoryOutput::TYPE_FINAL_VIDEO],
+                        ['status' => 'failed', 'error_message' => $reason]
+                    );
+                    app(\App\Services\AiCreditService::class)->refundOutput($story, 'video', $reason);
+                    $story->decrementPendingOutputs();
+                    Log::error('Video barrier rejected incomplete scene set', [
+                        'story_id' => $story->id,
+                        'completed_scenes' => $completedScenes,
+                        'failed_scenes' => $failedCount,
+                        'total_scenes' => $totalScenes,
+                    ]);
+                } else {
+                    Log::info('Barrier reached: all scenes complete, triggering assembly', [
+                        'story_id'    => $story->id,
+                        'scene_count' => $totalScenes,
+                    ]);
+                    AssembleVideoJob::dispatch($story->id, $this->selectedOutputs);
+                }
             } else {
                 Log::info('Barrier already triggered by another worker, skipping duplicate', [
                     'story_id' => $story->id,

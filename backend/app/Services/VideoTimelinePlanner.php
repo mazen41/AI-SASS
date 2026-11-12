@@ -23,6 +23,9 @@ class VideoTimelinePlanner
     /** Effective max seconds per clip for Wan Pro (used for planning). */
     public const CLIP_MAX_SECONDS = 8;
 
+    /** Crossfades shorten the final timeline by this amount per transition. */
+    public const XFADE_SECONDS = 0.4;
+
     /** Fixed target: always generate this many scenes for video. 12×8s = 96s covers the full narration range (up to 90s) with headroom. This was accidentally lowered to 8 at some point (64s max), which let stories with 64–90s narration pass validation but then crash video generation with a RuntimeException. Keep this at 12 to match isNarrationDurationValid()'s 90s ceiling below. */
     public const TARGET_SCENE_COUNT = 12;
 
@@ -82,7 +85,8 @@ class VideoTimelinePlanner
             throw new \InvalidArgumentException('sceneCount must be positive');
         }
 
-        $maxPossible = $sceneCount * self::CLIP_MAX_SECONDS;
+        $maxPossible = $sceneCount * self::CLIP_MAX_SECONDS
+            - max(0, $sceneCount - 1) * self::XFADE_SECONDS;
         if ($narrationSeconds > $maxPossible + 0.5) {
             throw new \RuntimeException(
                 "Narration is {$narrationSeconds}s but only {$sceneCount} scenes were generated "
@@ -92,10 +96,11 @@ class VideoTimelinePlanner
 
         // Start all clips at 5s, then upgrade to 8s until total >= narrationSeconds
         $durations = array_fill(0, $sceneCount, 5);
-        $total     = $sceneCount * 5;
+        $total     = $sceneCount * 5 - max(0, $sceneCount - 1) * self::XFADE_SECONDS;
+        $targetTotal = $narrationSeconds;
         $index     = 0;
 
-        while ($total < $narrationSeconds && $index < $sceneCount) {
+        while ($total < $targetTotal && $index < $sceneCount) {
             if ($durations[$index] === 5) {
                 $durations[$index] = self::CLIP_MAX_SECONDS;
                 $total += self::CLIP_MAX_SECONDS - 5;
@@ -103,7 +108,7 @@ class VideoTimelinePlanner
             $index++;
         }
 
-        if ($total < $narrationSeconds) {
+        if ($total < $targetTotal) {
             throw new \RuntimeException(
                 "Cannot cover {$narrationSeconds}s narration with {$sceneCount} scenes at "
                 . self::CLIP_MAX_SECONDS . "s max/clip."

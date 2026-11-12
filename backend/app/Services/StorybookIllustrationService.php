@@ -44,7 +44,7 @@ class StorybookIllustrationService
         });
         
         // Limit to TEST_IMAGE_COUNT for testing
-        $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+        $testImageCount = app()->environment('testing') ? (int) env('TEST_IMAGE_COUNT', 0) : 0;
         if ($testImageCount > 0) {
             $pagesNeedingIllustration = $pagesNeedingIllustration->take($testImageCount);
         }

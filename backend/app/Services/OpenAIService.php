@@ -4,8 +4,9 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\Contracts\StoryTextGeneratorInterface;
 
-class OpenAIService
+class OpenAIService implements StoryTextGeneratorInterface
 {
     private string $apiKey;
     private string $model;
@@ -31,12 +32,14 @@ class OpenAIService
         $customPrompt = $params['custom_prompt'] ?? null;
         
         // Keep prompt output and credit pricing aligned with the selected book size.
-        $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+        $testImageCount = app()->environment('testing') ? (int) env('TEST_IMAGE_COUNT', 0) : 0;
         $selectedOutputs = (array) ($params['selected_outputs'] ?? []);
         $bookOutput = (bool) array_intersect($selectedOutputs, ['story_book_pdf', 'coloring_book_pdf']);
-        $sceneCount = $bookOutput
+        $sceneCount = in_array('video', $selectedOutputs, true)
+            ? max(VideoTimelinePlanner::sceneCountForMaxDuration(), $bookOutput ? max(8, min(20, (int) ($params['page_count'] ?? 8))) : 0)
+            : ($bookOutput
             ? max(8, min(20, (int) ($params['page_count'] ?? 8)))
-            : ($testImageCount > 0 ? $testImageCount : 12);
+            : ($testImageCount > 0 ? $testImageCount : 12));
 
         $langInstruction = $language === 'ar'
             ? 'Write the title, story_text, and all scene descriptions entirely in Arabic. The image_prompt values MUST remain in English so that the image generator can understand them.'
@@ -69,6 +72,7 @@ Respond ONLY with valid JSON, no markdown:
       "description": "The rich, long, and detailed storybook text for this page (MUST be between 120 and 180+ words). Write in a magical, emotional bedtime storybook style. NO camera movements or filmmaking instructions.",
       "image_prompt": "detailed visual prompt for illustration. MUST ALWAYS be written in English. Always use {$childName} as the same exact child protagonist; identical facial features; identical hairstyle; identical clothing; identical eye color; same age appearance; strict character consistency across all pages; cinematic children's book illustration style; vivid colors; warm lighting; family-friendly mood"
     }
+
   ]
 }
 
@@ -107,6 +111,57 @@ PROMPT;
         }
 
         return $this->normalizeSceneArchitecture($data, $sceneCount);
+    }
+
+    public function generateStorybookPages(array $params): array
+    {
+        if ($this->apiKey === '') {
+            throw new \RuntimeException('OPENAI_API_KEY is not configured.');
+        }
+
+        $pageCount = max(8, min(20, (int) ($params['page_count'] ?? 8)));
+        $language = ($params['language'] ?? 'en') === 'ar' ? 'Arabic' : 'English';
+        $prompt = "Create exactly {$pageCount} distinct pages for a children's storybook. "
+            . "Return only JSON with a pages array. Every page must include page_number, page_type, title, content, dialogue, "
+            . "illustration_prompt, layout_type, text_position, and color_scheme. Page 1 is cover; last page is ending. "
+            . "All readable text must be in {$language}; illustration_prompt must be in English and preserve the same child character.\n"
+            . 'Title: ' . ($params['title'] ?? '') . "\nStory: " . ($params['story_text'] ?? '') . "\nScenes: "
+            . json_encode($params['scenes'] ?? [], JSON_UNESCAPED_UNICODE);
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Content-Type' => 'application/json',
+        ])->timeout(120)->post('https://api.openai.com/v1/chat/completions', [
+            'model' => $this->model,
+            'max_tokens' => $this->maxTokens,
+            'messages' => [
+                ['role' => 'system', 'content' => 'You write structured children storybooks and return valid JSON only.'],
+                ['role' => 'user', 'content' => $prompt],
+            ],
+            'response_format' => ['type' => 'json_object'],
+        ]);
+
+        if (!$response->successful()) {
+            Log::error('OpenAI storybook page request failed', ['status' => $response->status()]);
+            throw new \RuntimeException('OpenAI storybook page generation failed (' . $response->status() . ').');
+        }
+
+        $data = json_decode((string) $response->json('choices.0.message.content'), true);
+        if (!is_array($data) || !isset($data['pages']) || !is_array($data['pages']) || count($data['pages']) < $pageCount) {
+            throw new \RuntimeException("OpenAI returned fewer than {$pageCount} storybook pages.");
+        }
+
+        $data['pages'] = array_values(array_slice($data['pages'], 0, $pageCount));
+        foreach ($data['pages'] as $index => &$page) {
+            $page['page_number'] = $index + 1;
+            $page['page_type'] = $page['page_type'] ?? ($index === 0 ? 'cover' : ($index === $pageCount - 1 ? 'ending' : 'story'));
+            $page['layout_type'] = $page['layout_type'] ?? 'split';
+            $page['text_position'] = $page['text_position'] ?? 'bottom';
+            $page['color_scheme'] = $page['color_scheme'] ?? 'warm_pastel';
+        }
+        unset($page);
+
+        return $data;
     }
 
     private function normalizeSceneArchitecture(array $data, int $sceneCount): array

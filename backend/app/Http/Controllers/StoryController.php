@@ -114,8 +114,8 @@ class StoryController extends Controller
             'generation_settings' => [
                 'page_count' => (int)($validated['page_count'] ?? 8),
                 'scene_count' => in_array('video', $selectedOutputs, true)
-                    ? ((bool) array_intersect($selectedOutputs, ['story_book_pdf', 'coloring_book_pdf'])
-                        ? (int)($validated['page_count'] ?? 8) : 12)
+                    ? max(12, ((bool) array_intersect($selectedOutputs, ['story_book_pdf', 'coloring_book_pdf'])
+                        ? (int)($validated['page_count'] ?? 8) : 12))
                     : 0,
                 'story_tone' => $validated['story_tone'] ?? 'gentle',
                 'genre' => $validated['genre'] ?? null,

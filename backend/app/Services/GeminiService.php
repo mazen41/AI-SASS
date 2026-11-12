@@ -47,9 +47,11 @@ class GeminiService implements StoryTextGeneratorInterface
         $maxWords   = $wordBounds['max'];
         $selectedOutputs = (array) ($params['selected_outputs'] ?? []);
         $bookOutput = (bool) array_intersect($selectedOutputs, ['story_book_pdf', 'coloring_book_pdf']);
-        $sceneCount = $bookOutput
+        $sceneCount = in_array('video', $selectedOutputs, true)
+            ? max(VideoTimelinePlanner::sceneCountForMaxDuration($maxDuration), $bookOutput ? max(8, min(20, (int) ($params['page_count'] ?? 8))) : 0)
+            : ($bookOutput
             ? max(8, min(20, (int) ($params['page_count'] ?? 8)))
-            : VideoTimelinePlanner::sceneCountForMaxDuration($maxDuration);
+            : VideoTimelinePlanner::sceneCountForMaxDuration($maxDuration));
 
         $langInstruction = $language === 'ar'
             ? 'Write the title, story_text, and all scene descriptions entirely in Arabic. The image_prompt values MUST remain in English so that the image generator can understand them.'
@@ -211,7 +213,7 @@ class GeminiService implements StoryTextGeneratorInterface
             : '';
 
         // Constrain sceneCount to 8-12 pages for storybook format
-        $targetPageCount = max(8, min(12, $sceneCount));
+        $targetPageCount = max(8, min(20, $sceneCount));
 
         return <<<PROMPT
 You are a children's book author. Create a magical children's storybook and a corresponding video narration script for a {$childAge}-year-old child named {$childName}.
@@ -431,13 +433,7 @@ PROMPT;
         $theme     = $params['theme'] ?? 'adventure';
         $language  = $params['language'] ?? 'en';
         
-        // Respect TEST_IMAGE_COUNT for testing, otherwise use default range
-        $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
-        if ($testImageCount > 0) {
-            $pageCount = $testImageCount;
-        } else {
-            $pageCount = max(15, min(20, (int) ($params['page_count'] ?? 16)));
-        }
+        $pageCount = max(8, min(20, (int) ($params['page_count'] ?? 8)));
 
         Log::info("GEMINI STEP 1: Parameters prepared", [
             'title' => $title,

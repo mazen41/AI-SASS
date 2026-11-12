@@ -59,7 +59,7 @@ class GenerateImagesJob implements ShouldQueue
             // Always generate images for all scenes — parallel generation.
             // Every scene needs its own image as the starting frame for video.
             // TEST_IMAGE_COUNT can limit scenes for cheaper dev testing.
-            $testImageCount  = (int) env('TEST_IMAGE_COUNT', 0);
+            $testImageCount  = app()->environment('testing') ? (int) env('TEST_IMAGE_COUNT', 0) : 0;
             $scenesToProcess = ($testImageCount > 0)
                 ? array_slice($scenes, 0, $testImageCount)
                 : $scenes;

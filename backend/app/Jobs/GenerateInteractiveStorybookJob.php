@@ -44,7 +44,7 @@ class GenerateInteractiveStorybookJob implements ShouldQueue
             Log::info("Starting interactive storybook generation", ['story_id' => $this->storyId]);
 
             // Apply TEST_IMAGE_COUNT limit for testing
-            $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
+            $testImageCount = app()->environment('testing') ? (int) env('TEST_IMAGE_COUNT', 0) : 0;
 
             // Step 1: Generate page structure and content
             Log::info('STEP 3 START: generateStorybook() call', ['story_id' => $this->storyId]);
@@ -67,6 +67,14 @@ class GenerateInteractiveStorybookJob implements ShouldQueue
             // Step 2: Generate illustrations for all pages
             Log::info('STEP 5 START: generateAllIllustrations() call', ['story_id' => $this->storyId]);
             $illustrationService->generateAllIllustrations($story);
+            $missingIllustrations = $story->storybookPages()
+                ->where(function ($query) {
+                    $query->whereNull('illustration_url')->orWhere('illustration_url', '');
+                })
+                ->count();
+            if ($missingIllustrations > 0) {
+                throw new \RuntimeException("Interactive storybook is incomplete: {$missingIllustrations} page illustrations are missing.");
+            }
             Log::info('STEP 5 COMPLETE: generateAllIllustrations() returned', ['story_id' => $this->storyId]);
 
             Log::info("Generated all storybook illustrations", ['story_id' => $this->storyId]);
@@ -98,11 +106,6 @@ class GenerateInteractiveStorybookJob implements ShouldQueue
             Log::info('STEP 8 COMPLETE: Output marked as completed', ['story_id' => $this->storyId]);
 
             Log::info("Interactive storybook generation completed", ['story_id' => $this->storyId]);
-
-            // Terminal job for story_book_pdf - decrement pending outputs
-            Log::info('STEP 9 START: decrementPendingOutputs()', ['story_id' => $this->storyId]);
-            $story->decrementPendingOutputs();
-            Log::info('STEP 9 COMPLETE: decrementPendingOutputs() returned', ['story_id' => $this->storyId]);
 
             Log::info('JOB COMPLETE: GenerateInteractiveStorybookJob finished successfully', ['story_id' => $this->storyId]);
         } catch (\Throwable $e) {
