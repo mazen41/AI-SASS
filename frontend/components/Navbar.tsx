@@ -120,12 +120,12 @@ export default function Navbar() {
             <Link
               href="/"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 group transition-transform duration-200 hover:scale-[1.02]"
+              className="flex items-center group transition-transform duration-200 hover:scale-[1.02]"
             >
               <div className="relative flex items-center justify-center">
                 {/* Ambient back-glow */}
                 <div
-                  className="absolute -inset-2 rounded-full opacity-40 blur-md group-hover:opacity-75 transition-opacity duration-300"
+                  className="absolute -inset-3 rounded-full opacity-40 blur-lg group-hover:opacity-75 transition-opacity duration-300"
                   style={{
                     background:
                       'radial-gradient(circle, var(--k-sky), var(--k-navy))',
@@ -135,28 +135,8 @@ export default function Navbar() {
                 <img
                   src="/logo.png"
                   alt="NazStudio"
-                  className="relative h-11 sm:h-12 w-auto object-contain"
+                  className="relative h-14 sm:h-16 w-auto object-contain"
                 />
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className="font-extrabold tracking-tight text-xl leading-none"
-                  style={{
-                    fontFamily: 'Outfit, Plus Jakarta Sans, sans-serif',
-                    background:
-                      'linear-gradient(135deg, #1E90FF 0%, #7C3AED 50%, #FF2E93 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
-                >
-                  NazStudio
-                </span>
-                <span
-                  className="text-[10px] uppercase font-semibold tracking-widest mt-0.5"
-                  style={{ color: 'var(--text-3)' }}
-                >
-                  {locale === 'ar' ? 'استوديو الذكاء الاصطناعي' : 'AI Creative Studio'}
-                </span>
               </div>
             </Link>
 
@@ -307,10 +287,7 @@ export default function Navbar() {
                 className="flex items-center gap-2.5"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="NazStudio" className="h-9 w-auto object-contain" />
-                <span className="font-extrabold text-lg tracking-tight gradient-text">
-                  NazStudio
-                </span>
+                <img src="/logo.png" alt="NazStudio" className="h-12 w-auto object-contain" />
               </Link>
               <button
                 onClick={() => setMobileOpen(false)}

@@ -173,12 +173,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             }`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="NazStudio" className="h-9 w-auto object-contain shrink-0" />
+            <img src="/logo.png" alt="NazStudio" className="h-11 w-auto object-contain shrink-0" />
             {!collapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="font-extrabold text-base tracking-tight gradient-text font-display truncate">
-                  NazStudio
-                </span>
                 <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--k-blue)]">
                   {user.role === 'super_admin' ? 'SUPER ADMIN' : 'ADMIN PORTAL'}
                 </span>

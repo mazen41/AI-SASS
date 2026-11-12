@@ -1446,10 +1446,7 @@ export default function LandingPage() {
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="NazStudio" className="h-10 w-auto object-contain" />
-                <span className="font-extrabold text-xl tracking-tight gradient-text font-display">
-                  NazStudio
-                </span>
+                <img src="/logo.png" alt="NazStudio" className="h-14 w-auto object-contain" />
               </div>
               <p className="text-sm text-[var(--text-2)] max-w-sm leading-relaxed mb-6">
                 {locale === 'ar'

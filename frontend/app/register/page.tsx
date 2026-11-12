@@ -288,15 +288,7 @@ function RegisterForm() {
           className="flex items-center gap-2.5 group transition-transform hover:scale-[1.02]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="NazStudio" className="h-10 w-auto object-contain" />
-          <div className="flex flex-col">
-            <span className="font-extrabold tracking-tight text-lg gradient-text font-display">
-              NazStudio
-            </span>
-            <span className="text-[9px] uppercase tracking-widest text-[var(--text-3)] font-mono">
-              AI CREATIVE SUITE
-            </span>
-          </div>
+          <img src="/logo.png" alt="NazStudio" className="h-14 w-auto object-contain" />
         </Link>
 
         <div className="flex items-center gap-3">

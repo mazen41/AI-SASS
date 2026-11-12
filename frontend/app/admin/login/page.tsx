@@ -83,15 +83,7 @@ export default function AdminLoginPage() {
       <header className="relative z-20 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="NazStudio" className="h-10 w-auto object-contain" />
-          <div className="flex flex-col">
-            <span className="font-extrabold tracking-tight text-lg gradient-text font-display">
-              NazStudio
-            </span>
-            <span className="text-[9px] uppercase tracking-widest text-[var(--text-3)] font-mono">
-              SECURITY GATEWAY
-            </span>
-          </div>
+          <img src="/logo.png" alt="NazStudio" className="h-14 w-auto object-contain" />
         </Link>
 
         <div className="flex items-center gap-3">
