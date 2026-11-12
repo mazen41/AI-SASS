@@ -77,7 +77,7 @@ class SubscriptionPlanTest extends TestCase
 
     public function test_admin_can_create_update_duplicate_reorder_archive_and_delete_plan(): void
     {
-        $admin = User::factory()->create(['role' => 'super_admin']);
+        $admin = User::factory()->create(['role' => 'super_admin', 'status' => 'active']);
         Sanctum::actingAs($admin);
 
         // 1. Create plan
@@ -140,7 +140,7 @@ class SubscriptionPlanTest extends TestCase
 
     public function test_plan_with_subscriptions_cannot_be_deleted(): void
     {
-        $admin = User::factory()->create(['role' => 'super_admin']);
+        $admin = User::factory()->create(['role' => 'super_admin', 'status' => 'active']);
         Sanctum::actingAs($admin);
 
         $plan = Plan::create([
@@ -151,7 +151,7 @@ class SubscriptionPlanTest extends TestCase
             'billing_period' => 'monthly',
         ]);
 
-        $subscriber = User::factory()->create();
+        $subscriber = User::factory()->create(['status' => 'active']);
         Subscription::create([
             'user_id' => $subscriber->id,
             'plan_id' => $plan->id,
@@ -166,7 +166,7 @@ class SubscriptionPlanTest extends TestCase
 
     public function test_unauthorized_users_blocked_from_admin_plans(): void
     {
-        $regularUser = User::factory()->create(['role' => 'user']);
+        $regularUser = User::factory()->create(['role' => 'user', 'status' => 'active']);
 
         // Regular user blocked with 403
         Sanctum::actingAs($regularUser);
@@ -174,8 +174,8 @@ class SubscriptionPlanTest extends TestCase
         $this->postJson('/api/admin/plans', ['name' => 'Hacker Plan'])->assertForbidden();
 
         // Unauthenticated guest blocked with 401
-        auth()->logout();
-        $this->getJson('/api/admin/plans')->assertUnauthorized();
+        app('auth')->forgetGuards();
+        $this->withHeaders(['Authorization' => 'Bearer invalid_token'])->getJson('/api/admin/plans')->assertUnauthorized();
     }
 
     public function test_public_pricing_endpoint_returns_active_and_public_plans(): void
@@ -219,7 +219,7 @@ class SubscriptionPlanTest extends TestCase
         (new SubscriptionPlansSeeder)->run();
         $freePlan = Plan::where('slug', 'free')->firstOrFail();
 
-        $user = User::factory()->create();
+        $user = User::factory()->create(['status' => 'active']);
         Sanctum::actingAs($user);
 
         $res = $this->postJson('/api/billing/subscribe/free', [
@@ -240,7 +240,7 @@ class SubscriptionPlanTest extends TestCase
         (new SubscriptionPlansSeeder)->run();
         $freePlan = Plan::where('slug', 'free')->firstOrFail();
 
-        $user = User::factory()->create();
+        $user = User::factory()->create(['status' => 'active']);
         Subscription::create([
             'user_id' => $user->id,
             'plan_id' => $freePlan->id,
@@ -256,7 +256,7 @@ class SubscriptionPlanTest extends TestCase
         $videoRes = $this->postJson('/api/stories', [
             'title' => 'My Video Adventure',
             'theme' => 'adventure',
-            'selected_outputs' => ['story_text', 'video'],
+            'selected_outputs' => ['video'],
         ]);
         $videoRes->assertStatus(403);
         $this->assertStringContainsString('Video generation is not included', $videoRes->json('message'));
@@ -265,7 +265,7 @@ class SubscriptionPlanTest extends TestCase
         $pagesRes = $this->postJson('/api/stories', [
             'title' => 'My Long Book',
             'theme' => 'adventure',
-            'selected_outputs' => ['story_text', 'story_book_pdf'],
+            'selected_outputs' => ['story_book_pdf'],
             'page_count' => 16,
         ]);
         $pagesRes->assertStatus(403);
