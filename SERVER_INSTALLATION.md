@@ -72,6 +72,14 @@ SESSION_HTTP_ONLY=true
 SESSION_SAME_SITE=lax
 ```
 
+For the configured Redis worker, keep the retry window longer than the
+worker's 3600-second timeout so a long generation job cannot be reserved by a
+second worker while it is still running:
+```env
+QUEUE_CONNECTION=redis
+REDIS_QUEUE_RETRY_AFTER=3900
+```
+
 Add these ArPDF settings:
 ```env
 ARPDF_ENGINE=mpdf
@@ -106,8 +114,8 @@ nano /var/www/ai-sass/backend/config/cors.php
 Update the CORS configuration to fix session issues:
 ```php
 'paths' => ['api/*', 'sanctum/csrf-cookie'],
-'allowed_origins' => ['https://nazstudio.art', 'https://www.nazstudio.art', 'http://localhost:3000', 'http://localhost:5173'],
-'allowed_origins_patterns' => ['*'],
+'allowed_origins' => ['https://nazstudio.art', 'https://www.nazstudio.art'],
+'allowed_origins_patterns' => [],
 'supports_credentials' => true,
 ```
 
@@ -139,9 +147,11 @@ If you're getting logged out frequently:
 php artisan tinker
 >>> config('session')
 
-# Clear sessions
+# If the sessions table is missing, create its migration and apply it safely.
 php artisan session:table
-php artisan migrate:fresh --seed=SessionTable
+php artisan migrate --force
+
+# Do not use migrate:fresh on a live database; it drops application tables.
 
 # Clear all caches
 php artisan cache:clear

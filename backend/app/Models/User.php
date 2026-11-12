@@ -21,8 +21,6 @@ class User extends Authenticatable
         'last_login_at',
         'social_provider',
         'social_id',
-        'social_token',
-        'social_refresh_token',
         'email_verified_at',
     ];
 

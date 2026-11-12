@@ -19,7 +19,7 @@ export default function TermsPage() {
     badge: isRTL ? 'المعايير القانونية والشروط' : 'Legal & Platform Standards',
     title: isRTL ? 'الشروط والأحكام' : 'Terms and Conditions',
     subtitle: isRTL ? 'منصة استوديو الإبداع NazStudio' : 'NazStudio Creative Platform',
-    lastUpdated: isRTL ? 'آخر تحديث: أغسطس 2026' : 'Last Updated: August 2026',
+    lastUpdated: isRTL ? 'آخر تحديث: 12 نوفمبر 2026' : 'Last Updated: November 12, 2026',
     tocTitle: isRTL ? 'فهرس الشروط' : 'Table of Contents',
     backBtn: isRTL ? 'العودة إلى الاستوديو' : 'Back to Studio Home',
     privacyPrompt: isRTL ? 'هل تبحث عن تفاصيل حماية البيانات والخصوصية؟' : 'Looking for details about data protection and privacy?',
@@ -31,8 +31,8 @@ export default function TermsPage() {
         icon: Sparkles,
         title: isRTL ? '1. تعريف الخدمة وطبيعتها' : '1. Service Definition & Scope',
         content: isRTL
-          ? 'منصة NazStudio هي منصة سحابية إبداعية تعتمد على أحدث تقنيات ونماذج الذكاء الاصطناعي التوليدي لإنتاج محتوى ترفيهي وتعليمي مخصص للأطفال (قصص رقمية مصورة، مقاطع فيديو سينمائية متحركة بدقة 4K، تعليق صوتي سينمائي، كتب تلوين تفاعلية، وخلفيات شاشات عالية الدقة)، بناءً على المدخلات النصية والصور الشخصية التي يرفعها المستخدم.'
-          : 'NazStudio is a creative cloud platform leveraging generative AI architectures to produce personalized entertainment and educational content for children (illustrated storybooks, 4K cinematic video stories, expressive voiceovers, printable coloring sheets, and studio wallpapers), tailored to the prompt inputs and photos uploaded by users.',
+          ? 'NazStudio خدمة إبداعية سحابية يمكنها إنشاء قصص وكتب مصورة وصفحات تلوين وتعليق صوتي ومقاطع فيديو مخصصة من مدخلات المستخدم والصور المرفوعة. تعتمد المخرجات والجودة والمدة والتنسيقات على الميزات المتاحة للحساب.'
+          : 'NazStudio is a creative cloud service that can generate personalized stories, illustrated storybooks, coloring pages, narration, and video content from user prompts and uploaded photos. Available outputs, quality, duration, and formats depend on the features enabled for your account.',
       },
       {
         id: 'account-terms',
@@ -46,8 +46,8 @@ export default function TermsPage() {
             ? 'عند رفع صور الأطفال، يُقر المستخدم ويتعهد بأنه الولي الشرعي أو يملك التفويض القانوني الكامل لاستخدام صور الطفل وتحويلها رقمياً إلى أعمال كرتونية وفنية.'
             : 'When uploading photos of children, the user warrants and represents that they are the legal guardian or possess full legal authority to upload and stylize the child’s likeness.',
           isRTL
-            ? 'تتعهد المنصة بالمحافظة على سرية الصور والبيانات الشخصية وفقاً لسياسة الخصوصية المعتمدة لدينا، وتتم معالجة الصور عبر مسارات تشفير آمنة (TLS/HTTPS) دون أي تدخل بشري أو استخدام تجاري خارجي للصور الأصلية.'
-            : 'NazStudio strictly protects the privacy of uploaded media in accordance with our Privacy Policy. Photos are processed exclusively through encrypted API pipelines without human review or external unauthorized commercial use.',
+            ? 'تخضع معالجة الصور والوسائط لسياسة الخصوصية وشروط مزودي الخدمة الخارجيين. قد تُرسل الصور إلى مزود خارجي لتنفيذ طلب التوليد، ولا تضمن هذه الشروط معالجة خاصة أو عدم الاحتفاظ بها من قبل المزود.'
+            : 'Uploaded photos and media are handled under the Privacy Policy and applicable third-party provider terms. Photos may be sent to an external provider for generation; these terms do not guarantee special handling or zero provider retention.',
         ],
       },
       {
@@ -58,14 +58,14 @@ export default function TermsPage() {
           {
             subtitle: isRTL ? 'أ. ملكية المنصة والبرمجيات:' : 'A. Platform Intellectual Property:',
             text: isRTL
-              ? 'جميع البرمجيات، الواجهات الرسومية، خوارزميات الأتمتة الذكية، والتصاميم والشعارات الخاصة بـ NazStudio هي ملكية فكرية حصرية للمنصة، ومحمية بموجب أنظمة حماية حقوق المؤلف والعلامات التجارية.'
-              : 'All software, user interfaces, automation engines, designs, and branding of NazStudio are the exclusive intellectual property of NazStudio, protected by international copyright and trademark laws.',
+              ? 'تخضع حقوق البرمجيات والواجهات والتصاميم والعلامات التجارية للقوانين والاتفاقات المنطبقة. يجب على مشغل الخدمة تأكيد ملكية الأصول والتراخيص قبل نشر تفاصيل قانونية محددة.'
+              : 'Rights in the software, interfaces, designs, and branding are subject to applicable law and agreements. The service operator should confirm ownership and licenses before publishing specific legal claims.',
           },
           {
             subtitle: isRTL ? 'ب. ترخيص المحتوى المُولد للعميل:' : 'B. Client Generated Content License:',
             text: isRTL
-              ? 'تمنح المنصة العميل رخصة استخدام شخصية وعائلية دائمة وغير حصرية للقصص والفيديوهات والكتب المُولدة. لا يحق للعميل إعادة بيع المحتوى تجارياً أو إعادة توزيعه كمنتج رقمي ربحي دون اتفاق خطي مسبق مع إدارة NazStudio.'
-              : 'NazStudio grants clients a perpetual, personal, and non-exclusive license to enjoy and share the generated stories and videos within their family circle. Commercial resale or broadcast distribution requires prior written authorization.',
+              ? 'تعتمد حقوقك وحقوق المنصة في المدخلات والمخرجات على القانون المعمول به والاتفاقات التي تنطبق على حسابك. ينبغي لمشغل الخدمة اعتماد شروط ترخيص واضحة قبل نشر ادعاء بمنح حقوق دائمة أو حصرية.'
+              : 'Your and NazStudio’s rights in inputs and generated outputs are subject to applicable law and agreements governing your account. The service operator should approve a clear license before claiming permanent or exclusive rights.',
           },
         ],
       },
@@ -75,14 +75,14 @@ export default function TermsPage() {
         title: isRTL ? '4. الرسوم والباقات واستهلاك النقاط' : '4. Pricing, Credits & Subscription Plans',
         points: [
           isRTL
-            ? 'تتوفر خدمات المنصة عبر باقات رقمية فورية أو اشتراكات شهرية/سنوية تمنح رصيداً محدداً من القصص والفيديوهات وكتب التلوين.'
-            : 'NazStudio services are available via instant credit packages or recurrent subscription plans conferring monthly story quotas, 4K rendering credits, and coloring sheet allowances.',
+            ? 'قد تقدم NazStudio خدماتها عبر باقات رصيد أو اشتراكات. تظهر الخطة الحالية ومقدار الرصيد والأسعار المنطبقة داخل التطبيق قبل الشراء.'
+            : 'NazStudio services may be offered through credit packages or subscription plans. The current plan, credit amounts, and applicable prices are shown in the application before purchase.',
           isRTL
-            ? 'يتم استهلاك النقاط فور بدء توليد القصة بنجاح على خوادم المعالجة السحابية.'
-            : 'Credits are deducted immediately upon confirming the creative pipeline execution on cloud render clusters.',
+              ? 'قد يحجز النظام الرصيد قبل المعالجة ثم يعتمد الخصم أو يعيد الرصيد وفق النتيجة المسجلة وسياسة الرصيد المعروضة داخل التطبيق. راجع سجل المعاملات لمعرفة نتيجة الطلب.'
+            : 'Generation may reserve credits before processing and finalize or restore them according to the recorded outcome and the applicable in-product credit policy. Check the transaction history for the result of a request.',
           isRTL
-            ? 'الأسعار والرسوم معلنة بعملة الريال السعودي (SAR) أو الدولار الأمريكي (USD) بحسب بوابة الدفع المختارة، وقد تخضع للتحديث الدوري مع تطبيق أسعار التجديد المعلنة.'
-            : 'All prices are clearly stated in SAR or USD depending on selected payment gateways (Stripe, Moyasar, MyFatoorah, PayPal) and are subject to transparent periodic schedule adjustments.',
+            ? 'تظهر الأسعار والعملة وشروط التجديد داخل التطبيق قبل إتمام الشراء، وتطبق على العملية الأسعار المعروضة عند الدفع.'
+            : 'Prices, currency, and renewal terms are displayed in the application before checkout. The price shown at payment applies to that transaction.',
         ],
       },
       {
@@ -93,14 +93,14 @@ export default function TermsPage() {
           {
             subtitle: isRTL ? 'أ. المخرجات والخدمات الرقمية:' : 'A. Instant Digital Generations:',
             text: isRTL
-              ? 'نظراً لأن معالجة الذكاء الاصطناعي واستهلاك موارد السيرفرات تبدأ فورياً عند ضغط زر التوليد، فإن المبالغ والنقاط المستهلكة في عمليات التوليد الرقمي المكتملة غير قابلة للاسترداد النقدي.'
-              : 'Because GPU compute resources and AI model execution commence instantaneously upon request, completed digital generations and consumed credits are non-refundable once processed.',
+              ? 'تُراجع طلبات الاسترداد وفق الأنظمة المعمول بها وشروط الدفع المعروضة وقت الشراء. تُعالج إعادة الرصيد الناتجة عن أخطاء التوليد وفق سياسة الرصيد داخل التطبيق وسجل نتيجة الطلب.'
+              : 'Refund requests are reviewed under applicable law and the checkout terms shown at purchase. Credit restoration for generation errors follows the in-product credit policy and the recorded outcome of the request.',
           },
           {
-            subtitle: isRTL ? 'ب. المنتجات المطبوعة الفاخرة (حسب الطلب):' : 'B. Physical Custom Printed Editions:',
+            subtitle: isRTL ? 'ب. إلغاء الاشتراك:' : 'B. Subscription cancellation:',
             text: isRTL
-              ? 'تُطبع الكتب الفاخرة وتُجلّد خصيصاً باسم وملامح الطفل، لذا لا يمكن إلغاء الطلب بعد دخوله مرحلة الطباعة، إلا في حال وجود خطأ مطبعي جسيم من جانبنا أو تلف أثناء الشحن يتم الإبلاغ عنه خلال 48 ساعة من الاستلام.'
-              : 'Custom physical editions are printed and bound specifically for each hero. Orders cannot be canceled once sent to press, except in the documented event of manufacturing defect or shipping damage reported within 48 hours with photographic proof.',
+              ? 'يمكن إلغاء الاشتراك من إعدادات الحساب إذا كانت الميزة متاحة. تبقى صلاحية الخطة حتى نهاية الفترة المدفوعة وفق حالة الاشتراك المعروضة داخل التطبيق.'
+              : 'You may cancel a subscription from account settings when that control is available. Access for the paid term follows the subscription status displayed in the application.',
           },
         ],
       },
@@ -113,8 +113,8 @@ export default function TermsPage() {
             ? 'تعتمد دقة الملامح الكرتونية على جودة وإضاءة الصورة المرفوعة من قبل العميل، وتبذل نماذجنا أقصى جهد لتقديم أفضل محاكاة فنية ممكنة.'
             : 'Artistic caricature results correlate directly with user photo quality and lighting conditions. Our neural pipelines exert state-of-the-art fidelity while preserving creative cartoon aesthetics.',
           isRTL
-            ? 'تحرص المنصة على توفير جهوزية خدمة مستمرة تفوق 99.5%، ولكنها غير مسؤولة عن الانقطاعات العالمية الطارئة الناتجة عن صيانة مزودي خدمات السحابية أو بوابات الدفع الخارجية.'
-            : 'We endeavor to maintain 99.5%+ uptime, yet cannot be held liable for upstream third-party cloud infrastructure maintenance or global payment clearing halts beyond our reasonable control.',
+              ? 'قد تتوقف الخدمة مؤقتاً بسبب الصيانة أو الأعطال أو انقطاع خدمات الأطراف الخارجية. لا تنشر المنصة ضماناً لمستوى توفر محدد ما لم يوجد اتفاق مستوى خدمة معتمد.'
+              : 'The service may be temporarily unavailable due to maintenance, faults, or third-party outages. No specific uptime guarantee is made unless an approved service-level agreement applies.',
         ],
       },
       {
@@ -122,8 +122,8 @@ export default function TermsPage() {
         icon: Scale,
         title: isRTL ? '7. القانون المعمول به وتسوية النزاعات' : '7. Governing Law & Dispute Resolution',
         content: isRTL
-          ? 'تخضع هذه الشروط والأحكام وتُفسر وفقاً للأنظمة واللوائح المعمول بها في المملكة العربية السعودية. ويتم حل أي خلاف ودياً بالتواصل مع فريق الدعم، وفي حال تعذر ذلك تختص المحاكم النظامية المختصة في المملكة بالنظر فيه.'
-          : 'These Terms of Service are governed by and construed in accordance with the laws and regulations of the Kingdom of Saudi Arabia. Any dispute shall first seek amicable resolution, failing which jurisdiction lies with the competent courts in KSA.',
+          ? 'يجب على مشغل الخدمة تحديد القانون الحاكم والجهة القضائية المختصة ومراجعة هذه الصياغة قانونياً قبل نشرها. لا تُنشئ هذه الصفحة التزاماً باختصاص دولة بعينها.'
+          : 'The service operator must identify the governing law and competent forum and obtain legal review before publishing this section. This page does not assert a particular jurisdiction.',
       },
     ],
   };

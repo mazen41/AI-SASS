@@ -170,8 +170,8 @@ export default function CustomerDashboardPage() {
 
               <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
                 {isRTL
-                  ? 'حوّل خيال طفلك إلى مغامرات سينمائية بدقة 4K، وكتب قصصية مصورة، وصفحات تلوين جاهزة للطباعة.'
-                  : 'Transform your child into the hero of cinematic 4K video stories, illustrated keepsake storybooks, and printable coloring sheets.'}
+                  ? 'حوّل خيال طفلك إلى قصص وكتب مصورة وصفحات تلوين ومقاطع فيديو مخصصة.'
+                  : 'Turn your child’s imagination into personalized stories, illustrated books, coloring pages, and videos.'}
               </p>
 
               {/* Quick stats pills */}
@@ -491,7 +491,7 @@ export default function CustomerDashboardPage() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {story.assembled_video_url && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-pink/10 text-brand-pink text-[10px] font-mono font-bold">
-                          <Film size={10} /> 4K Video
+                          <Film size={10} /> {locale === 'ar' ? 'فيديو' : 'Video'}
                         </span>
                       )}
                       {story.outputs?.some((o) => o.output_type === 'story_book_pdf') && (

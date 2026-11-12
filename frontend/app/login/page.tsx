@@ -156,7 +156,7 @@ export default function LoginPage() {
               <p className="text-slate-300 text-sm mt-3 max-w-md leading-relaxed">
                 {locale === 'ar'
                   ? 'مغامرات طفلك بانتظارك. تابع إنتاج الفيديوهات السينمائية، والكتب المصورة، وصفحات التلوين بكل سهولة.'
-                  : 'Access your story archives, render new 4K animated chapters, and export keepsake storybooks in minutes.'}
+                  : 'Access your stories, create illustrated books, explore narration, and continue making new memories.'}
               </p>
             </div>
 
@@ -165,9 +165,9 @@ export default function LoginPage() {
               <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs font-mono text-cyan-300">
                 <span className="flex items-center gap-1.5">
                   <Film className="w-3.5 h-3.5" />
-                  {locale === 'ar' ? 'المشروع الأخير' : 'LATEST PRODUCTION'}
+                  {locale === 'ar' ? 'مثال على المخرجات' : 'SAMPLE OUTPUT'}
                 </span>
-                <span className="text-emerald-400">4K RENDERED</span>
+                <span className="text-emerald-400">{locale === 'ar' ? 'إنشاء بالذكاء الاصطناعي' : 'AI CREATION'}</span>
               </div>
               <div className="mt-3">
                 <div className="text-base font-bold text-white font-display">
@@ -175,13 +175,13 @@ export default function LoginPage() {
                 </div>
                 <div className="text-xs text-slate-300 mt-1">
                   {locale === 'ar'
-                    ? '٤ فصول كاملة · تعليق صوتي سينمائي · كتاب جاهز للطباعة'
-                    : '4 chapters · Dolby Voice Narration · 36-page storybook'}
+                    ? 'قصص مصورة · تعليق صوتي · صفحات تلوين'
+                    : 'Illustrated stories · narration · coloring pages'}
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Character Likeness: 99.4%</span>
-                <span>Fal.ai + Claude</span>
+                <span>{locale === 'ar' ? 'أدوات إبداعية مدعومة بالذكاء الاصطناعي' : 'AI-assisted creative tools'}</span>
+                <span>NazStudio</span>
               </div>
             </div>
 
@@ -189,9 +189,9 @@ export default function LoginPage() {
             <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>SSL Encrypted Connection</span>
+                <span>{locale === 'ar' ? 'دخول آمن إلى حسابك' : 'Secure access to your account'}</span>
               </div>
-              <span>Over 50K Stories Generated</span>
+                <span>{locale === 'ar' ? 'سجّل الدخول لفتح مساحة عملك' : 'Sign in to open your workspace'}</span>
             </div>
           </div>
 
@@ -241,20 +241,12 @@ export default function LoginPage() {
                 <StudioInput
                   label={t('login_password')}
                   labelRight={
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        alert(
-                          locale === 'ar'
-                            ? 'لإعادة تعيين كلمة المرور، يرجى التواصل مع الدعم الفني: support@nazstudio.art'
-                            : 'To reset your password, please contact support: support@nazstudio.art'
-                        );
-                      }}
+                    <Link
+                      href="/forgot-password"
                       className="text-xs font-semibold text-[var(--k-blue)] hover:underline"
                     >
                       {t('login_forgot')}
-                    </a>
+                    </Link>
                   }
                   type={showPass ? 'text' : 'password'}
                   value={password}

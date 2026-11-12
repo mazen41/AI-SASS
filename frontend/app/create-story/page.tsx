@@ -598,13 +598,13 @@ export default function CreateStoryPage() {
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {isRTL
-                    ? 'فيديو 4K يشمل القصة كاملة مع تعليق صوتي سينمائي تلقائياً.'
-                    : 'Select deliverables. 4K Video stories already include the full narrative and narration voiceover.'}
+                    ? 'أنشئ مخرجات القصة التي تختارها، وقد تختلف الميزات حسب إعدادات حسابك.'
+                    : 'Choose the story outputs you want. Available features depend on your account configuration.'}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* 4K Video Story */}
+                {/* Story video output */}
                 <div
                   onClick={() => handleOutputToggle('video')}
                   className={`p-5 rounded-2xl border transition-all cursor-pointer relative flex items-start gap-3.5 ${
@@ -619,7 +619,7 @@ export default function CreateStoryPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                        {isRTL ? 'فيديو سينمائي 4K' : 'Cinematic 4K Video'}
+                        {isRTL ? 'فيديو القصة' : 'Story Video'}
                       </h4>
                       <input
                         type="checkbox"
@@ -630,8 +630,8 @@ export default function CreateStoryPage() {
                     </div>
                     <p className="text-[11px] text-slate-400 mt-1">
                       {isRTL
-                        ? 'مقطع فيديو كامل بدقة 4K مع تعليق صوتي متزامن ومؤثرات صوتية'
-                        : 'Full 4K animated video with lip-sync narration and atmospheric audio'}
+                        ? 'مقطع فيديو مخصص للقصة؛ تختلف الجودة والمدة حسب الإعدادات المتاحة.'
+                        : 'A personalized story video. Resolution and duration depend on the available generation settings.'}
                     </p>
                   </div>
                 </div>

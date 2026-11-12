@@ -102,7 +102,7 @@ export default function StoryViewPage() {
         const opt = {
           margin: 0,
           filename: `${outputType === 'story_book_pdf' ? 'story' : 'coloring'}_book.pdf`,
-          image: { type: 'jpeg', quality: 0.95 },
+          image: { type: 'jpeg' as const, quality: 0.95 },
           html2canvas: {
             scale: 2,
             useCORS: true,
@@ -111,7 +111,7 @@ export default function StoryViewPage() {
             letterRendering: true,
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        };
+        } as const;
 
         const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
         const res = await apiUploadStoryPdf(story.id, pdfBlob, outputType);
@@ -335,7 +335,7 @@ export default function StoryViewPage() {
     },
     {
       key: 'video' as StoryTab,
-      label: isRtl ? '🎞️ الفيديو السينمائي' : '🎞️ 4K Video',
+      label: isRtl ? '🎞️ فيديو القصة' : '🎞️ Story Video',
       condition: selectedOutputs.includes('video') || Boolean(finalVideoUrl),
     },
   ].filter((t) => t.alwaysShow || t.condition);
@@ -455,7 +455,7 @@ export default function StoryViewPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
               {[
                 { key: 'generate_story', label: '1. Scriptwriting', prog: 18 },
-                { key: 'generate_images', label: '2. 4K Character Art', prog: 42 },
+                { key: 'generate_images', label: '2. Character Illustrations', prog: 42 },
                 { key: 'generate_narration', label: '3. Voice Studio', prog: 84 },
                 { key: 'assemble_video', label: '4. Video Render', prog: 98 },
               ].map((st) => {
@@ -550,7 +550,7 @@ export default function StoryViewPage() {
                             className="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-blue hover:text-brand-purple transition-colors"
                           >
                             <Download size={13} />
-                            <span>{isRtl ? 'تحميل الصورة' : 'Download 4K Art'}</span>
+                            <span>{isRtl ? 'تحميل الصورة' : 'Download image'}</span>
                           </a>
                         </div>
                       )}
@@ -667,16 +667,16 @@ export default function StoryViewPage() {
           </div>
         )}
 
-        {/* TAB 4: 4K VIDEO PLAYER */}
+        {/* TAB 4: STORY VIDEO PLAYER */}
         {activeTab === 'video' && (
           <div className="studio-card p-6 sm:p-8 rounded-3xl border border-white/10 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-white/10">
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">
-                  {isRtl ? 'العرض السينمائي 4K' : 'Cinematic 4K Story Video'}
+                  {isRtl ? 'فيديو القصة' : 'Story Video'}
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Full animated feature with atmospheric Dolby audio narration
+                  {isRtl ? 'شاهد أو حمّل الفيديو الناتج.' : 'Play or download the generated video.'}
                 </p>
               </div>
 
@@ -688,7 +688,7 @@ export default function StoryViewPage() {
                   className="py-2.5 px-5 rounded-xl text-xs font-bold bg-brand-pink text-white hover:opacity-90 transition-all flex items-center gap-2 shrink-0 self-start sm:self-auto shadow-md shadow-brand-pink/20"
                 >
                   <Download size={14} />
-                  <span>{isRtl ? 'تحميل الفيديو MP4' : 'Download 4K Video'}</span>
+                  <span>{isRtl ? 'تحميل الفيديو MP4' : 'Download video'}</span>
                 </a>
               )}
             </div>

@@ -449,7 +449,7 @@ export default function AdminStoriesPage() {
                         <div className="flex items-center gap-2.5">
                           <Film size={18} className="text-brand-pink" />
                           <div>
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">4K Video</p>
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Video</p>
                             <span className="text-[10px] text-slate-400 font-mono">
                               {inspectStory.assembled_video_url ? 'Rendered' : 'Not Generated'}
                             </span>

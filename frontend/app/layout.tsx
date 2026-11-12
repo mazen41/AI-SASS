@@ -1,16 +1,37 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { LangProvider } from '@/context/LangContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://nazstudio.art'),
   title: 'NazStudio — AI Storytelling & Cinematic Studio',
   description: 'Turn imagination into cinema. Create personalized illustrated storybooks, cinematic videos, printable coloring sheets, and stories with AI.',
+  applicationName: 'NazStudio',
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    url: 'https://nazstudio.art/',
+    siteName: 'NazStudio',
+    title: 'NazStudio — AI Storytelling & Cinematic Studio',
+    description: 'Create personalized storybooks, stories, coloring pages, narration, and videos with AI.',
+    images: [{ url: '/logo.png', alt: 'NazStudio' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'NazStudio — AI Storytelling & Cinematic Studio',
+    description: 'Create personalized storybooks, stories, coloring pages, narration, and videos with AI.',
+    images: ['/logo.png'],
+  },
+  robots: { index: true, follow: true },
   icons: {
-    icon: '/favicon.ico',
+    icon: '/logo.png',
+    apple: '/logo.png',
   },
 };
+
+export const viewport: Viewport = { themeColor: '#0B0F1A' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

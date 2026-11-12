@@ -193,6 +193,8 @@ function RegisterForm() {
         password,
         password_confirmation: confirm,
         package_id: selectedPackage.id,
+        terms_accepted: true,
+        privacy_accepted: true,
       });
       setPendingId(res.pending_registration_id);
       sessionStorage.setItem('nazstudio_pending_registration', res.pending_registration_id);

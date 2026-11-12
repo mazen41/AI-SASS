@@ -60,6 +60,8 @@ class RegistrationController extends Controller
             'password'              => ['required', 'string', 'min:8', 'confirmed'],
             // package_id is REQUIRED — this is the enforcement point for task 4.
             'package_id'            => ['required', 'integer', 'exists:packages,id'],
+            'terms_accepted'        => ['required', 'accepted'],
+            'privacy_accepted'      => ['required', 'accepted'],
         ]);
 
         $package = Package::where('id', $request->package_id)->where('is_active', true)->first();
@@ -106,6 +108,9 @@ class RegistrationController extends Controller
             'email'          => $request->email,
             'password_hash'  => Hash::make($request->password),
             'package_id'     => $package->id,
+            'terms_version'  => '2026-11-12',
+            'privacy_version'=> '2026-11-12',
+            'legal_accepted_at' => now(),
             'otp_hash'       => Hash::make($otp),
             'otp_expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES),
             'last_otp_sent_at' => now(),

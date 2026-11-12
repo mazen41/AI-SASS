@@ -19,7 +19,7 @@ export default function PrivacyPolicyPage() {
     badge: isRTL ? 'حماية البيانات والخصوصية الفائقة' : 'Data Protection & Privacy Safeguards',
     title: isRTL ? 'سياسة الخصوصية' : 'Privacy Policy',
     subtitle: isRTL ? 'التزام منصة NazStudio بحماية بياناتك وصور أطفالك' : 'NazStudio Commitment to Family and Child Data Privacy',
-    lastUpdated: isRTL ? 'آخر تحديث: أغسطس 2026' : 'Last Updated: August 2026',
+    lastUpdated: isRTL ? 'آخر تحديث: 12 نوفمبر 2026' : 'Last Updated: November 12, 2026',
     tocTitle: isRTL ? 'فهرس الخصوصية' : 'Privacy Index',
     backBtn: isRTL ? 'العودة إلى الاستوديو' : 'Back to Studio Home',
     termsPrompt: isRTL ? 'هل تود مراجعة الشروط والأحكام العامة للمنصة؟' : 'Looking for the general Terms and Conditions?',
@@ -31,8 +31,8 @@ export default function PrivacyPolicyPage() {
         icon: Shield,
         title: isRTL ? '1. التزامنا بحماية الخصوصية' : '1. Our Privacy Commitment',
         content: isRTL
-          ? 'نولي في NazStudio أولوية قصوى لخصوصية عملائنا وأطفالهم. توضح هذه السياسة آلية جمع البيانات والصور، وكيفية معالجتها عبر خوارزميات الذكاء الاصطناعي، والإجراءات المشددة المتخذة لمنع أي وصول غير مصرح به.'
-          : 'At NazStudio, we treat the privacy of our users and their children with the highest level of vigilance. This Privacy Policy details how data and photos are collected, securely processed by our AI pipelines, and safeguarded against unauthorized access.',
+          ? 'توضح هذه السياسة أنواع البيانات التي قد تجمعها NazStudio وكيف يمكن استخدامها في تشغيل الخدمة. راجع الأقسام التالية لمعرفة ما قد يُرسل إلى مزودي الخدمات الخارجيين.'
+          : 'This policy describes categories of information NazStudio may collect and how they may be used to operate the service, including when information is sent to external providers.',
       },
       {
         id: 'collected-data',
@@ -41,16 +41,16 @@ export default function PrivacyPolicyPage() {
         points: [
           isRTL
             ? 'معلومات الحساب الأساسية: الاسم، عنوان البريد الإلكتروني، وتفضيلات لغة الاستوديو.'
-            : 'Basic Account Data: User name, email address, password hash, and studio locale preference.',
+            : 'Account details such as your name, email address, authentication data, and language preference.',
           isRTL
             ? 'بيانات بطل القصة: اسم الطفل المستعار أو الحقيقي، جنسه، وفئته العمرية لتكييف السرد واللغة التربوية المناسبة.'
-            : 'Hero Identity Data: Child’s first name or hero alias, gender, and age bracket to tailor age-appropriate educational storytelling.',
+            : 'Story details you provide, such as a character name, age, and preferences, to create the requested content.',
           isRTL
-            ? 'الصور المرفوعة: صور الوجه المرفوعة بهدف تدريب واستخلاص الملامح الكرتونية لشخصية القصة فقط دون أي استخدام آخر.'
-            : 'Uploaded Hero Photos: Facial imagery uploaded strictly to synthesize cartoon representations and character consistency across story frames.',
+            ? 'الصور المرفوعة والوسائط المُنشأة المرتبطة بمشاريعك. قد تُرسل الصور إلى مزودي الذكاء الاصطناعي والوسائط المهيئين لإنشاء المخرجات المطلوبة.'
+            : 'Uploaded photos and generated media associated with your projects. Photos may be transmitted to configured AI/media providers to create requested outputs.',
           isRTL
-            ? 'بيانات المعاملات والاشتراكات: معرّفات الدفع وتاريخ الفواتير (لا نخزن أرقام البطاقات الائتمانية الكاملة نهائياً).'
-            : 'Billing & Transaction Identifiers: Tokenized transaction records and subscription tiers (NazStudio never stores raw credit card details).',
+            ? 'سجلات الاشتراكات ومعاملات الدفع. قد يتولى مزود الدفع معالجة بيانات الدفع؛ راجع شروطه لمعرفة البيانات التي يحتفظ بها.'
+            : 'Subscription and payment transaction records. Payment details may be handled by the selected payment provider; consult its terms for what it stores.',
         ],
       },
       {
@@ -61,52 +61,52 @@ export default function PrivacyPolicyPage() {
           {
             subtitle: isRTL ? 'أ. التوليد الفني والسينمائي المخصص:' : 'A. Personalized Creative Synthesis:',
             text: isRTL
-              ? 'تُستخدم الصور المرفوعة كنقطة مرجعية رقمية (Face Vector Embeddings) لتحويل ملامح الطفل إلى شخصية كرتونية في مشاهد القصة والفيديوهات والكتب.'
-              : 'Uploaded photos serve exclusively as visual feature embeddings to render character-consistent cartoon artwork across storybook illustrations, videos, and coloring pages.',
+              ? 'قد تُرسل الصور المرفوعة إلى مزودي الذكاء الاصطناعي والوسائط المهيئين لإنشاء المخرجات التي طلبتها. تختلف المعالجة والاحتفاظ بحسب المزود.'
+              : 'Uploaded photos may be sent to configured AI and media providers to generate the outputs you request. Processing and retention depend on each provider.',
           },
           {
-            subtitle: isRTL ? 'ب. عدم استخدام الصور في الإعلانات أو النماذج العامة:' : 'B. Zero Commercial or Public Model Training:',
+            subtitle: isRTL ? 'ب. مزودو الخدمات الخارجية:' : 'B. External Service Providers:',
             text: isRTL
-              ? 'لا نقوم إطلاقاً ببيع أو تأجير صور أطفالكم أو بياناتكم الشخصية لأي طرف ثالث، ولا تُستخدم صور العملاء لتدريب نماذج ذكاء اصطناعي عامة متاحة للجمهور.'
-              : 'We strictly never sell, license, or broker your children’s images or personal data. Customer photos are never used to train publicly distributed AI models.',
+            ? 'لا ترفع صوراً إلا إذا كنت مخولاً بذلك. قد يعالجها مزود خارجي لتنفيذ طلبك، وتخضع معالجته لشروطه وسياساته. راجعها قبل رفع صور حساسة.'
+          : 'Photos may be processed by external providers to fulfill your request and are subject to their terms and privacy practices. Review those practices before uploading sensitive images.',
           },
         ],
       },
       {
         id: 'child-protection',
         icon: Lock,
-        title: isRTL ? '4. حماية خصوصية الأطفال (COPPA & GDPR-K)' : '4. Child Privacy Protection Standards',
+        title: isRTL ? '4. صور الأطفال وموافقة ولي الأمر' : '4. Children’s Photos and Parental Authorization',
         content: isRTL
-          ? 'نحن ملتزمون بالمعايير العالمية لحماية خصوصية الأطفال على الإنترنت (COPPA و GDPR-K). يُشترط أن تتم عملية إنشاء الحساب ورفع الصور ودفع الاشتراكات حصراً من قبل الولي الشرعي أو الأب أو الأم الراشدين.'
-          : 'NazStudio strictly complies with global children’s online privacy frameworks including COPPA and GDPR-K. Account registration, image uploads, and billing must be conducted exclusively by adult parents or legal guardians.',
+          ? 'يجب أن ينشئ الحساب ويرفع الصور وليّ أمر أو شخص بالغ مخوّل. لا نزعم هنا اعتمادًا أو امتثالًا قانونيًا محددًا؛ ينبغي مراجعة المتطلبات القانونية المنطبقة على بلدك قبل رفع صور الأطفال.'
+          : 'An adult parent or authorized guardian should create the account and upload a child’s photo. This policy does not claim a specific certification or legal compliance status; users and the company should review applicable child-privacy requirements in their jurisdictions.',
       },
       {
         id: 'infrastructure-security',
         icon: Server,
-        title: isRTL ? '5. أمان البنية السحابية ومعالجة الذكاء الاصطناعي' : '5. Cloud Security & AI Processing',
+        title: isRTL ? '5. البنية السحابية ومعالجة الذكاء الاصطناعي' : '5. Infrastructure & AI Processing',
         points: [
           isRTL
-            ? 'تُشفر كافة البيانات المتدفقة بين متصفحك وسيرفراتنا باستخدام بروتوكولات التشفير المتقدمة (TLS 1.3 / SSL 256-bit).'
-            : 'All network traffic between user devices and our backend clusters is encrypted via TLS 1.3 with 256-bit cipher suites.',
+            ? 'تعتمد حماية البيانات على إعدادات التطبيق والبنية التحتية والخدمات الخارجية المستخدمة. ينبغي لمشغل الخدمة توثيق التدابير التقنية الفعلية قبل نشر ادعاءات أمنية محددة.'
+            : 'Data protection depends on the application, infrastructure, and external services in use. The operator should document the implemented safeguards before making specific security claims.',
           isRTL
-            ? 'تتم المعالجة عبر خوادم سحابية معزولة ومؤمنة (sandboxed ephemeral GPU nodes)، وتُحذف الملفات المؤقتة المستخدمة في مراحل التوليد فور اكتمال معالجة المشهد.'
-            : 'AI generation executes in ephemeral, isolated GPU sandboxes, and intermediate raster tiles are scrubbed immediately once the scene finishes rendering.',
+            ? 'قد تستخدم عملية التوليد خدمات ذكاء اصطناعي ومعالجة وسائط خارجية. تعتمد مدة الاحتفاظ بالملفات المؤقتة وبيانات المزود على الإعدادات وشروط كل خدمة.'
+            : 'Generation may use external AI and media-processing providers. Temporary-file and provider-side retention depend on the configured services; do not assume immediate deletion.',
           isRTL
-            ? 'مزودو نماذج الذكاء الاصطناعي الموثوقون (مثل Fal.ai و Anthropic) ملزمون باتفاقيات خصوصية مشددة تمنعهم من الاحتفاظ بالصور المدخلة لأغراضهم الخاصة.'
-            : 'Our enterprise AI compute partners (e.g. Fal.ai, Anthropic) operate under stringent data processing agreements prohibiting secondary retention or ingestion of user inputs.',
+            ? 'قد تُرسل الصور أو الوسائط إلى مزودي التوليد أو اللغة أو التعليق الصوتي لتنفيذ طلبك. راجع شروط كل مزود؛ لا تفترض وجود اتفاقية معالجة أو مدة حذف محددة.'
+            : 'Photos and generated media may be sent to image, language, or narration providers to fulfill your request. Review each provider’s terms; no specific data-processing agreement or deletion period is claimed here.',
         ],
       },
       {
         id: 'data-retention',
         icon: HardDrive,
-        title: isRTL ? '6. الاحتفاظ بالبيانات وحق الحذف الفوري' : '6. Data Retention & Right to Erasure',
+        title: isRTL ? '6. الاحتفاظ بالبيانات وطلبات الحذف' : '6. Data Retention & Deletion Requests',
         points: [
           isRTL
-            ? 'يمكن للعميل في أي وقت حذف أي قصة أو صورة بطل من لوحة التحكم الخاصة به، وسيتم شطب الملفات نهائياً من وحدات التخزين السحابية خلال مهلة أقصاها 24 ساعة.'
-            : 'Users maintain continuous control to delete any story project, video asset, or uploaded hero portrait directly from the Studio Dashboard, triggering permanent deletion within 24 hours.',
+            ? 'يمكنك حذف المشاريع المتاحة من لوحة التحكم. حذف السجل من التطبيق لا يثبت وحده حذف النسخ الاحتياطية أو نسخ مزودي الخدمة فورًا. تواصل مع مشغل الخدمة لطلب حذف البيانات.'
+            : 'You may delete available projects through the dashboard. Deletion from application records does not by itself establish an immediate deletion deadline for backups or third-party provider copies. Contact the service operator for a data deletion request.',
           isRTL
-            ? 'يحق للمستخدم طلب إغلاق الحساب ومحو كافة السجلات المرتبطة به بالتواصل مع فريق الدعم الفني، مع تأكيد الحذف غير القابل للاسترجاع.'
-            : 'Users can request complete account closure and cryptographic erasure of all historical activity by reaching out to our privacy desk.',
+            ? 'قد يتطلب إغلاق الحساب وطلبات الحذف مساعدة مشغل الخدمة. لا يمكننا ضمان محو تشفيري أو موعد إكمال ما لم تدعم أنظمة التخزين والنسخ الاحتياطي ذلك.'
+            : 'Account closure and deletion requests may require operator assistance. We cannot promise cryptographic erasure or a completion deadline unless the relevant storage and backup systems support it.',
         ],
       },
       {
@@ -114,8 +114,8 @@ export default function PrivacyPolicyPage() {
         icon: HelpCircle,
         title: isRTL ? '7. التواصل ومسؤول الخصوصية' : '7. Contact & Privacy Inquiries',
         content: isRTL
-          ? 'إذا كان لديك أي استفسار أو طلب يتعلق بحماية بياناتك وخصوصية طفلك على منصة NazStudio، يُرجى مراسلة فريق الخصوصية والأمن السيبراني على: privacy@nazstudio.art وسيتم الرد على طلبك خلال 48 ساعة عمل.'
-          : 'For questions, rights requests, or regulatory clarifications regarding family data safety at NazStudio, please direct inquiries to our data compliance desk at privacy@nazstudio.art — we respond within 48 business hours.',
+          ? 'للاستفسارات المتعلقة بالخصوصية أو طلبات الحذف، استخدم وسيلة الدعم المنشورة على موقع NazStudio. يجب على مشغل الخدمة تأكيد عنوان اتصال مخصص بالخصوصية ومدة الرد قبل نشرهما.'
+          : 'For privacy questions or deletion requests, use the support contact published on the NazStudio website. A dedicated privacy contact and response-time commitment must be confirmed by the service operator before publication.',
       },
     ],
   };

@@ -105,6 +105,8 @@ export async function apiRegisterInitiate(payload: {
   password: string;
   password_confirmation: string;
   package_id: number; // required — no more optional package
+  terms_accepted: true;
+  privacy_accepted: true;
 }): Promise<RegisterInitiateResponse> {
   return apiFetch<RegisterInitiateResponse>('/register/initiate', {
     method: 'POST',
@@ -166,6 +168,32 @@ export async function apiLogin(payload: {
   password: string;
 }): Promise<AuthResponse> {
   return apiFetch<AuthResponse>('/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function apiExchangeSocialCode(code: string): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>('/auth/exchange', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}
+
+export async function apiRequestPasswordReset(email: string): Promise<{ message: string }> {
+  return apiFetch('/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function apiResetPassword(payload: {
+  email: string;
+  token: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<{ message: string }> {
+  return apiFetch('/reset-password', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

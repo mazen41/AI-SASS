@@ -69,6 +69,7 @@ Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 // Social auth routes
 Route::get('/auth/{provider}', [SocialAuthController::class, 'redirect']);
 Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback']);
+Route::post('/auth/exchange', [SocialAuthController::class, 'exchange']);
 
 // Webhook routes (no auth, signature verified internally)
 Route::post('/webhooks/stripe',  [StripeWebhookController::class,  'handle']);

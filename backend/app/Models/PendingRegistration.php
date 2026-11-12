@@ -11,6 +11,7 @@ class PendingRegistration extends Model
 
     protected $fillable = [
         'name', 'email', 'password_hash', 'package_id',
+        'terms_version', 'privacy_version', 'legal_accepted_at',
         'otp_hash', 'otp_expires_at', 'otp_attempts', 'otp_resend_count',
         'last_otp_sent_at', 'email_verified_at', 'status',
         'moyasar_payment_id', 'myfatoorah_invoice_id', 'created_user_id', 'token_claimed_at', 'expires_at',
@@ -25,6 +26,7 @@ class PendingRegistration extends Model
             'otp_expires_at'    => 'datetime',
             'last_otp_sent_at'  => 'datetime',
             'email_verified_at' => 'datetime',
+            'legal_accepted_at' => 'datetime',
             'token_claimed_at'  => 'datetime',
             'expires_at'        => 'datetime',
         ];
@@ -69,6 +71,15 @@ class PendingRegistration extends Model
                 'password'          => $this->password_hash,
                 'email_verified_at' => $this->email_verified_at ?? now(),
             ]);
+
+            if ($this->legal_accepted_at && $this->terms_version && $this->privacy_version) {
+                LegalAcceptance::create([
+                    'user_id' => $user->id,
+                    'terms_version' => $this->terms_version,
+                    'privacy_version' => $this->privacy_version,
+                    'accepted_at' => $this->legal_accepted_at,
+                ]);
+            }
 
             $user->assignPackage($this->package_id);
 

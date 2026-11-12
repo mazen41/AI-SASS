@@ -47,10 +47,10 @@ export default function BillingPage() {
   const t = {
     title: isRTL ? 'خطط الاشتراك والترقية' : 'Choose Your Studio Tier',
     subtitle: isRTL
-      ? 'اختر الخطة المناسبة لفتح إمكانيات غير محدودة لتوليد القصص السينمائية'
-      : 'Unlock high-definition 4K video renders, keepsake storybooks, and priority AI queue',
+      ? 'راجع الخطط المتاحة وميزاتها ورصيدها قبل اختيار الاشتراك.'
+      : 'Create personalized video stories and illustrated keepsakes with AI credits',
     activeSubTitle: isRTL ? 'اشتراكك النشط حالياً' : 'Your Active Subscription',
-    activeSubDesc: isRTL ? 'أنت مشترك حالياً في هذه الخطة وتتمتع بكافة مزاياها.' : 'You have an active plan with full production access.',
+    activeSubDesc: isRTL ? 'حالة اشتراكك وخطتك الحالية موضحة أدناه.' : 'Your current plan and subscription status are shown below.',
     nextBilling: isRTL ? 'تاريخ التجديد القادم:' : 'Next billing cycle:',
     cancelSub: isRTL ? 'إلغاء التجديد التلقائي' : 'Cancel Subscription',
     canceling: isRTL ? 'جاري الإلغاء...' : 'Canceling...',
@@ -62,10 +62,10 @@ export default function BillingPage() {
     subscribeBtn: isRTL ? 'ترقية واشتراك' : 'Upgrade Plan',
     checkoutRedirecting: isRTL ? 'جاري توجيهك إلى بوابة الدفع الآمنة...' : 'Redirecting to secure gateway...',
     faqTitle: isRTL ? 'الأسئلة الشائعة حول الفوترة والاشتراكات' : 'Frequently Asked Questions',
-    faq1Q: isRTL ? 'هل يمكنني تغيير خطتي لاحقاً؟' : 'Can I change or cancel my plan anytime?',
+    faq1Q: isRTL ? 'هل يمكنني تغيير أو إلغاء خطتي؟' : 'Can I change or cancel my plan?',
     faq1A: isRTL
-      ? 'نعم بكل تأكيد. يمكنك ترقية خطتك أو إلغاؤها بضغطة زر دون أي رسوم أو شروط جزائية.'
-      : 'Yes. You can upgrade, downgrade, or cancel your renewal at any moment directly from this page.',
+      ? 'يمكنك إلغاء التجديد من إعدادات الاشتراك عند توفر هذا الخيار. لا تتوفر حاليًا معالجة تغيير الخطة من هذه الصفحة.'
+      : 'You can cancel renewal from subscription settings when available. Plan changes are not currently processed from this page.',
     faq2Q: isRTL ? 'ما هي وسائل الدفع المدعومة؟' : 'Which payment methods are supported?',
     faq2A: isRTL
       ? 'ندعم بطاقات مدى Mada، البطاقات الائتمانية عبر Stripe، محفظة PayPal، وبوابات MyFatoorah و Moyasar بتشفير كامل.'

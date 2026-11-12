@@ -76,38 +76,17 @@ class BillingController extends Controller
         $request->validate([
             'addon_id' => 'required|exists:plan_addons,id',
         ]);
-
-        $addon = PlanAddon::findOrFail($request->addon_id);
-        $user = $request->user();
-
-        // Create invoice for addon purchase
-        $invoice = Invoice::create([
-            'user_id' => $user->id,
-            'invoice_number' => Invoice::generateInvoiceNumber(),
-            'amount' => $addon->price,
-            'currency' => 'USD',
-            'status' => 'paid',
-            'items' => [
-                ['name' => $addon->name, 'price' => $addon->price, 'type' => 'addon', 'slug' => $addon->slug]
-            ],
-            'gateway' => 'mock',
-            'issued_at' => now(),
-            'paid_at' => now(),
+        // Never represent an add-on as paid without a verified payment. This
+        // legacy endpoint has no checkout/session or webhook-backed grant path.
+        Log::warning('Credit add-on checkout unavailable; refusing unpaid grant', [
+            'user_id' => $request->user()->id,
+            'addon_id' => (int) $request->addon_id,
         ]);
-
-        $this->sendInvoiceEmail($user, $invoice);
-
-        ActivityLog::log(
-            action: 'addon_purchased',
-            userId: $user->id,
-            entityType: 'PlanAddon',
-            entityId: $addon->id
-        );
 
         return response()->json([
-            'message' => 'Add-on purchased successfully.',
-            'invoice' => $invoice,
-        ]);
+            'message' => 'Credit add-on checkout is temporarily unavailable. No payment or credits were processed.',
+            'code' => 'ADDON_CHECKOUT_UNAVAILABLE',
+        ], 503);
     }
 
     public function subscribeStripe(Request $request): JsonResponse
@@ -397,50 +376,17 @@ class BillingController extends Controller
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
         ]);
-
-        $user = $request->user();
-        $newPlan = Plan::findOrFail($request->plan_id);
-        $currentSub = $user->activeSubscription();
-
-        if (!$currentSub) {
-            return response()->json(['message' => 'No active subscription to upgrade from.'], 400);
-        }
-
-        $currentPlan = $currentSub->plan;
-
-        if ((float) $newPlan->price <= (float) $currentPlan->price) {
-            return response()->json(['message' => 'New plan must be higher-priced for an upgrade. Use downgrade instead.'], 400);
-        }
-
-        // Cancel old subscription
-        $currentSub->update(['status' => 'canceled', 'canceled_at' => now()]);
-
-        // Create new subscription immediately
-        $subscription = Subscription::create([
-            'user_id' => $user->id,
-            'plan_id' => $newPlan->id,
-            'gateway' => $currentSub->gateway,
-            'gateway_subscription_id' => 'upgrade_' . uniqid(),
-            'status' => 'active',
-            'current_period_start' => now(),
-            'current_period_end' => now()->addDays(30),
+        // The legacy path canceled the paid plan and activated an unpaid
+        // replacement. Until changes go through a verified gateway checkout,
+        // fail closed and leave the current subscription untouched.
+        Log::warning('Subscription upgrade unavailable; refusing unverified plan change', [
+            'user_id' => $request->user()->id,
+            'target_plan_id' => (int) $request->plan_id,
         ]);
-
-        $this->createSubscriptionInvoice($user, $subscription, $newPlan, $currentSub->gateway);
-
-        ActivityLog::log(
-            action: 'subscription_upgraded',
-            userId: $user->id,
-            entityType: 'Subscription',
-            entityId: $subscription->id,
-            oldValues: ['plan' => $currentPlan->name, 'price' => $currentPlan->price],
-            newValues: ['plan' => $newPlan->name, 'price' => $newPlan->price]
-        );
-
         return response()->json([
-            'message' => 'Plan upgraded successfully to ' . $newPlan->name,
-            'subscription' => $subscription->load('plan'),
-        ]);
+            'message' => 'Plan changes are temporarily unavailable. Your current subscription has not been changed.',
+            'code' => 'SUBSCRIPTION_CHANGE_UNAVAILABLE',
+        ], 503);
     }
 
     /**
@@ -451,52 +397,14 @@ class BillingController extends Controller
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
         ]);
-
-        $user = $request->user();
-        $newPlan = Plan::findOrFail($request->plan_id);
-        $currentSub = $user->activeSubscription();
-
-        if (!$currentSub) {
-            return response()->json(['message' => 'No active subscription to downgrade from.'], 400);
-        }
-
-        $currentPlan = $currentSub->plan;
-
-        if ((float) $newPlan->price >= (float) $currentPlan->price) {
-            return response()->json(['message' => 'New plan must be lower-priced for a downgrade. Use upgrade instead.'], 400);
-        }
-
-        // Schedule downgrade: cancel current at period end, create pending new one
-        $currentSub->update([
-            'status' => 'canceled',
-            'canceled_at' => $currentSub->current_period_end ?? now(),
+        Log::warning('Subscription downgrade unavailable; refusing unsupported schedule', [
+            'user_id' => $request->user()->id,
+            'target_plan_id' => (int) $request->plan_id,
         ]);
-
-        $subscription = Subscription::create([
-            'user_id' => $user->id,
-            'plan_id' => $newPlan->id,
-            'gateway' => $currentSub->gateway,
-            'gateway_subscription_id' => 'downgrade_' . uniqid(),
-            'status' => 'active',
-            'current_period_start' => $currentSub->current_period_end ?? now(),
-            'current_period_end' => ($currentSub->current_period_end ?? now())->copy()->addDays(30),
-        ]);
-
-        $this->createSubscriptionInvoice($user, $subscription, $newPlan, $currentSub->gateway);
-
-        ActivityLog::log(
-            action: 'subscription_downgraded',
-            userId: $user->id,
-            entityType: 'Subscription',
-            entityId: $subscription->id,
-            oldValues: ['plan' => $currentPlan->name, 'price' => $currentPlan->price],
-            newValues: ['plan' => $newPlan->name, 'price' => $newPlan->price]
-        );
-
         return response()->json([
-            'message' => 'Plan downgraded to ' . $newPlan->name . '. Changes take effect at end of current billing period.',
-            'subscription' => $subscription->load('plan'),
-        ]);
+            'message' => 'Plan changes are temporarily unavailable. Your current subscription has not been changed.',
+            'code' => 'SUBSCRIPTION_CHANGE_UNAVAILABLE',
+        ], 503);
     }
 
     public function cancelSubscription(Request $request): JsonResponse

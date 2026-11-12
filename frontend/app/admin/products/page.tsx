@@ -253,7 +253,7 @@ export default function ProductsPage() {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g. 4K Video Story Credit"
+                placeholder="e.g. Video Story Credit"
                 required
               />
 
