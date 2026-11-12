@@ -97,8 +97,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Protected routes - require valid Sanctum token
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/account/password/force-change', [\App\Http\Controllers\AccountSecurityController::class, 'forceChangePassword']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user',    [AuthController::class, 'user']);
+
+    Route::get('/support/tickets', [\App\Http\Controllers\SupportTicketController::class, 'index']);
+    Route::post('/support/tickets', [\App\Http\Controllers\SupportTicketController::class, 'store']);
+    Route::get('/support/tickets/{ticket}', [\App\Http\Controllers\SupportTicketController::class, 'show']);
+    Route::post('/support/tickets/{ticket}/reply', [\App\Http\Controllers\SupportTicketController::class, 'reply']);
 
     // Stories
     Route::get('/stories', [StoryController::class, 'index']);
@@ -139,6 +145,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Super Admin routes
     Route::middleware('super_admin')->prefix('admin')->group(function () {
+        Route::get('/roles', [\App\Http\Controllers\Admin\AdminRoleController::class, 'index']);
+        Route::post('/roles', [\App\Http\Controllers\Admin\AdminRoleController::class, 'store']);
+        Route::put('/roles/{role}', [\App\Http\Controllers\Admin\AdminRoleController::class, 'update']);
+        Route::put('/users/{user}/admin-role', [\App\Http\Controllers\Admin\AdminRoleController::class, 'assign']);
         // Dashboard & Stats
         Route::get('/stats', [DashboardController::class, 'stats']);
 
@@ -229,8 +239,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Transactions
         Route::get('/transactions', [TransactionController::class, 'index']);
+        Route::get('/transactions/reconciliation', [TransactionController::class, 'reconciliation']);
         Route::get('/transactions/{transaction}', [TransactionController::class, 'show']);
         Route::get('/transactions-export', [TransactionController::class, 'export']);
+
+        Route::get('/support-tickets', [\App\Http\Controllers\Admin\SupportTicketController::class, 'index']);
+        Route::get('/support-tickets/{ticket}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'show']);
+        Route::put('/support-tickets/{ticket}', [\App\Http\Controllers\Admin\SupportTicketController::class, 'update']);
+        Route::post('/support-tickets/{ticket}/reply', [\App\Http\Controllers\Admin\SupportTicketController::class, 'reply']);
+        Route::get('/generation-operations', [\App\Http\Controllers\Admin\GenerationOperationsController::class, 'index']);
+        Route::get('/generation-operations/stories/{story}', [\App\Http\Controllers\Admin\GenerationOperationsController::class, 'inspect']);
+        Route::post('/payment-operations/myfatoorah/invoices/{invoice}/verify', [\App\Http\Controllers\Admin\PaymentOperationsController::class, 'verifyMyFatoorah']);
 
         // Activity Logs
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);

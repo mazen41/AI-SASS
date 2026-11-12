@@ -36,6 +36,7 @@ export default function SystemHealthPage() {
     healthy: isRTL ? 'سليم تماماً' : 'Healthy',
     warning: isRTL ? 'تحذير' : 'Warning',
     critical: isRTL ? 'حرج' : 'Critical',
+    unknown: isRTL ? 'غير معروف' : 'Unknown',
     uptime: isRTL ? 'وقت تشغيل الخادم' : 'System Uptime',
     phpVersion: isRTL ? 'إصدار PHP' : 'PHP Version',
     laravelVersion: isRTL ? 'إصدار Laravel' : 'Laravel Version',
@@ -48,6 +49,7 @@ export default function SystemHealthPage() {
     queue: isRTL ? 'طابور المهام (Queue Worker)' : 'Queue Workers',
     running: isRTL ? 'يعمل' : 'Running',
     stopped: isRTL ? 'متوقف' : 'Stopped',
+    workerNotObservable: isRTL ? 'حالة العامل غير متاحة من هذا الفحص' : 'Worker process status is not observable from this check',
     pendingJobs: isRTL ? 'المهام المعلقة' : 'Pending Jobs',
     storage: isRTL ? 'سعة التخزين' : 'Disk Storage',
     memory: isRTL ? 'استهلاك الذاكرة' : 'Memory Usage',
@@ -55,7 +57,8 @@ export default function SystemHealthPage() {
     online: isRTL ? 'متصل' : 'Online',
     offline: isRTL ? 'غير متصل' : 'Offline',
     recentErrors: isRTL ? 'سجل الأخطاء الأخير' : 'Recent Error Log',
-    noErrors: isRTL ? 'لا توجد أخطاء مسجلة' : 'Zero system errors detected',
+    noErrors: isRTL ? 'لا توجد مهام فاشلة مسجلة' : 'No failed jobs are recorded',
+    unconfigured: isRTL ? 'غير مهيأ' : 'Unconfigured',
   };
 
   const loadHealth = useCallback(async () => {
@@ -158,9 +161,16 @@ export default function SystemHealthPage() {
             <Zap size={16} className="text-amber-400" />
           </div>
           <div className="text-lg sm:text-xl font-bold font-display text-[var(--text)]">
-            {health.queue.pending_jobs} Pending
+            {health.queue.pending_jobs ?? t.unknown} {isRTL ? 'معلقة' : 'Pending'}
           </div>
-          <div className="text-[10px] text-[var(--text-3)] mt-1">Status: {health.queue.status}</div>
+          <div className="text-[10px] text-[var(--text-3)] mt-1">
+            {isRTL ? 'الخلفية:' : 'Backend:'} {health.queue.backend_status === 'connected' ? t.connected : t.disconnected}
+            {' · '}{health.queue.connection}
+          </div>
+          <div className="text-[10px] text-[var(--text-3)] mt-1">{t.workerNotObservable}</div>
+          <div className="text-[10px] text-[var(--text-3)] mt-1">
+            {isRTL ? 'المهام الفاشلة:' : 'Failed jobs:'} {health.queue.failed_jobs ?? t.unknown}
+          </div>
         </div>
 
         <div className="studio-card-glass p-5">
@@ -216,6 +226,30 @@ export default function SystemHealthPage() {
         </div>
       </div>
 
+      {/* External provider reachability is not the same as credential validity. */}
+      <section className="studio-card-glass p-6">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--border)]">
+          <div>
+            <h2 className="font-bold text-sm text-[var(--text)]">{t.services}</h2>
+            <p className="text-[10px] text-[var(--text-3)] mt-1">
+              {isRTL ? 'فحص إمكانية الوصول إلى النهايات فقط؛ لا يؤكد صلاحية بيانات الاعتماد.' : 'Endpoint reachability only; this does not validate provider credentials.'}
+            </p>
+          </div>
+          <Globe size={16} className="text-[var(--k-blue)]" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {health.services.map((service) => (
+            <div key={service.name} className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4 flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold text-[var(--text)]">{service.name}</span>
+              <span className={`text-xs font-bold ${service.status === 'online' ? 'text-emerald-400' : service.status === 'offline' ? 'text-red-400' : 'text-[var(--text-3)]'}`}>
+                {service.status === 'online' ? t.online : service.status === 'offline' ? t.offline : t.unconfigured}
+                {service.latency !== null && ` · ${service.latency} ms`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Recent Errors */}
       <div className="studio-card-glass p-6">
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--border)]">
@@ -232,9 +266,9 @@ export default function SystemHealthPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {health.recent_errors.map((err, i) => (
-              <div key={i} className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono flex items-center justify-between">
-                <span>{err.message}</span>
+            {health.recent_errors.map((err) => (
+              <div key={err.id} className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono flex items-center justify-between gap-4">
+                <span className="min-w-0 break-words">#{err.id} {err.message}</span>
                 <span className="text-[10px] opacity-75">{err.timestamp}</span>
               </div>
             ))}

@@ -16,6 +16,13 @@ class MyFatoorahService
         return $setting && $setting->is_enabled && $setting->secret_key && $setting->webhook_secret ? new self($setting) : null;
     }
 
+    /** API-only operations (such as read-only status verification) do not require a webhook secret. */
+    public static function apiConfigured(): ?self
+    {
+        $setting = PaymentSetting::getMyfatoorah();
+        return $setting && $setting->is_enabled && $setting->secret_key ? new self($setting) : null;
+    }
+
     public function setting(): PaymentSetting { return $this->setting; }
 
     public function baseUrl(): string

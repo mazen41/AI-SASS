@@ -22,6 +22,7 @@ import {
   Globe,
   Film,
   Zap,
+  LifeBuoy,
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -63,6 +64,11 @@ export default function Navbar() {
           href: '/pricing',
           label: locale === 'ar' ? 'الخطط والاشتراك' : 'Studio Tiers',
           icon: Sparkles,
+        },
+        {
+          href: '/dashboard/support',
+          label: locale === 'ar' ? 'الدعم' : 'Support',
+          icon: LifeBuoy,
         },
         ...(user?.role === 'super_admin'
           ? [

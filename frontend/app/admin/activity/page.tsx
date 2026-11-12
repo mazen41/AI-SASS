@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiGetActivityLogs, ActivityLog, PaginatedResponse } from '@/lib/api';
+import { apiGetActivityActions, apiGetActivityLogs, ActivityLog, PaginatedResponse } from '@/lib/api';
 import { useLang } from '@/context/LangContext';
 import SplitTextReveal from '@/components/SplitTextReveal';
 import {
@@ -51,29 +51,65 @@ export default function ActivityLogsPage() {
       logout: isRTL ? 'تسجيل خروج' : 'Logout',
     },
     ip: isRTL ? 'عنوان IP' : 'IP Address',
+    reason: isRTL ? 'السبب' : 'Reason',
+    requestId: isRTL ? 'معرف الطلب' : 'Request ID',
+    failed: isRTL ? 'فشل' : 'Failed',
   };
 
   const [logs, setLogs] = useState<PaginatedResponse<ActivityLog> | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionFilter, setActionFilter] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [userIdFilter, setUserIdFilter] = useState('');
+  const [entityFilter, setEntityFilter] = useState('');
+  const [requestIdFilter, setRequestIdFilter] = useState('');
+  const [resultFilter, setResultFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [actions, setActions] = useState<string[]>([]);
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, string>>({});
+  const [filterError, setFilterError] = useState('');
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    apiGetActivityActions().then(({ actions: values }) => setActions(values)).catch(() => setActions([]));
+  }, []);
 
   useEffect(() => {
     const loadLogs = async () => {
       setLoading(true);
       try {
-        const params: Record<string, string> = { page: page.toString() };
-        if (actionFilter) params.action = actionFilter;
+        const params: Record<string, string> = { ...appliedFilters, page: page.toString() };
         const data = await apiGetActivityLogs(params);
         setLogs(data);
       } catch (err) {
-        console.error(err);
+        setFilterError(err instanceof Error ? err.message : (isRTL ? 'تعذر تحميل سجل النشاط.' : 'Could not load audit events.'));
       } finally {
         setLoading(false);
       }
     };
     loadLogs();
-  }, [page, actionFilter]);
+  }, [page, appliedFilters, isRTL]);
+
+  const applyFilters = (event: React.FormEvent) => {
+    event.preventDefault();
+    const next: Record<string, string> = {};
+    if (actionFilter) next.action = actionFilter;
+    if (searchText.trim()) next.q = searchText.trim();
+    if (userIdFilter.trim()) next.user_id = userIdFilter.trim();
+    if (entityFilter.trim()) next.entity_type = entityFilter.trim();
+    if (requestIdFilter.trim()) next.request_id = requestIdFilter.trim();
+    if (resultFilter) next.result = resultFilter;
+    if (dateFrom) next.date_from = dateFrom;
+    if (dateTo) next.date_to = dateTo;
+    setFilterError('');
+    setPage(1);
+    setAppliedFilters(next);
+  };
+
+  const clearFilters = () => {
+    setActionFilter(''); setSearchText(''); setUserIdFilter(''); setEntityFilter(''); setRequestIdFilter(''); setResultFilter(''); setDateFrom(''); setDateTo(''); setAppliedFilters({}); setPage(1); setFilterError('');
+  };
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -130,23 +166,17 @@ export default function ActivityLogsPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="studio-card-glass p-4 sm:p-5">
-        <select
-          value={actionFilter}
-          onChange={(e) => {
-            setActionFilter(e.target.value);
-            setPage(1);
-          }}
-          className="studio-input h-[3.25rem] text-xs sm:text-sm font-semibold max-w-sm"
-        >
-          <option value="">{t.allActions}</option>
-          {Object.entries(t.actions).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <form onSubmit={applyFilters} className="studio-card-glass grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4 sm:p-5">
+        <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder={isRTL ? 'بحث بالحدث أو المستخدم أو السبب' : 'Search event, actor, email, or reason'} className="studio-input h-12 text-sm" />
+        <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} className="studio-input h-12 text-sm font-semibold"><option value="">{t.allActions}</option>{[...new Set([...Object.keys(t.actions), ...actions])].sort().map((key) => <option key={key} value={key}>{t.actions[key as keyof typeof t.actions] || key.replace(/_/g, ' ')}</option>)}</select>
+        <input inputMode="numeric" value={userIdFilter} onChange={(e) => setUserIdFilter(e.target.value.replace(/\D/g, ''))} placeholder={isRTL ? 'رقم المستخدم' : 'User ID'} className="studio-input h-12 text-sm" />
+        <input value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)} placeholder={isRTL ? 'نوع السجل (مثل User)' : 'Entity type (e.g. User)'} className="studio-input h-12 text-sm" />
+        <input value={requestIdFilter} onChange={(e) => setRequestIdFilter(e.target.value)} placeholder={isRTL ? 'معرف الطلب' : 'Request ID'} className="studio-input h-12 text-sm font-mono" />
+        <select value={resultFilter} onChange={(e) => setResultFilter(e.target.value)} className="studio-input h-12 text-sm font-semibold"><option value="">{isRTL ? 'كل النتائج' : 'All results'}</option><option value="success">{isRTL ? 'نجاح' : 'Success'}</option><option value="failure">{isRTL ? 'فشل' : 'Failure'}</option></select>
+        <label className="text-xs text-[var(--text-3)]">{isRTL ? 'من تاريخ' : 'From'}<input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="studio-input mt-1 h-11 w-full text-sm" /></label>
+        <label className="text-xs text-[var(--text-3)]">{isRTL ? 'إلى تاريخ' : 'To'}<input type="date" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} className="studio-input mt-1 h-11 w-full text-sm" /></label>
+        <div className="flex items-end gap-2 sm:col-span-2 xl:col-span-4"><button type="submit" className="studio-btn-primary px-5 py-2.5 text-xs font-bold">{isRTL ? 'تطبيق البحث' : 'Apply filters'}</button><button type="button" onClick={clearFilters} className="studio-btn-secondary px-5 py-2.5 text-xs font-bold">{isRTL ? 'مسح' : 'Clear'}</button>{filterError && <span role="alert" className="text-xs text-red-400">{filterError}</span>}</div>
+      </form>
 
       {/* Activity List */}
       <div className="studio-card-glass p-6">
@@ -184,12 +214,18 @@ export default function ActivityLogsPage() {
                       </div>
                       <div className="text-xs text-[var(--text-3)] mt-0.5 flex flex-wrap items-center gap-3">
                         <span className="font-mono">{new Date(log.created_at).toLocaleString()}</span>
+                        {log.entity_type && (
+                          <span className="font-mono">{log.entity_type}{log.entity_id ? ` #${log.entity_id}` : ''}</span>
+                        )}
+                        {log.result === 'failure' && <span className="text-red-400 font-bold">{t.failed}</span>}
                         {log.ip_address && (
                           <span className="font-mono text-[11px] bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">
                             IP: {log.ip_address}
                           </span>
                         )}
+                        {log.request_id && <span className="font-mono">{t.requestId}: {log.request_id}</span>}
                       </div>
+                      {log.reason && <p className="text-xs text-[var(--text-2)] mt-2 break-words">{t.reason}: {log.reason}</p>}
                     </div>
                   </div>
 

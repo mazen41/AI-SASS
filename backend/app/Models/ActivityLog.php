@@ -16,6 +16,9 @@ class ActivityLog extends Model
         'new_values',
         'ip_address',
         'user_agent',
+        'reason',
+        'request_id',
+        'result',
     ];
 
     protected $casts = [
@@ -34,7 +37,9 @@ class ActivityLog extends Model
         ?string $entityType = null,
         ?int $entityId = null,
         ?array $oldValues = null,
-        ?array $newValues = null
+        ?array $newValues = null,
+        ?string $reason = null,
+        string $result = 'success'
     ): self {
         return self::create([
             'user_id' => $userId,
@@ -45,6 +50,9 @@ class ActivityLog extends Model
             'new_values' => $newValues,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
+            'reason' => $reason,
+            'request_id' => request()->header('X-Request-ID') ?: request()->attributes->get('request_id'),
+            'result' => $result,
         ]);
     }
 }

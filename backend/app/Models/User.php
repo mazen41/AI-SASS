@@ -22,6 +22,8 @@ class User extends Authenticatable
         'social_provider',
         'social_id',
         'email_verified_at',
+        'must_change_password',
+        'password_changed_at',
     ];
 
     protected $hidden = [
@@ -35,6 +37,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
             'last_login_at'     => 'datetime',
+            'must_change_password' => 'boolean',
+            'password_changed_at' => 'datetime',
         ];
     }
 
@@ -80,9 +84,30 @@ class User extends Authenticatable
         return $this->hasMany(ActivityLog::class);
     }
 
+    public function adminRole(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(AdminRole::class);
+    }
+
+    public function hasAdminPermission(string $permission): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->isAdmin()
+            && $this->isActive()
+            && $this->adminRole()->whereHas('permissions', fn ($query) => $query->where('admin_permissions.key', $permission))->exists();
+    }
+
     public function stories(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Story::class);
+    }
+
+    public function supportTickets(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
     }
 
     public function invoices(): \Illuminate\Database\Eloquent\Relations\HasMany

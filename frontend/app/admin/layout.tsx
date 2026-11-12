@@ -36,6 +36,9 @@ import {
   ShieldCheck,
   BookOpen,
   Coins,
+  Shield,
+  LifeBuoy,
+  Wrench,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -51,6 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isRTL = locale === 'ar';
   const isLoginPage = pathname === '/admin/login';
+  const isForcedPasswordPage = pathname === '/admin/force-password-change';
 
   const navGroups = [
     {
@@ -58,6 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       items: [
         { href: '/admin', label: isRTL ? 'نظرة عامة' : 'Overview', icon: LayoutDashboard },
         { href: '/admin/stories', label: isRTL ? 'القصص والتوليد' : 'Stories & Content', icon: BookOpen },
+        { href: '/admin/generation-support', label: isRTL ? 'دعم التوليد' : 'Generation Support', icon: Wrench },
       ],
     },
     {
@@ -67,6 +72,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: '/admin/subscriptions', label: isRTL ? 'الاشتراكات' : 'Subscriptions', icon: RefreshCw },
         { href: '/admin/ai-credits', label: isRTL ? 'أرصدة الذكاء الاصطناعي' : 'AI Credits & Pricing', icon: Coins },
         { href: '/admin/transactions', label: isRTL ? 'المعاملات' : 'Transactions', icon: CreditCard },
+        { href: '/admin/payment-operations', label: isRTL ? 'عمليات الدفع' : 'Payment Operations', icon: CreditCard },
+        { href: '/admin/support', label: isRTL ? 'تذاكر الدعم' : 'Support Tickets', icon: LifeBuoy },
       ],
     },
     {
@@ -80,6 +87,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     {
       group: isRTL ? 'النظام والصيانة' : 'SYSTEM & LOGS',
       items: [
+          ...(user?.role === 'super_admin' ? [{ href: '/admin/roles', label: isRTL ? 'الأدوار والصلاحيات' : 'Roles & Permissions', icon: Shield }] : []),
         { href: '/admin/email', label: isRTL ? 'خدمة البريد' : 'Email Service', icon: Mail },
         { href: '/admin/backup', label: isRTL ? 'النسخ الاحتياطي' : 'Backups', icon: Database },
         { href: '/admin/activity', label: isRTL ? 'سجل النشاط' : 'Activity Stream', icon: Activity },
@@ -94,11 +102,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!loading && !isLoginPage) {
       if (!user || (user.role !== 'super_admin' && user.role !== 'admin')) {
         router.push('/admin/login');
+      } else if (user.must_change_password && !isForcedPasswordPage) {
+        router.replace('/admin/force-password-change');
       }
     }
-  }, [user, loading, router, isLoginPage]);
+  }, [user, loading, router, isLoginPage, isForcedPasswordPage]);
 
-  if (isLoginPage) {
+  if (isLoginPage || isForcedPasswordPage) {
     return <>{children}</>;
   }
 

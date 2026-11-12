@@ -10,19 +10,25 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class InvoiceController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Invoice::with(['user', 'subscription.plan'])->orderByDesc('created_at');
+        $filters = $request->validate([
+            'status' => ['sometimes', Rule::in(['pending', 'paid', 'failed', 'refunded', 'canceled'])],
+            'search' => ['sometimes', 'string', 'max:120'],
+            'from' => ['sometimes', 'date'], 'to' => ['sometimes', 'date', 'after_or_equal:from'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
+        $query = Invoice::query()->select(['id', 'user_id', 'subscription_id', 'invoice_number', 'amount', 'currency', 'status', 'gateway', 'gateway_transaction_id', 'issued_at', 'paid_at', 'created_at'])
+            ->with(['user:id,name,email', 'subscription:id,plan_id,status', 'subscription.plan:id,name'])->orderByDesc('created_at');
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+        if (isset($filters['status'])) $query->where('status', $filters['status']);
 
-        if ($request->filled('search')) {
-            $search = $request->search;
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'like', "%{$search}%")
                   ->orWhereHas('user', function ($uq) use ($search) {
@@ -32,37 +38,31 @@ class InvoiceController extends Controller
             });
         }
 
-        if ($request->filled('from')) {
-            $query->whereDate('issued_at', '>=', $request->from);
-        }
+        if (isset($filters['from'])) $query->whereDate('issued_at', '>=', $filters['from']);
+        if (isset($filters['to'])) $query->whereDate('issued_at', '<=', $filters['to']);
 
-        if ($request->filled('to')) {
-            $query->whereDate('issued_at', '<=', $request->to);
-        }
-
-        $invoices = $query->paginate(20);
+        $invoices = $query->paginate($filters['per_page'] ?? 20);
 
         return response()->json($invoices);
     }
 
     public function show(int $id): JsonResponse
     {
-        $invoice = Invoice::with(['user', 'subscription.plan'])->findOrFail($id);
+        $invoice = Invoice::query()->select(['id', 'user_id', 'subscription_id', 'invoice_number', 'amount', 'currency', 'status', 'gateway', 'gateway_transaction_id', 'issued_at', 'paid_at', 'created_at'])
+            ->with(['user:id,name,email', 'subscription:id,plan_id,status', 'subscription.plan:id,name'])->findOrFail($id);
         return response()->json(['invoice' => $invoice]);
     }
 
     public function markPaid(int $id): JsonResponse
     {
-        $invoice = Invoice::findOrFail($id);
-        $invoice->update(['status' => 'paid', 'paid_at' => now()]);
-        return response()->json(['message' => 'Invoice marked as paid.', 'invoice' => $invoice->fresh()]);
+        Invoice::findOrFail($id);
+        return response()->json(['message' => 'Manual payment status changes are disabled. Verify settlement with the provider webhook or read-only provider check.'], 409);
     }
 
     public function markRefunded(int $id): JsonResponse
     {
-        $invoice = Invoice::findOrFail($id);
-        $invoice->update(['status' => 'refunded']);
-        return response()->json(['message' => 'Invoice marked as refunded.', 'invoice' => $invoice->fresh()]);
+        Invoice::findOrFail($id);
+        return response()->json(['message' => 'A local status change does not refund a charge. Issue refunds from the provider dashboard; verified provider webhooks update the ledger.'], 409);
     }
 
     public function resendEmail(int $id): JsonResponse

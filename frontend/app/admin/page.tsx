@@ -51,6 +51,18 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const { locale } = useLang();
   const isRTL = locale === 'ar';
+  const formatCurrencyRows = (rows: Array<{ currency: string; total: string }>) => {
+    if (!rows?.length) return '—';
+    if (rows.length > 1) return isRTL ? `${rows.length} عملات` : `${rows.length} currencies`;
+    const row = rows[0];
+    try {
+      return new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-US', {
+        style: 'currency', currency: row.currency, maximumFractionDigits: 2,
+      }).format(Number(row.total));
+    } catch {
+      return `${Number(row.total).toLocaleString()} ${row.currency}`;
+    }
+  };
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -139,7 +151,7 @@ export default function AdminDashboard() {
     },
     {
       label: isRTL ? 'إجمالي الإيرادات' : 'Lifetime Revenue',
-      value: `$${parseFloat(stats.revenue.total || '0').toLocaleString()}`,
+      value: formatCurrencyRows(stats.revenue.total_by_currency),
       icon: DollarSign,
       color: 'from-cyan-500 to-blue-600',
       href: '/admin/transactions',
@@ -147,7 +159,7 @@ export default function AdminDashboard() {
     },
     {
       label: isRTL ? 'إيرادات هذا الشهر' : 'Revenue This Month',
-      value: `$${parseFloat(stats.revenue.this_month || '0').toLocaleString()}`,
+      value: formatCurrencyRows(stats.revenue.this_month_by_currency),
       icon: BarChart3,
       color: 'from-pink-500 to-rose-600',
       change: stats.revenue.growth_percentage,
@@ -199,10 +211,6 @@ export default function AdminDashboard() {
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-300">
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-mono text-[11px]">
-              <ShieldCheck size={14} />
-              <span>Fal.ai & Claude API Online</span>
-            </span>
             <span className="text-slate-400 font-mono text-[11px]">
               {new Date().toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
                 weekday: 'long',
@@ -250,7 +258,7 @@ export default function AdminDashboard() {
                     {card.value}
                   </h3>
 
-                  {card.change !== undefined && (
+                  {card.change !== undefined && card.change !== null && (
                     <span
                       className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${
                         card.change >= 0
@@ -297,9 +305,15 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {stats.revenue.by_gateway.length > 0 ? (
               stats.revenue.by_gateway.map((gateway, index) => {
-                const totalAmount = parseFloat(stats.revenue.total || '1');
+                const totalAmount = (stats.revenue.total_by_currency || [])
+                  .filter((row) => row.currency === gateway.currency)
+                  .reduce((sum, row) => sum + parseFloat(row.total || '0'), 0);
                 const gwAmount = parseFloat(gateway.total || '0');
-                const percent = Math.min(Math.round((gwAmount / Math.max(totalAmount, 1)) * 100), 100);
+                const percent = totalAmount > 0 ? Math.min(Math.round((gwAmount / totalAmount) * 100), 100) : 0;
+                const gatewayAmount = (() => {
+                  try { return new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-US', { style: 'currency', currency: gateway.currency, maximumFractionDigits: 2 }).format(gwAmount); }
+                  catch { return `${gwAmount.toLocaleString()} ${gateway.currency}`; }
+                })();
 
                 return (
                   <div
@@ -320,7 +334,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-right rtl:text-left">
                         <span className="font-extrabold text-sm sm:text-base gradient-text">
-                          ${gwAmount.toLocaleString()}
+                          {gatewayAmount}
                         </span>
                         <span className="text-[10px] text-[var(--text-3)] block font-mono">
                           {percent}%
@@ -380,7 +394,7 @@ export default function AdminDashboard() {
                       <div>
                         <span className="font-bold text-xs sm:text-sm">{plan.name}</span>
                         <span className="text-[11px] text-[var(--text-3)] ml-2 rtl:mr-2">
-                          ${plan.price}/{isRTL ? 'شهر' : 'mo'}
+                          {Number(plan.price).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US')}/{plan.billing_period === 'yearly' ? (isRTL ? 'سنة' : 'yr') : (isRTL ? 'شهر' : 'mo')}
                         </span>
                       </div>
                       <span className="font-mono font-bold text-xs sm:text-sm text-[var(--k-blue)]">

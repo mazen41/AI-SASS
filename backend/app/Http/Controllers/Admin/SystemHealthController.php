@@ -7,13 +7,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 
 class SystemHealthController extends Controller
 {
     public function index()
     {
         $health = [
-            'status' => 'healthy',
+            'status' => 'unknown',
             'uptime' => $this->getUptime(),
             'php_version' => phpversion(),
             'laravel_version' => app()->version(),
@@ -23,13 +25,15 @@ class SystemHealthController extends Controller
             'storage' => $this->getStorageStatus(),
             'memory' => $this->getMemoryStatus(),
             'services' => $this->getServicesStatus(),
-            'recent_errors' => [],
+            'recent_errors' => $this->getRecentErrors(),
         ];
 
-        if ($health['database']['status'] === 'disconnected' || $health['cache']['status'] === 'inactive') {
+        if ($health['database']['status'] === 'disconnected' || $health['cache']['status'] === 'inactive' || $health['queue']['backend_status'] === 'disconnected') {
             $health['status'] = 'critical';
-        } elseif ($health['storage']['percentage'] > 90 || $health['memory']['percentage'] > 90) {
+        } elseif ($health['storage']['percentage'] > 90 || $health['memory']['percentage'] > 90 || collect($health['services'])->contains(fn ($service) => $service['status'] === 'offline')) {
             $health['status'] = 'warning';
+        } elseif ($health['database']['status'] === 'connected' && $health['cache']['status'] === 'active' && $health['queue']['backend_status'] === 'connected') {
+            $health['status'] = 'healthy';
         }
 
         return response()->json($health);
@@ -41,7 +45,8 @@ class SystemHealthController extends Controller
             return 'Online';
         }
         try {
-            return trim(shell_exec('uptime -p'));
+            $uptime = shell_exec('uptime -p');
+            return is_string($uptime) && trim($uptime) !== '' ? trim($uptime) : 'Unknown';
         } catch (\Exception $e) {
             return 'Unknown';
         }
@@ -89,15 +94,27 @@ class SystemHealthController extends Controller
     private function getQueueStatus()
     {
         try {
-            $jobs = DB::table('jobs')->count();
+            $queue = Queue::connection();
+            $pendingJobs = $queue->size();
+            $failedJobs = Schema::hasTable('failed_jobs') ? DB::table('failed_jobs')->count() : null;
             return [
-                'status' => 'running',
-                'pending_jobs' => $jobs
+                // Queue connectivity does not prove a worker process is alive.
+                'status' => 'unknown',
+                'backend_status' => 'connected',
+                'worker_status' => 'not_observable',
+                'connection' => config('queue.default'),
+                'pending_jobs' => $pendingJobs,
+                'failed_jobs' => $failedJobs,
             ];
         } catch (\Exception $e) {
             return [
                 'status' => 'stopped',
-                'pending_jobs' => 0
+                'backend_status' => 'disconnected',
+                'worker_status' => 'unknown',
+                'connection' => config('queue.default'),
+                'pending_jobs' => null,
+                // The database may be the reason the queue check failed; avoid querying it again here.
+                'failed_jobs' => null,
             ];
         }
     }
@@ -105,8 +122,11 @@ class SystemHealthController extends Controller
     private function getStorageStatus()
     {
         $diskPath = base_path();
-        $freeSpace = disk_free_space($diskPath);
-        $totalSpace = disk_total_space($diskPath);
+        $freeSpace = @disk_free_space($diskPath);
+        $totalSpace = @disk_total_space($diskPath);
+        if (!is_numeric($freeSpace) || !is_numeric($totalSpace) || $totalSpace <= 0) {
+            return ['used' => 'Unknown', 'total' => 'Unknown', 'percentage' => 0];
+        }
         $usedSpace = $totalSpace - $freeSpace;
         $percentage = $totalSpace > 0 ? round(($usedSpace / $totalSpace) * 100) : 0;
 
@@ -140,20 +160,65 @@ class SystemHealthController extends Controller
 
     private function getServicesStatus()
     {
-        return Cache::remember('system_health_services_status', 300, function () {
-            return [
-                [
-                    'name' => 'Stripe API',
-                    'status' => $this->pingService('https://api.stripe.com', false) ? 'online' : 'offline',
-                    'latency' => rand(50, 150)
-                ],
-                [
-                    'name' => 'PayPal API',
-                    'status' => $this->pingService('https://api.paypal.com', false) ? 'online' : 'offline',
-                    'latency' => rand(80, 200)
-                ]
+        try {
+            return Cache::remember('system_health_services_status', 60, function () {
+            $services = [
+                ['name' => 'OpenAI', 'key' => config('services.openai.key'), 'url' => 'https://api.openai.com/v1/models'],
+                ['name' => 'Anthropic', 'key' => config('services.claude.key'), 'url' => 'https://api.anthropic.com/v1/models'],
+                ['name' => 'Google Gemini', 'key' => config('services.gemini.key'), 'url' => 'https://generativelanguage.googleapis.com'],
+                ['name' => 'Fal.ai', 'key' => config('services.fal.key'), 'url' => 'https://queue.fal.run'],
+                ['name' => 'ElevenLabs', 'key' => config('services.elevenlabs.key'), 'url' => 'https://api.elevenlabs.io'],
             ];
-        });
+
+            if (Schema::hasTable('payment_settings')) {
+                foreach (DB::table('payment_settings')->where('is_enabled', true)->get(['gateway', 'is_sandbox']) as $gateway) {
+                    $url = match ($gateway->gateway) {
+                        'stripe' => 'https://api.stripe.com',
+                        'paypal' => $gateway->is_sandbox ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com',
+                        'myfatoorah' => 'https://api.myfatoorah.com',
+                        'moyasar' => 'https://api.moyasar.com',
+                        default => null,
+                    };
+                    if ($url) $services[] = ['name' => ucfirst($gateway->gateway), 'key' => 'configured', 'url' => $url];
+                }
+            }
+
+            return collect($services)->map(function (array $service): array {
+                if (empty($service['key'])) {
+                    return ['name' => $service['name'], 'status' => 'unconfigured', 'latency' => null];
+                }
+                $startedAt = microtime(true);
+                $online = $this->pingService($service['url'], false);
+                return [
+                    'name' => $service['name'],
+                    'status' => $online ? 'online' : 'offline',
+                    'latency' => $online ? (int) round((microtime(true) - $startedAt) * 1000) : null,
+                ];
+            })->values()->all();
+            });
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function getRecentErrors(): array
+    {
+        try {
+            if (!Schema::hasTable('failed_jobs')) return [];
+            return DB::table('failed_jobs')->latest('failed_at')->limit(10)->get(['id', 'exception', 'failed_at'])
+                ->map(function ($job): array {
+                    $firstLine = strtok((string) $job->exception, "\r\n") ?: '';
+                    preg_match('/([A-Za-z0-9_\\\\]+(?:Exception|Error))/', $firstLine, $matches);
+                    return [
+                        'id' => $job->id,
+                        // Expose the exception class, not its message/trace, which may contain credentials or user data.
+                        'message' => isset($matches[1]) ? class_basename($matches[1]) : 'Background job failed',
+                        'timestamp' => $job->failed_at,
+                    ];
+                })->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     private function formatBytes($bytes, $precision = 2)

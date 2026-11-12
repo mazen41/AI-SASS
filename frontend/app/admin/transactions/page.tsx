@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiGetTransactions, Transaction, PaginatedResponse } from '@/lib/api';
+import { apiGetTransactions, apiGetTransactionReconciliation, Transaction, TransactionReconciliation, PaginatedResponse } from '@/lib/api';
 import { useLang } from '@/context/LangContext';
 import SplitTextReveal from '@/components/SplitTextReveal';
 import {
@@ -44,6 +44,7 @@ export default function TransactionsPage() {
   };
 
   const [transactions, setTransactions] = useState<PaginatedResponse<Transaction> | null>(null);
+  const [reconciliation, setReconciliation] = useState<TransactionReconciliation | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [gatewayFilter, setGatewayFilter] = useState('');
@@ -56,8 +57,12 @@ export default function TransactionsPage() {
         const params: Record<string, string> = { page: page.toString() };
         if (statusFilter) params.status = statusFilter;
         if (gatewayFilter) params.gateway = gatewayFilter;
-        const data = await apiGetTransactions(params);
+        const summaryParams: Record<string, string> = {};
+        if (statusFilter) summaryParams.status = statusFilter;
+        if (gatewayFilter) summaryParams.gateway = gatewayFilter;
+        const [data, ledger] = await Promise.all([apiGetTransactions(params), apiGetTransactionReconciliation(summaryParams)]);
         setTransactions(data);
+        setReconciliation(ledger);
       } catch (err) {
         console.error(err);
       } finally {
@@ -160,6 +165,20 @@ export default function TransactionsPage() {
       </div>
 
       {/* Table */}
+      {reconciliation && <section className="studio-card-glass p-4 sm:p-5" aria-label={isRTL ? 'ملخص سجل المدفوعات' : 'Payment ledger summary'}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div><h2 className="font-bold text-[var(--text)]">{isRTL ? 'ملخص حسب العملة والحالة' : 'Ledger totals by currency and status'}</h2><p className="mt-1 text-xs text-[var(--text-3)]">{isRTL ? 'هذه أرقام السجل الداخلي ولا تؤكد التسوية مع مزود الدفع أو البنك.' : reconciliation.note}</p></div>
+          {reconciliation.stale_pending_count > 0 && <span className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300"><Clock size={14} />{reconciliation.stale_pending_count} {isRTL ? 'مدفوعات معلقة لأكثر من 30 دقيقة' : 'pending for over 30 minutes'}</span>}
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {reconciliation.currency_status_totals.map((row) => <div key={`${row.currency}-${row.status}`} className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold uppercase text-[var(--text-3)]">{row.currency} · {t.status[row.status as keyof typeof t.status] ?? row.status}</span><span className="text-xs text-[var(--text-3)]">{row.transaction_count} {isRTL ? 'عملية' : 'records'}</span></div>
+            <p className="mt-2 text-lg font-bold text-[var(--text)]">{new Intl.NumberFormat(isRTL ? 'ar-SA' : 'en-US', { style: 'currency', currency: row.currency }).format(Number(row.amount_total || 0))}</p>
+          </div>)}
+          {reconciliation.currency_status_totals.length === 0 && <p className="text-sm text-[var(--text-3)]">{isRTL ? 'لا توجد قيود مالية بعد.' : 'No ledger entries yet.'}</p>}
+        </div>
+      </section>}
+
       <div className="studio-card-glass overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left rtl:text-right border-collapse">
@@ -201,7 +220,7 @@ export default function TransactionsPage() {
                       <div className="text-xs text-[var(--text-3)] font-mono">{tx.user?.email || '-'}</div>
                     </td>
                     <td className="py-4 px-4 font-mono font-extrabold text-base gradient-text">
-                      ${parseFloat(tx.amount || '0').toFixed(2)}
+                      {new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-US', { style: 'currency', currency: tx.currency || 'USD' }).format(Number(tx.amount || 0))}
                     </td>
                     <td className="py-4 px-4">
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--surface-2)] text-[var(--k-blue)] border border-[var(--border)] uppercase">

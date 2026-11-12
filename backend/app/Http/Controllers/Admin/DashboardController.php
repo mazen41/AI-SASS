@@ -17,7 +17,7 @@ class DashboardController extends Controller
 {
     public function stats(): JsonResponse
     {
-        $stats = Cache::remember('dashboard_stats', 300, function () {
+        $stats = Cache::remember('dashboard_stats', 60, function () {
             $now = Carbon::now();
             $startOfMonth = $now->copy()->startOfMonth();
             $startOfLastMonth = $now->copy()->subMonth()->startOfMonth();
@@ -31,30 +31,47 @@ class DashboardController extends Controller
             $activeSubscriptions = Subscription::where('status', 'active')->count();
             $totalSubscriptions = Subscription::count();
 
-            $revenueThisMonth = Transaction::where('status', 'completed')
+            $sales = Transaction::where('status', 'completed')->where('type', '!=', 'refund');
+            $revenueThisMonthByCurrency = (clone $sales)
                 ->where('created_at', '>=', $startOfMonth)
-                ->sum('amount');
-            $revenueLastMonth = Transaction::where('status', 'completed')
+                ->select('currency', DB::raw('SUM(amount) as total'))
+                ->groupBy('currency')->get();
+            $revenueLastMonthByCurrency = (clone $sales)
                 ->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth])
-                ->sum('amount');
-            $totalRevenue = Transaction::where('status', 'completed')->sum('amount');
+                ->select('currency', DB::raw('SUM(amount) as total'))
+                ->groupBy('currency')->get();
+            $totalRevenueByCurrency = (clone $sales)
+                ->select('currency', DB::raw('SUM(amount) as total'))
+                ->groupBy('currency')->get();
 
-            $monthlyRevenue = Transaction::where('status', 'completed')
+            $singleCurrencyTotal = static fn ($rows) => $rows->count() === 1 ? (string) $rows->first()->total : null;
+            $growthPercentage = static fn ($current, $previous) => $previous > 0
+                ? round((($current - $previous) / $previous) * 100, 1)
+                : null;
+            $yearExpression = DB::connection()->getDriverName() === 'sqlite'
+                ? "CAST(strftime('%Y', created_at) AS INTEGER)"
+                : 'YEAR(created_at)';
+            $monthExpression = DB::connection()->getDriverName() === 'sqlite'
+                ? "CAST(strftime('%m', created_at) AS INTEGER)"
+                : 'MONTH(created_at)';
+
+            $monthlyRevenue = (clone $sales)
                 ->where('created_at', '>=', $now->copy()->subMonths(12))
                 ->select(
-                    DB::raw('YEAR(created_at) as year'),
-                    DB::raw('MONTH(created_at) as month'),
+                    DB::raw("{$yearExpression} as year"),
+                    DB::raw("{$monthExpression} as month"),
+                    'currency',
                     DB::raw('SUM(amount) as total')
                 )
-                ->groupBy('year', 'month')
+                ->groupBy('year', 'month', 'currency')
                 ->orderBy('year')
                 ->orderBy('month')
                 ->get();
 
             $userGrowth = User::where('created_at', '>=', $now->copy()->subMonths(12))
                 ->select(
-                    DB::raw('YEAR(created_at) as year'),
-                    DB::raw('MONTH(created_at) as month'),
+                    DB::raw("{$yearExpression} as year"),
+                    DB::raw("{$monthExpression} as month"),
                     DB::raw('COUNT(*) as total')
                 )
                 ->groupBy('year', 'month')
@@ -64,12 +81,17 @@ class DashboardController extends Controller
 
             $subscriptionsByPlan = Plan::withCount(['activeSubscriptions'])
                 ->where('is_active', true)
-                ->get(['id', 'name', 'price']);
+                ->get(['id', 'name', 'price', 'billing_period']);
 
-            $revenueByGateway = Transaction::where('status', 'completed')
-                ->select('gateway', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
-                ->groupBy('gateway')
+            $revenueByGateway = (clone $sales)
+                ->select('gateway', 'currency', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
+                ->groupBy('gateway', 'currency')
                 ->get();
+
+            $refundsByCurrency = Transaction::where(function ($query) {
+                $query->where('type', 'refund')->orWhere('status', 'refunded');
+            })->select('currency', DB::raw('SUM(ABS(amount)) as total'), DB::raw('COUNT(*) as count'))
+                ->groupBy('currency')->get();
 
             $recentActivity = ActivityLog::with('user:id,name,email')
                 ->latest()
@@ -82,9 +104,7 @@ class DashboardController extends Controller
                     'active' => $activeUsers,
                     'new_this_month' => $newUsersThisMonth,
                     'new_last_month' => $newUsersLastMonth,
-                    'growth_percentage' => $newUsersLastMonth > 0
-                        ? round((($newUsersThisMonth - $newUsersLastMonth) / $newUsersLastMonth) * 100, 1)
-                        : 100,
+                    'growth_percentage' => $growthPercentage($newUsersThisMonth, $newUsersLastMonth),
                 ],
                 'subscriptions' => [
                     'active' => $activeSubscriptions,
@@ -92,12 +112,18 @@ class DashboardController extends Controller
                     'by_plan' => $subscriptionsByPlan,
                 ],
                 'revenue' => [
-                    'total' => $totalRevenue,
-                    'this_month' => $revenueThisMonth,
-                    'last_month' => $revenueLastMonth,
-                    'growth_percentage' => $revenueLastMonth > 0
-                        ? round((($revenueThisMonth - $revenueLastMonth) / $revenueLastMonth) * 100, 1)
-                        : 100,
+                    // Scalar values are available only if all included payments share one currency.
+                    'total' => $singleCurrencyTotal($totalRevenueByCurrency),
+                    'this_month' => $singleCurrencyTotal($revenueThisMonthByCurrency),
+                    'last_month' => $singleCurrencyTotal($revenueLastMonthByCurrency),
+                    'growth_percentage' => $revenueLastMonthByCurrency->count() === 1 && $revenueThisMonthByCurrency->count() === 1
+                        && $revenueLastMonthByCurrency->first()->currency === $revenueThisMonthByCurrency->first()->currency
+                            ? $growthPercentage((float) $revenueThisMonthByCurrency->first()->total, (float) $revenueLastMonthByCurrency->first()->total)
+                            : null,
+                    'total_by_currency' => $totalRevenueByCurrency,
+                    'this_month_by_currency' => $revenueThisMonthByCurrency,
+                    'last_month_by_currency' => $revenueLastMonthByCurrency,
+                    'refunds_by_currency' => $refundsByCurrency,
                     'by_gateway' => $revenueByGateway,
                 ],
                 'charts' => [

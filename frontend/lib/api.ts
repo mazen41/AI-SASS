@@ -75,6 +75,10 @@ export interface AuthUser {
   role: 'user' | 'admin' | 'super_admin';
   status: 'active' | 'suspended' | 'banned';
   created_at: string;
+  admin_role_id?: number | null;
+  admin_role?: { id: number; name: string; slug: string } | null;
+  must_change_password?: boolean;
+  password_changed_at?: string | null;
 }
 
 export interface AuthResponse {
@@ -217,6 +221,10 @@ export async function apiGetUser(): Promise<{
   }>('/user');
 }
 
+export async function apiForceChangePassword(payload: { current_password: string; password: string; password_confirmation: string }): Promise<{ message: string; user: AuthUser }> {
+  return apiFetch('/account/password/force-change', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 // â”€â”€ Token helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function saveToken(token: string): void {
@@ -239,22 +247,26 @@ export interface DashboardStats {
     active: number;
     new_this_month: number;
     new_last_month: number;
-    growth_percentage: number;
+    growth_percentage: number | null;
   };
   subscriptions: {
     active: number;
     total: number;
-    by_plan: Array<{ id: number; name: string; price: string; active_subscriptions_count: number }>;
+    by_plan: Array<{ id: number; name: string; price: string; billing_period: string; active_subscriptions_count: number }>;
   };
   revenue: {
-    total: string;
-    this_month: string;
-    last_month: string;
-    growth_percentage: number;
-    by_gateway: Array<{ gateway: string; total: string; count: number }>;
+    total: string | null;
+    this_month: string | null;
+    last_month: string | null;
+    growth_percentage: number | null;
+    total_by_currency: Array<{ currency: string; total: string }>;
+    this_month_by_currency: Array<{ currency: string; total: string }>;
+    last_month_by_currency: Array<{ currency: string; total: string }>;
+    refunds_by_currency: Array<{ currency: string; total: string; count: number }>;
+    by_gateway: Array<{ gateway: string; currency: string; total: string; count: number }>;
   };
   charts: {
-    monthly_revenue: Array<{ year: number; month: number; total: string }>;
+    monthly_revenue: Array<{ year: number; month: number; currency: string; total: string }>;
     user_growth: Array<{ year: number; month: number; total: number }>;
   };
   recent_activity: Array<ActivityLog>;
@@ -338,6 +350,14 @@ export interface Transaction {
   subscription?: Subscription;
 }
 
+export interface TransactionReconciliation {
+  source: 'internal_transaction_ledger';
+  currency_status_totals: Array<{ currency: string; status: string; transaction_count: number; amount_total: string | number }>;
+  stale_pending_count: number;
+  generated_at: string;
+  note: string;
+}
+
 export interface ActivityLog {
   id: number;
   user_id: number | null;
@@ -347,6 +367,9 @@ export interface ActivityLog {
   old_values: Record<string, unknown> | null;
   new_values: Record<string, unknown> | null;
   ip_address: string | null;
+  reason?: string | null;
+  request_id?: string | null;
+  result?: 'success' | 'failure' | string;
   created_at: string;
   user?: AuthUser;
 }
@@ -389,8 +412,50 @@ export async function apiGetUsers(params?: Record<string, string>): Promise<Pagi
   return apiFetch<PaginatedResponse<AuthUser>>(`/admin/users${query}`);
 }
 
-export async function apiGetUserById(id: number): Promise<{ user: AuthUser }> {
-  return apiFetch<{ user: AuthUser }>(`/admin/users/${id}`);
+export interface AdminPermission { key: string; description: string }
+export interface AdminRole {
+  id: number;
+  name: string;
+  slug: string;
+  is_system: boolean;
+  users_count?: number;
+  permissions: AdminPermission[];
+}
+export interface AdminUserDetail extends AuthUser {
+  avatar?: string | null;
+  email_verified_at?: string | null;
+  last_login_at?: string | null;
+  admin_role?: AdminRole | null;
+  subscriptions_count?: number;
+  transactions_count?: number;
+  stories_count?: number;
+  ai_credit_wallet?: { subscription_credits: number; purchased_credits: number; available_credits: number; cycle_started_at?: string | null } | null;
+  subscriptions?: Array<{ id: number; status: string; gateway: string; current_period_end?: string | null; plan?: { name: string } | null }>;
+  transactions?: Array<{ id: number; gateway: string; gateway_transaction_id?: string; amount: string; currency: string; status: string; type: string; created_at: string }>;
+  ai_credit_transactions?: Array<{ id: number; type: string; amount: number; description?: string | null; status: string; created_at: string }>;
+  stories?: Array<{ id: number; title: string; status: string; processing_step?: string | null; created_at: string }>;
+  activity_logs?: ActivityLog[];
+}
+export interface AdminRolesResponse { roles: AdminRole[]; permissions: AdminPermission[] }
+
+export async function apiGetAdminRoles(): Promise<AdminRolesResponse> {
+  return apiFetch<AdminRolesResponse>('/admin/roles');
+}
+
+export async function apiCreateAdminRole(payload: { name: string; permissions: string[] }): Promise<{ role: AdminRole }> {
+  return apiFetch('/admin/roles', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function apiUpdateAdminRole(id: number, payload: { name: string; permissions: string[]; reason?: string }): Promise<{ role: AdminRole }> {
+  return apiFetch(`/admin/roles/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+}
+
+export async function apiAssignAdminRole(userId: number, adminRoleId: number): Promise<{ user: AuthUser }> {
+  return apiFetch(`/admin/users/${userId}/admin-role`, { method: 'PUT', body: JSON.stringify({ admin_role_id: adminRoleId }) });
+}
+
+export async function apiGetUserById(id: number): Promise<{ user: AdminUserDetail }> {
+  return apiFetch<{ user: AdminUserDetail }>(`/admin/users/${id}`);
 }
 
 export async function apiCreateUser(data: Partial<AuthUser> & { password: string }): Promise<{ user: AuthUser }> {
@@ -499,10 +564,56 @@ export async function apiGetTransactions(params?: Record<string, string>): Promi
   return apiFetch<PaginatedResponse<Transaction>>(`/admin/transactions${query}`);
 }
 
+export async function apiGetTransactionReconciliation(params?: Record<string, string>): Promise<TransactionReconciliation> {
+  const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+  return apiFetch<TransactionReconciliation>(`/admin/transactions/reconciliation${query}`);
+}
+
+export interface SupportTicketMessage { id: number; sender_type: 'customer' | 'admin' | 'system'; body: string; created_at: string; sender?: { id: number; name: string; role?: string } | null }
+export interface SupportTicket { id: number; ticket_number: string; subject: string; category: string; priority: string; status: string; last_message_at: string | null; user?: { id: number; name: string; email: string }; messages?: SupportTicketMessage[]; messages_count?: number }
+export async function apiGetAdminSupportTickets(params?: Record<string, string>): Promise<PaginatedResponse<SupportTicket>> {
+  const query = params ? `?${new URLSearchParams(params)}` : '';
+  return apiFetch<PaginatedResponse<SupportTicket>>(`/admin/support-tickets${query}`);
+}
+export async function apiGetAdminSupportTicket(id: number): Promise<{ ticket: SupportTicket }> { return apiFetch(`/admin/support-tickets/${id}`); }
+export async function apiUpdateAdminSupportTicket(id: number, data: Partial<Pick<SupportTicket, 'status' | 'priority'>>): Promise<{ ticket: SupportTicket }> {
+  return apiFetch(`/admin/support-tickets/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+export async function apiReplyAdminSupportTicket(id: number, message: string): Promise<{ ticket: SupportTicket }> {
+  return apiFetch(`/admin/support-tickets/${id}/reply`, { method: 'POST', body: JSON.stringify({ message }) });
+}
+export interface GenerationOperation { id: number; story_id: number; step: string; status: string; error_summary: string | null; created_at: string; story?: { id: number; status: string; processing_step: string | null } | null }
+export async function apiGetGenerationOperations(params?: Record<string, string>): Promise<PaginatedResponse<GenerationOperation>> {
+  const query = params ? `?${new URLSearchParams(params)}` : '';
+  return apiFetch<PaginatedResponse<GenerationOperation>>(`/admin/generation-operations${query}`);
+}
+export async function apiGetGenerationOperationStory(id: number): Promise<Record<string, unknown>> {
+  return apiFetch(`/admin/generation-operations/stories/${id}`);
+}
+export async function apiVerifyMyFatoorahInvoice(invoiceId: number): Promise<Record<string, unknown>> {
+  return apiFetch(`/admin/payment-operations/myfatoorah/invoices/${invoiceId}/verify`, { method: 'POST' });
+}
+export interface AdminInvoice { id: number; invoice_number: string; amount: string | number; currency: string; status: string; gateway: string | null; gateway_transaction_id: string | null; issued_at: string | null; paid_at: string | null; user?: { id: number; name: string; email: string } | null }
+export async function apiGetAdminInvoices(params?: Record<string, string>): Promise<PaginatedResponse<AdminInvoice>> {
+  const query = params ? `?${new URLSearchParams(params)}` : '';
+  return apiFetch<PaginatedResponse<AdminInvoice>>(`/admin/invoices${query}`);
+}
+export async function apiGetMySupportTickets(): Promise<PaginatedResponse<SupportTicket>> { return apiFetch('/support/tickets'); }
+export async function apiCreateSupportTicket(data: { subject: string; category: string; message: string }): Promise<{ ticket: SupportTicket }> {
+  return apiFetch('/support/tickets', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function apiReplySupportTicket(id: number, message: string): Promise<{ ticket: SupportTicket }> {
+  return apiFetch(`/support/tickets/${id}/reply`, { method: 'POST', body: JSON.stringify({ message }) });
+}
+
 // Activity Logs
 export async function apiGetActivityLogs(params?: Record<string, string>): Promise<PaginatedResponse<ActivityLog>> {
   const query = params ? '?' + new URLSearchParams(params).toString() : '';
   return apiFetch<PaginatedResponse<ActivityLog>>(`/admin/activity-logs${query}`);
+}
+
+export async function apiGetActivityActions(): Promise<{ actions: string[] }> {
+  return apiFetch('/admin/activity-logs/actions');
 }
 
 // â”€â”€ Stories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -620,17 +731,17 @@ export async function apiGenerateStoryProducts(id: number): Promise<{ message: s
 
 // System Health
 export interface SystemHealth {
-  status: 'healthy' | 'warning' | 'critical';
+  status: 'healthy' | 'warning' | 'critical' | 'unknown';
   uptime: string;
   php_version: string;
   laravel_version: string;
   database: { status: 'connected' | 'disconnected'; type: string; size: string };
   cache: { status: 'active' | 'inactive'; driver: string };
-  queue: { status: 'running' | 'stopped'; pending_jobs: number };
+  queue: { status: 'running' | 'stopped' | 'unknown'; backend_status: 'connected' | 'disconnected'; worker_status: 'running' | 'stopped' | 'unknown' | 'not_observable'; connection: string; pending_jobs: number | null; failed_jobs: number | null };
   storage: { used: string; total: string; percentage: number };
   memory: { used: string; limit: string; percentage: number };
-  services: Array<{ name: string; status: 'online' | 'offline'; latency: number }>;
-  recent_errors: Array<{ message: string; level: string; timestamp: string }>;
+  services: Array<{ name: string; status: 'online' | 'offline' | 'unconfigured'; latency: number | null }>;
+  recent_errors: Array<{ id: number; message: string; timestamp: string }>;
 }
 
 export async function apiGetSystemHealth(): Promise<SystemHealth> {
