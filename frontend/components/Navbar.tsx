@@ -7,6 +7,7 @@ import { useLang } from '@/context/LangContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
+import CreditBalanceBadge from '@/components/CreditBalanceBadge';
 import {
   Sparkles,
   Sun,
@@ -173,6 +174,7 @@ export default function Navbar() {
 
             {/* ── Desktop Right Controls & Auth ── */}
             <div className="hidden lg:flex items-center gap-3">
+              {isLoggedIn && <CreditBalanceBadge />}
               {/* Language Switcher Pill */}
               <button
                 onClick={toggleLocale}
@@ -234,6 +236,7 @@ export default function Navbar() {
 
             {/* ── Mobile Right Quick Actions & Hamburger ── */}
             <div className="flex lg:hidden items-center gap-2">
+              {isLoggedIn && <CreditBalanceBadge />}
               <button
                 onClick={toggleLocale}
                 className="px-2 py-1 rounded-full text-xs font-bold border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"

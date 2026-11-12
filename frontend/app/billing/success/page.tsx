@@ -28,6 +28,7 @@ function BillingSuccessContent() {
   const [state, setState] = useState<'checking' | 'paid' | 'pending' | 'error'>(
     gateway === 'myfatoorah' ? 'checking' : 'paid'
   );
+  const [checkoutPurpose, setCheckoutPurpose] = useState('subscription');
 
   useEffect(() => {
     if (gateway !== 'myfatoorah') {
@@ -45,9 +46,10 @@ function BillingSuccessContent() {
       try {
         const result = await apiGetMyfatoorahCheckoutStatus(checkoutId);
         if (cancelled) return;
+        setCheckoutPurpose(result.purpose || 'subscription');
         if (result.status === 'completed') {
           setState('paid');
-          timer = setTimeout(() => router.push('/dashboard'), 2500);
+          timer = setTimeout(() => router.push(result.purpose === 'credit_purchase' ? '/billing#ai-credits' : '/dashboard'), 2500);
           return;
         }
         if (result.status === 'failed') {
@@ -73,9 +75,9 @@ function BillingSuccessContent() {
 
   const heading =
     state === 'paid'
-      ? isRTL
-        ? 'تم تأكيد الدفع وتفعيل الاشتراك!'
-        : 'Payment Confirmed & Studio Tier Activated!'
+      ? checkoutPurpose === 'credit_purchase'
+        ? (isRTL ? 'تم تأكيد الدفع وإضافة الرصيد!' : 'Payment Confirmed & Credits Added!')
+        : (isRTL ? 'تم تأكيد الدفع وتفعيل الاشتراك!' : 'Payment Confirmed & Studio Tier Activated!')
       : state === 'error'
       ? isRTL
         ? 'تعذر تأكيد الدفع'
@@ -87,8 +89,8 @@ function BillingSuccessContent() {
   const description =
     state === 'paid'
       ? isRTL
-        ? 'تم تفعيل باقتك بنجاح. جاري تحويلك إلى لوحة التحكم للبدء في إنشاء القصص.'
-        : 'Your creative quota is unlocked. Redirecting you to your studio workspace.'
+        ? checkoutPurpose === 'credit_purchase' ? 'تم إضافة الرصيد إلى محفظتك. جاري تحويلك إلى صفحة الفوترة.' : 'تم تفعيل باقتك بنجاح. جاري تحويلك إلى لوحة التحكم للبدء في إنشاء القصص.'
+        : checkoutPurpose === 'credit_purchase' ? 'Your purchased credits are in your wallet. Redirecting to billing.' : 'Your creative quota is unlocked. Redirecting you to your studio workspace.'
       : state === 'pending'
       ? isRTL
         ? 'تأخر الرد من مزود الدفع. لا تدفع مرة أخرى؛ سيتم تفعيل حسابك تلقائياً.'
@@ -142,14 +144,14 @@ function BillingSuccessContent() {
           </div>
 
           <button
-            onClick={() => router.push(state === 'paid' ? '/dashboard' : '/billing')}
+            onClick={() => router.push(state === 'paid' && checkoutPurpose !== 'credit_purchase' ? '/dashboard' : '/billing#ai-credits')}
             className="w-full py-3 px-6 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-brand-blue to-brand-purple hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md shadow-brand-blue/20"
           >
             <span>
               {state === 'paid'
                 ? isRTL
-                  ? 'الذهاب للوحة التحكم'
-                  : 'Go to Studio Dashboard'
+                  ? checkoutPurpose === 'credit_purchase' ? 'عرض رصيد الذكاء الاصطناعي' : 'الذهاب للوحة التحكم'
+                  : checkoutPurpose === 'credit_purchase' ? 'View AI credits' : 'Go to Studio Dashboard'
                 : isRTL
                 ? 'العودة لصفحة الفوترة'
                 : 'Back to Billing'}

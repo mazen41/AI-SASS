@@ -68,6 +68,7 @@ class GenerateImagesJob implements ShouldQueue
             // A fixed seed derived from the story ID ensures every scene image
             // is generated with the same style, lighting, color palette, and
             // clothing — maximising visual consistency across all scenes.
+            $keepCharacterConsistent = (bool) data_get($story->generation_settings, 'character_consistency', true);
             $storySeed = abs(crc32('story_' . $story->id)) % 2147483647;
 
             Log::info('GenerateImagesJob: generating all scene images with seed lock', [
@@ -84,13 +85,19 @@ class GenerateImagesJob implements ShouldQueue
 
                 // Always generate images when story_book_pdf OR video is selected.
                 // coloring_book_pdf alone defers to StoryProductService line-art conversion.
-                $needsImages = $needsStoryBook || $needsVideo;
+            $needsImages = $needsStoryBook || $needsVideo || $needsColorBook;
 
                 if ($needsImages) {
-                    $stylePrefix    = 'Manga/comic style illustration, bold outlines, vibrant colors, dynamic composition, professional children\'s book art style. ';
+                    $style = (string) data_get($story->generation_settings, 'illustration_style', 'storybook');
+                    $stylePrefix = match ($style) {
+                        'watercolor' => 'Soft watercolor children\'s book illustration, gentle washes, rich but natural colors. ',
+                        'cartoon' => 'Bright cartoon children\'s book illustration, clean bold outlines, playful shapes and colors. ',
+                        default => 'Professional storybook illustration, expressive characters, detailed composition and vibrant colors. ',
+                    };
                     $enhancedPrompt = $stylePrefix . $prompt;
 
-                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge, $storySeed);
+                    $sceneSeed = $keepCharacterConsistent ? $storySeed : random_int(1, 2147483646);
+                    $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge, $sceneSeed);
                     $storedUrl = $fal->downloadAndStore(
                         $imageUrl,
                         "stories/{$story->id}/scene_{$sceneNum}.jpg"

@@ -64,6 +64,7 @@ export default function StoryViewPage() {
   const [story, setStory] = useState<Story | null>(null);
   const [assets, setAssets] = useState<StoryAsset[]>([]);
   const [outputs, setOutputs] = useState<StoryOutputs>({});
+  const [creditReservation, setCreditReservation] = useState<StoryStatus['credit_reservation']>(null);
   const [activeTab, setActiveTab] = useState<StoryTab>('story');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -148,6 +149,7 @@ export default function StoryViewPage() {
         : prev
     );
     setOutputs(status.outputs || {});
+    setCreditReservation(status.credit_reservation || null);
   };
 
   const pollStatus = async (storyId: number) => {
@@ -431,6 +433,7 @@ export default function StoryViewPage() {
                 style={{ width: `${getProgress()}%` }}
               />
             </div>
+            {creditReservation && <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs"><span>{isRtl ? 'الرصيد المحجوز:' : 'Credits reserved:'} <strong>{creditReservation.amount.toLocaleString()}</strong></span><span className="text-cyan-400">{creditReservation.status === 'reserved' ? (isRtl ? 'لن يتم اعتماد الخصم حتى اكتمال المخرجات' : 'Final charge is pending successful outputs') : creditReservation.status}</span></div>}
 
             {/* Pipeline Stage Pills */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">

@@ -70,6 +70,11 @@ class GenerateStoryTextJob implements ShouldQueue
                 'min_duration_seconds'    => VideoTimelinePlanner::MIN_NARRATION_SECONDS,
                 'max_duration_seconds'    => VideoTimelinePlanner::MAX_NARRATION_SECONDS,
                 'target_duration_seconds' => VideoTimelinePlanner::TARGET_NARRATION_SECONDS,
+                'page_count' => (int) data_get($story->generation_settings, 'page_count', 8),
+                'selected_outputs' => $story->selected_outputs ?? ['story_text'],
+                'story_tone' => data_get($story->generation_settings, 'story_tone', 'gentle'),
+                'genre' => data_get($story->generation_settings, 'genre'),
+                'purpose' => data_get($story->generation_settings, 'purpose', 'entertainment'),
             ];
 
             // GeminiService::generateStory() internally tries the configured
@@ -96,6 +101,9 @@ class GenerateStoryTextJob implements ShouldQueue
             ]);
 
             $log->complete();
+            if (in_array('story_text', $story->selected_outputs ?? [], true)) {
+                app(\App\Services\AiCreditService::class)->finalizeOutput($story, 'story_text');
+            }
         } catch (Throwable $e) {
             $log->fail(mb_substr($e->getMessage(), 0, 500));
             $story->update(['status' => 'failed', 'error_message' => mb_substr($e->getMessage(), 0, 500)]);

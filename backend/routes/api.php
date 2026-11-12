@@ -126,6 +126,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Package & Product Balances
     Route::get('/packages/balances', [ProductBalanceController::class, 'index']);
     Route::post('/packages/purchase', [ProductBalanceController::class, 'purchase']);
+    Route::get('/ai-credits', [ProductBalanceController::class, 'creditSummary']);
+    Route::get('/ai-credits/history', [ProductBalanceController::class, 'creditHistory']);
+    Route::get('/ai-credits/packages', [ProductBalanceController::class, 'creditPackages']);
+    Route::post('/ai-credits/packages/{packageId}/checkout', [ProductBalanceController::class, 'purchaseCredits'])->whereNumber('packageId');
+    Route::post('/ai-credits/estimate', [StoryController::class, 'estimateCredits']);
 
     // Super Admin routes
     Route::middleware('super_admin')->prefix('admin')->group(function () {
@@ -147,6 +152,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/plans/{plan}', [PlanController::class, 'show']);
         Route::put('/plans/{plan}', [PlanController::class, 'update']);
         Route::delete('/plans/{plan}', [PlanController::class, 'destroy']);
+
+        Route::get('/ai-credits', [\App\Http\Controllers\Admin\AiCreditsController::class, 'index']);
+        Route::put('/ai-credits/pricing/{operation}', [\App\Http\Controllers\Admin\AiCreditsController::class, 'updatePricing']);
+        Route::post('/ai-credits/packages', [\App\Http\Controllers\Admin\AiCreditsController::class, 'storePackage']);
+        Route::put('/ai-credits/packages/{package}', [\App\Http\Controllers\Admin\AiCreditsController::class, 'updatePackage']);
+        Route::post('/ai-credits/users/{user}/adjust', [\App\Http\Controllers\Admin\AiCreditsController::class, 'adjust']);
 
         // Add-Ons Management
         Route::get('/addons', [AddonController::class, 'index']);

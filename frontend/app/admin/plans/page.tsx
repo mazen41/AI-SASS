@@ -75,6 +75,7 @@ export default function PlansPage() {
     slug: '',
     description: '',
     price: '',
+    monthly_credits: '0',
     billing_period: 'monthly' as 'monthly' | 'yearly',
     features: '',
     is_active: true,
@@ -105,6 +106,7 @@ export default function PlansPage() {
       slug: '',
       description: '',
       price: '',
+      monthly_credits: '0',
       billing_period: 'monthly',
       features: '',
       is_active: true,
@@ -122,6 +124,7 @@ export default function PlansPage() {
       slug: plan.slug,
       description: plan.description || '',
       price: plan.price,
+      monthly_credits: String(plan.monthly_credits ?? 0),
       billing_period: plan.billing_period,
       features: plan.features?.join('\n') || '',
       is_active: plan.is_active,
@@ -139,6 +142,7 @@ export default function PlansPage() {
       const data = {
         ...formData,
         price: formData.price,
+        monthly_credits: Number(formData.monthly_credits),
         features: formData.features.split('\n').filter((f) => f.trim()),
       };
       if (editingPlan) {
@@ -256,6 +260,7 @@ export default function PlansPage() {
                     /{plan.billing_period === 'monthly' ? t.mo : t.yr}
                   </span>
                 </div>
+                <div className="mt-2 text-xs text-slate-500">{Number(plan.monthly_credits).toLocaleString()} {isRTL ? 'رصيد ذكاء اصطناعي / دورة' : 'AI credits / billing cycle'}</div>
               </div>
 
               {/* Features List */}
@@ -364,6 +369,16 @@ export default function PlansPage() {
                     required
                   />
                 </div>
+
+                <StudioInput
+                  label={isRTL ? 'أرصدة الذكاء الاصطناعي لكل دورة' : 'AI credits per billing cycle'}
+                  type="number"
+                  value={formData.monthly_credits}
+                  onChange={(e) => setFormData({ ...formData, monthly_credits: e.target.value })}
+                  placeholder="250"
+                  leadIcon={<Sparkles size={16} />}
+                  required
+                />
 
                 <StudioInput
                   label={t.description}

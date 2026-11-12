@@ -147,6 +147,11 @@ class StripeWebhookController extends Controller
 
         $existingTransaction = Transaction::where('gateway_transaction_id', $invoice->payment_intent)->first();
         if ($existingTransaction) {
+            if ($sub->plan) {
+                app(\App\Services\AiCreditService::class)->grantPlanCredits(
+                    $sub->user, $sub->plan, 'subscription-cycle:stripe-invoice:' . $invoice->id
+                );
+            }
             return;
         }
 
@@ -164,6 +169,12 @@ class StripeWebhookController extends Controller
                 'invoice_number' => $invoice->number,
             ],
         ]);
+
+        if ($sub->plan) {
+            app(\App\Services\AiCreditService::class)->grantPlanCredits(
+                $sub->user, $sub->plan, 'subscription-cycle:stripe-invoice:' . $invoice->id
+            );
+        }
 
         ActivityLog::log('payment_received', $sub->user_id, 'Transaction', null, null, [
             'amount' => $invoice->amount_paid / 100,

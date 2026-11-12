@@ -67,6 +67,7 @@ class AssembleVideoJob implements ShouldQueue
             );
 
             $log->complete();
+            app(\App\Services\AiCreditService::class)->finalizeOutput($story, 'video');
         } catch (Throwable $e) {
             $log->fail(mb_substr($e->getMessage(), 0, 500));
             $story->update(['status' => 'failed', 'error_message' => mb_substr($e->getMessage(), 0, 500)]);

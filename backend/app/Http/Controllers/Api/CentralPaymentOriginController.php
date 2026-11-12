@@ -142,6 +142,9 @@ class CentralPaymentOriginController extends Controller
                             'status' => 'completed', 'type' => 'subscription',
                             'gateway_response' => ['central_payment_id' => $input['central_payment_id'], 'event_id' => $input['event_id']],
                         ]);
+                        app(\App\Services\AiCreditService::class)->grantPlanCredits(
+                            $user, $plan, 'subscription-cycle:myfatoorah-central:' . $input['myfatoorah_payment_id']
+                        );
                         Invoice::query()->create([
                             'user_id' => $user->id, 'subscription_id' => $subscription->id,
                             'invoice_number' => Invoice::generateInvoiceNumber(), 'amount' => $checkout->amount,

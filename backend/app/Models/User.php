@@ -40,6 +40,16 @@ class User extends Authenticatable
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::created(function (User $user): void {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('ai_credit_wallets')) return;
+            app(\App\Services\AiCreditService::class)->grant(
+                $user, 30, 'welcome_grant', 'welcome-credit:' . $user->id, 'subscription', ['one_time' => true]
+            );
+        });
+    }
+
     public function subscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Subscription::class);
@@ -108,6 +118,16 @@ class User extends Authenticatable
     public function productConsumptions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(ProductConsumption::class);
+    }
+
+    public function aiCreditWallet(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(AiCreditWallet::class);
+    }
+
+    public function aiCreditTransactions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AiCreditTransaction::class)->latest();
     }
 
     public function getProductBalance(int $productId): int
@@ -180,6 +200,11 @@ class User extends Authenticatable
      */
     public function refundProductByOutputType(string $outputType, ?int $storyId = null, int $quantity = 1): void
     {
+        if ($storyId && \App\Models\AiCreditReservation::where('story_id', $storyId)->exists()) {
+            $story = Story::find($storyId);
+            if ($story) app(\App\Services\AiCreditService::class)->refundOutput($story, $outputType);
+            return;
+        }
         $productMap = [
             'story_text' => 'story',
             'narration_audio' => 'narration',

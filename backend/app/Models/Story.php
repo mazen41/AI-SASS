@@ -34,7 +34,7 @@ class Story extends Model
 
         'processing_step', 'error_message', 'custom_prompt', 'narration_url', 'assembled_video_url',
 
-        'selected_outputs', 'pending_outputs_count', 'storybook_data', 'storybook_url',
+        'selected_outputs', 'pending_outputs_count', 'storybook_data', 'storybook_url', 'generation_settings',
 
     ];
 
@@ -57,6 +57,7 @@ class Story extends Model
             'pending_outputs_count' => 'integer',
 
             'storybook_data'   => 'array',
+            'generation_settings' => 'array',
 
             'created_at'       => 'datetime',
 

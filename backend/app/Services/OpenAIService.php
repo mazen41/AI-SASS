@@ -30,19 +30,28 @@ class OpenAIService
         $language    = $params['language']   ?? 'en';
         $customPrompt = $params['custom_prompt'] ?? null;
         
-        // Respect TEST_IMAGE_COUNT for testing, otherwise use default 6 scenes
+        // Keep prompt output and credit pricing aligned with the selected book size.
         $testImageCount = (int)env('TEST_IMAGE_COUNT', 0);
-        $sceneCount   = $testImageCount > 0 ? $testImageCount : 6;
+        $selectedOutputs = (array) ($params['selected_outputs'] ?? []);
+        $bookOutput = (bool) array_intersect($selectedOutputs, ['story_book_pdf', 'coloring_book_pdf']);
+        $sceneCount = $bookOutput
+            ? max(8, min(20, (int) ($params['page_count'] ?? 8)))
+            : ($testImageCount > 0 ? $testImageCount : 12);
 
         $langInstruction = $language === 'ar'
             ? 'Write the title, story_text, and all scene descriptions entirely in Arabic. The image_prompt values MUST remain in English so that the image generator can understand them.'
             : 'Write in English.';
 
+        $customPrompt .= trim(implode(' ', array_filter([
+            isset($params['story_tone']) ? 'Tone: ' . $params['story_tone'] . '.' : null,
+            isset($params['genre']) ? 'Genre: ' . $params['genre'] . '.' : null,
+            isset($params['purpose']) ? 'Purpose: ' . $params['purpose'] . '.' : null,
+        ])));
         $customPart = $customPrompt
             ? "The parent's special idea: \"{$customPrompt}\". Incorporate this."
             : '';
 
-        $targetPageCount = max(8, min(12, $sceneCount));
+        $targetPageCount = max(8, min(20, $sceneCount));
 
         $prompt = <<<PROMPT
 You are a children's book author. Create a magical children's storybook and a corresponding video narration script for a {$childAge}-year-old child named {$childName}.

@@ -19,6 +19,7 @@ import {
   Subscription,
 } from '@/lib/api';
 import Navbar from '@/components/Navbar';
+import AiCreditsPanel from '@/components/AiCreditsPanel';
 import CustomCursor from '@/components/CustomCursor';
 import SplitTextReveal from '@/components/SplitTextReveal';
 import {
@@ -215,6 +216,8 @@ export default function BillingPage() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">{t.subtitle}</p>
         </div>
+
+        <AiCreditsPanel />
 
         {/* Active Subscription Banner */}
         {activeSub && (

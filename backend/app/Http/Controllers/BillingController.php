@@ -386,7 +386,7 @@ class BillingController extends Controller
             ->where('user_id', $request->user()->id)
             ->first();
         if (!$checkout) return response()->json(['message' => 'Checkout not found.'], 404);
-        return response()->json(['status' => $checkout->status]);
+        return response()->json(['status' => $checkout->status, 'purpose' => $checkout->purpose ?: 'subscription']);
     }
 
     /**

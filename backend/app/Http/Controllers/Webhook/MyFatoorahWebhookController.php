@@ -60,7 +60,9 @@ class MyFatoorahWebhookController extends Controller
         $verifiedTransactions = (array) ($verified['InvoiceTransactions'] ?? $verified['Transactions'] ?? []);
         $successfulTransaction = collect($verifiedTransactions)->first(fn ($item) => strtoupper((string) ($item['TransactionStatus'] ?? $item['Transaction_Status'] ?? '')) === 'SUCCESS') ?? [];
         $currency = strtoupper((string) ($successfulTransaction['PaidCurrency'] ?? $verified['Currency'] ?? $verified['DisplayCurrencyIso'] ?? $session->currency));
-        $transactionSucceeded = !$verifiedTransactions || !empty($successfulTransaction);
+        // A PAID invoice label alone is insufficient: require an individual
+        // provider transaction with SUCCESS before fulfilling value.
+        $transactionSucceeded = !empty($successfulTransaction);
         if ($verifiedInvoiceId !== $invoiceId || $status !== 'PAID' || !$transactionSucceeded || abs($paidAmount - (float) $session->amount) > 0.009 || $currency !== strtoupper($session->currency)) {
             Log::warning('MyFatoorah payment did not match local checkout', ['checkout_id' => $session->id, 'invoice_id_matches' => $verifiedInvoiceId === $invoiceId, 'status' => $status, 'amount_matches' => abs($paidAmount - (float) $session->amount) <= 0.009, 'currency_matches' => $currency === strtoupper($session->currency)]);
             return response('Payment not completed or does not match checkout', 200);
@@ -87,6 +89,30 @@ class MyFatoorahWebhookController extends Controller
                 return;
             }
 
+            if ($session->purpose === 'credit_purchase') {
+                $user = User::whereKey($session->user_id)->lockForUpdate()->firstOrFail();
+                $package = \App\Models\AiCreditPackage::whereKey($session->credit_package_id)->where('is_active', true)->firstOrFail();
+                $transactionKey = 'myfatoorah_' . $paymentId;
+                if (!Transaction::where('gateway_transaction_id', $transactionKey)->exists()) {
+                    Transaction::create([
+                        'user_id' => $user->id, 'gateway' => 'myfatoorah', 'gateway_transaction_id' => $transactionKey,
+                        'amount' => $session->amount, 'currency' => $session->currency, 'status' => 'completed',
+                        'type' => 'one_time', 'gateway_response' => [...$verified, 'credit_package_id' => $package->id, 'credits' => $package->credits],
+                    ]);
+                    Invoice::create([
+                        'user_id' => $user->id, 'invoice_number' => Invoice::generateInvoiceNumber(),
+                        'amount' => $session->amount, 'currency' => $session->currency, 'status' => 'paid',
+                        'items' => [['name' => $package->name, 'price' => $session->amount, 'type' => 'ai_credit_package', 'credits' => $package->credits]],
+                        'gateway' => 'myfatoorah', 'gateway_transaction_id' => $paymentId, 'issued_at' => now(), 'paid_at' => now(),
+                    ]);
+                    app(\App\Services\AiCreditService::class)->grant(
+                        $user, (int)$package->credits, 'credit_purchase', 'credit-purchase:' . $paymentId,
+                        'purchased', ['package_id' => $package->id, 'checkout_id' => $session->id, 'currency' => $session->currency, 'amount' => $session->amount]
+                    );
+                }
+                return;
+            }
+
             $user = User::findOrFail($session->user_id);
             $plan = Plan::findOrFail($session->plan_id);
             if (Transaction::where('gateway_transaction_id', 'myfatoorah_' . $paymentId)->exists()) return;
@@ -108,6 +134,9 @@ class MyFatoorahWebhookController extends Controller
                 'items' => [['name' => $plan->name . ' Plan', 'price' => $session->amount, 'type' => 'subscription']],
                 'gateway' => 'myfatoorah', 'gateway_transaction_id' => $paymentId, 'issued_at' => now(), 'paid_at' => now(),
             ]);
+            app(\App\Services\AiCreditService::class)->grantPlanCredits(
+                $user, $plan, 'subscription-cycle:myfatoorah:' . $paymentId
+            );
             ActivityLog::log('payment_received', $user->id, 'Subscription', $subscription->id, null, ['amount' => $session->amount, 'gateway' => 'myfatoorah', 'plan' => $plan->name]);
         });
 

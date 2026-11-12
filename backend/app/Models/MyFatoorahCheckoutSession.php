@@ -9,6 +9,6 @@ class MyFatoorahCheckoutSession extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['id', 'user_id', 'plan_id', 'pending_registration_id', 'invoice_id', 'payment_id', 'amount', 'currency', 'status', 'gateway_response'];
+    protected $fillable = ['id', 'user_id', 'plan_id', 'pending_registration_id', 'invoice_id', 'payment_id', 'amount', 'currency', 'status', 'gateway_response', 'purpose', 'credit_package_id'];
     protected $casts = ['amount' => 'decimal:2', 'gateway_response' => 'array'];
 }

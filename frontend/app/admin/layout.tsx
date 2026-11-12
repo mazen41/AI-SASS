@@ -35,6 +35,7 @@ import {
   ExternalLink,
   ShieldCheck,
   BookOpen,
+  Coins,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -64,6 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       items: [
         { href: '/admin/users', label: isRTL ? 'المستخدمين' : 'Users', icon: Users },
         { href: '/admin/subscriptions', label: isRTL ? 'الاشتراكات' : 'Subscriptions', icon: RefreshCw },
+        { href: '/admin/ai-credits', label: isRTL ? 'أرصدة الذكاء الاصطناعي' : 'AI Credits & Pricing', icon: Coins },
         { href: '/admin/transactions', label: isRTL ? 'المعاملات' : 'Transactions', icon: CreditCard },
       ],
     },

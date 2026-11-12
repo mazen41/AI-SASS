@@ -91,6 +91,9 @@ class GenerateNarrationJob implements ShouldQueue
             );
 
             $log->complete();
+            if (in_array('narration_audio', $story->selected_outputs ?? [], true)) {
+                app(\App\Services\AiCreditService::class)->finalizeOutput($story, 'narration_audio');
+            }
             Log::info('Narration generated', [
                 'story_id'           => $story->id,
                 'duration_seconds'   => round($narrationDuration, 3),

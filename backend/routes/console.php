@@ -50,6 +50,11 @@ Artisan::command('subscription:remind-renewals', function () {
     $this->info('Done.');
 })->purpose('Send subscription renewal reminders 3 days before renewal');
 
+Artisan::command('ai-credits:expire-reservations', function (\App\Services\AiCreditService $credits) {
+    $count = $credits->expireReservations();
+    $this->info("Expired and refunded {$count} pending AI credit output reservation(s).");
+})->purpose('Refund AI generation credit reservations that exceeded their safe processing window');
+
 // Schedule the daily backup if enabled in the database settings
 try {
     if (Schema::hasTable('backup_settings')) {
@@ -60,6 +65,7 @@ try {
         }
     }
     Schedule::command('subscription:remind-renewals')->dailyAt('09:00');
+Schedule::command('ai-credits:expire-reservations')->everyFifteenMinutes();
 } catch (\Exception $e) {
     // Avoid blocking artisan execution if database is not set up
 }

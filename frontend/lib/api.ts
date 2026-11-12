@@ -236,6 +236,7 @@ export interface Plan {
   slug: string;
   description: string | null;
   price: string;
+  monthly_credits: number;
   billing_period: 'monthly' | 'yearly';
   features: string[] | null;
   is_active: boolean;
@@ -466,6 +467,7 @@ export interface StoryStatus {
   narration_url: string | null;
   outputs: StoryOutputs;
   assets_count: { images: number; videos: number; coloring_pages: number };
+  credit_reservation: { amount: number; status: string; outputs: Array<{ output_type: string; amount: number; status: string }> } | null;
 }
 
 export interface Story {
@@ -759,8 +761,111 @@ export async function apiSubscribeMyfatoorah(planId: number): Promise<{ url: str
   });
 }
 
-export async function apiGetMyfatoorahCheckoutStatus(checkoutId: string): Promise<{ status: string }> {
-  return apiFetch<{ status: string }>(`/billing/myfatoorah/checkouts/${encodeURIComponent(checkoutId)}`);
+export async function apiGetMyfatoorahCheckoutStatus(checkoutId: string): Promise<{ status: string; purpose?: string }> {
+  return apiFetch<{ status: string; purpose?: string }>(`/billing/myfatoorah/checkouts/${encodeURIComponent(checkoutId)}`);
+}
+
+export interface AiCreditSummary {
+  available_credits: number;
+  subscription_credits: number;
+  purchased_credits: number;
+  reserved_credits: number;
+  consumed_this_cycle: number;
+  cycle_started_at: string | null;
+  renewal_at: string | null;
+}
+
+export interface AiCreditTransaction {
+  id: number;
+  user_id?: number;
+  user?: AuthUser;
+  type: string;
+  bucket: string;
+  amount: number;
+  status: string;
+  reference: string | null;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  story_id: number | null;
+}
+
+export interface AiCreditPackage {
+  id: number;
+  name: string;
+  slug: string;
+  credits: number;
+  price: string;
+  currency: string;
+  is_active: boolean;
+}
+
+export interface AiCreditEstimate {
+  outputs: Record<string, number>;
+  total_credits: number;
+  wallet: AiCreditSummary & { remaining_after_generation: number };
+  sufficient: boolean;
+  shortfall: number;
+  pricing_version: number;
+}
+
+export async function apiGetAiCredits(): Promise<{ credits: AiCreditSummary }> {
+  return apiFetch<{ credits: AiCreditSummary }>('/ai-credits');
+}
+
+export async function apiGetAiCreditHistory(): Promise<PaginatedResponse<AiCreditTransaction>> {
+  return apiFetch<PaginatedResponse<AiCreditTransaction>>('/ai-credits/history');
+}
+
+export async function apiGetAiCreditPackages(): Promise<{ packages: AiCreditPackage[] }> {
+  return apiFetch<{ packages: AiCreditPackage[] }>('/ai-credits/packages');
+}
+
+export async function apiPurchaseAiCreditPackage(packageId: number): Promise<{ url: string; checkout_id: string }> {
+  return apiFetch<{ url: string; checkout_id: string }>(`/ai-credits/packages/${packageId}/checkout`, { method: 'POST' });
+}
+
+export async function apiEstimateAiCredits(payload: {
+  selected_outputs: string[];
+  page_count?: number;
+  duration_seconds?: number;
+  scene_count?: number;
+}): Promise<AiCreditEstimate> {
+  return apiFetch<AiCreditEstimate>('/ai-credits/estimate', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export interface AdminAiCreditsData {
+  plans: Plan[];
+  pricing: Array<{ id: number; operation: string; base_credits: number; per_unit_credits: number; unit: string; is_enabled: boolean; version: number; metadata: Record<string, unknown> | null }>;
+  packages: AiCreditPackage[];
+  users: PaginatedResponse<AuthUser & {
+    ai_credit_wallet?: AiCreditSummary;
+    ai_credit_transactions?: AiCreditTransaction[];
+    subscriptions?: Array<{ id: number; status: string; current_period_end: string | null; plan?: Plan }>;
+  }>;
+  analytics: Record<string, number>;
+  recent_transactions: AiCreditTransaction[];
+}
+
+export async function apiGetAdminAiCredits(params?: Record<string, string>): Promise<AdminAiCreditsData> {
+  const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  return apiFetch<AdminAiCreditsData>(`/admin/ai-credits${query}`);
+}
+
+export async function apiUpdateAiGenerationPricing(operation: string, data: { base_credits: number; per_unit_credits: number; unit: string; is_enabled: boolean }): Promise<void> {
+  await apiFetch(`/admin/ai-credits/pricing/${encodeURIComponent(operation)}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function apiCreateAiCreditPackage(data: Omit<AiCreditPackage, 'id'>): Promise<{ package: AiCreditPackage }> {
+  return apiFetch<{ package: AiCreditPackage }>('/admin/ai-credits/packages', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function apiUpdateAiCreditPackage(id: number, data: Partial<AiCreditPackage>): Promise<{ package: AiCreditPackage }> {
+  return apiFetch<{ package: AiCreditPackage }>(`/admin/ai-credits/packages/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function apiAdjustUserAiCredits(userId: number, amount: number, reason: string): Promise<void> {
+  await apiFetch(`/admin/ai-credits/users/${userId}/adjust`, { method: 'POST', body: JSON.stringify({ amount, reason }) });
 }
 
 export async function apiUserCancelSubscription(): Promise<{ message: string; subscription: Subscription }> {

@@ -8,7 +8,8 @@ import {
   apiCreateStory,
   apiGenerateStory,
   apiGetStories,
-  apiGetProductBalances,
+  apiEstimateAiCredits,
+  AiCreditEstimate,
   Story,
 } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -144,17 +145,23 @@ export default function CreateStoryPage() {
   const [childAge, setChildAge] = useState('');
   const [selectedTheme, setSelectedTheme] = useState('adventure');
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
+  const [storyTone, setStoryTone] = useState<'gentle' | 'funny' | 'adventurous' | 'educational'>('gentle');
+  const [genre, setGenre] = useState('');
+  const [purpose, setPurpose] = useState<'entertainment' | 'educational'>('entertainment');
+  const [illustrationStyle, setIllustrationStyle] = useState<'storybook' | 'watercolor' | 'cartoon'>('storybook');
+  const [characterConsistency, setCharacterConsistency] = useState(true);
   const [customPrompt, setCustomPrompt] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [selectedOutputs, setSelectedOutputs] = useState<string[]>(['video', 'story_book_pdf']);
+  const [pageCount, setPageCount] = useState(8);
+  const [creditEstimate, setCreditEstimate] = useState<AiCreditEstimate | null>(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
-  // Balances
-  const [balances, setBalances] = useState<Record<string, any>>({});
   const [resumableStories, setResumableStories] = useState<Story[]>([]);
   const [showResume, setShowResume] = useState(true);
 
@@ -171,12 +178,20 @@ export default function CreateStoryPage() {
       })
       .catch(() => {});
 
-    apiGetProductBalances()
-      .then((res) => {
-        setBalances(res.balances || {});
-      })
-      .catch(() => {});
   }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn || selectedOutputs.length === 0) return;
+    let current = true;
+    const timer = setTimeout(() => {
+      setEstimateLoading(true);
+      apiEstimateAiCredits({ selected_outputs: selectedOutputs, page_count: pageCount })
+        .then(result => { if (current) setCreditEstimate(result); })
+        .catch(err => { if (current) setError(err instanceof Error ? err.message : (isRTL ? 'تعذر حساب تكلفة التوليد.' : 'Could not estimate generation credits.')); })
+        .finally(() => { if (current) setEstimateLoading(false); });
+    }, 250);
+    return () => { current = false; clearTimeout(timer); };
+  }, [isLoggedIn, selectedOutputs, pageCount, isRTL]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -218,6 +233,12 @@ export default function CreateStoryPage() {
       if (childName) formData.append('child_name', childName);
       if (childAge) formData.append('child_age', childAge);
       formData.append('language', language);
+      formData.append('page_count', String(pageCount));
+      formData.append('story_tone', storyTone);
+      formData.append('purpose', purpose);
+      formData.append('illustration_style', illustrationStyle);
+      formData.append('character_consistency', String(characterConsistency));
+      if (genre) formData.append('genre', genre);
       if (customPrompt) formData.append('custom_prompt', customPrompt);
       if (photo) formData.append('photo', photo);
 
@@ -806,6 +827,35 @@ export default function CreateStoryPage() {
                 </div>
               </div>
 
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="space-y-2 text-xs font-bold text-slate-500"><span>{isRTL ? 'نبرة القصة' : 'Story tone'}</span><select value={storyTone} onChange={e => setStoryTone(e.target.value as typeof storyTone)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"><option value="gentle">{isRTL ? 'هادئة' : 'Gentle'}</option><option value="funny">{isRTL ? 'مرحة' : 'Funny'}</option><option value="adventurous">{isRTL ? 'مغامرة' : 'Adventurous'}</option><option value="educational">{isRTL ? 'تعليمية' : 'Educational'}</option></select></label>
+                <label className="space-y-2 text-xs font-bold text-slate-500"><span>{isRTL ? 'نوع القصة' : 'Genre'}</span><select value={genre} onChange={e => setGenre(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"><option value="">{isRTL ? 'تلقائي' : 'Choose / automatic'}</option>{['adventure','fantasy','comedy','mystery','science fiction'].map(value=><option key={value} value={value}>{value}</option>)}</select></label>
+                <label className="space-y-2 text-xs font-bold text-slate-500"><span>{isRTL ? 'هدف القصة' : 'Story purpose'}</span><select value={purpose} onChange={e => setPurpose(e.target.value as typeof purpose)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"><option value="entertainment">{isRTL ? 'ترفيه' : 'Entertainment'}</option><option value="educational">{isRTL ? 'تعليم' : 'Educational'}</option></select></label>
+                <label className="space-y-2 text-xs font-bold text-slate-500"><span>{isRTL ? 'أسلوب الرسم' : 'Illustration style'}</span><select value={illustrationStyle} onChange={e => setIllustrationStyle(e.target.value as typeof illustrationStyle)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"><option value="storybook">Storybook</option><option value="watercolor">Watercolor</option><option value="cartoon">Cartoon</option></select></label>
+              </div>
+              <label className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300"><input type="checkbox" checked={characterConsistency} onChange={e=>setCharacterConsistency(e.target.checked)} className="h-4 w-4 accent-brand-blue"/>{isRTL ? 'الحفاظ على اتساق مظهر الشخصية بين الصفحات' : 'Keep the character appearance consistent across pages'}</label>
+
+              {/* Custom Prompt Textarea */}
+              {(selectedOutputs.includes('story_book_pdf') || selectedOutputs.includes('coloring_book_pdf')) && (
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)]">
+                  <div className="space-y-2">
+                    <label htmlFor="page-count" className="block text-xs font-bold text-slate-500">{isRTL ? 'عدد الصفحات' : 'Book page count'}</label>
+                    <select id="page-count" value={pageCount} onChange={e => setPageCount(Number(e.target.value))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
+                      {[8, 12, 16, 20].map(count => <option key={count} value={count}>{count} {isRTL ? 'صفحات' : 'pages'}</option>)}
+                    </select>
+                    <p className="text-[11px] text-slate-500">{isRTL ? 'يُستخدم نفس العدد لتخطيط صفحات الكتب والرسوم.' : 'The backend validates this and uses it to plan book pages.'}</p>
+                  </div>
+                  <div aria-live="polite" className="rounded-2xl border border-brand-blue/20 bg-brand-blue/[0.06] p-4">
+                    <div className="text-xs font-bold">{isRTL ? 'تقدير الأرصدة' : 'Credit estimate'}</div>
+                    {estimateLoading ? <div className="mt-2 flex items-center gap-2 text-xs text-slate-500"><Loader2 size={14} className="animate-spin"/>{isRTL ? 'جارٍ الحساب من الخادم...' : 'Calculating on the server…'}</div> : creditEstimate ? <>
+                      <div className="mt-2 text-2xl font-black">{creditEstimate.total_credits.toLocaleString()} <span className="text-xs font-medium text-slate-500">{isRTL ? 'رصيد' : 'credits'}</span></div>
+                      <div className="mt-1 text-xs text-slate-500">{isRTL ? 'المتاح:' : 'Available:'} {creditEstimate.wallet.available_credits.toLocaleString()} · {isRTL ? 'بعد التوليد:' : 'After generation:'} {creditEstimate.wallet.remaining_after_generation.toLocaleString()}</div>
+                      {!creditEstimate.sufficient && <div className="mt-2 text-xs font-semibold text-red-400">{isRTL ? `تحتاج ${creditEstimate.shortfall.toLocaleString()} رصيد إضافي.` : `${creditEstimate.shortfall.toLocaleString()} more credits needed.`}</div>}
+                    </> : <div className="mt-2 text-xs text-slate-500">{isRTL ? 'حدد المخرجات لحساب التكلفة.' : 'Select outputs to calculate the estimate.'}</div>}
+                  </div>
+                </div>
+              )}
+
               {/* Custom Prompt Textarea */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
@@ -855,7 +905,7 @@ export default function CreateStoryPage() {
 
                 <button
                   type="submit"
-                  disabled={loading || generating}
+                  disabled={loading || generating || estimateLoading || (creditEstimate !== null && !creditEstimate.sufficient)}
                   className="py-3.5 px-8 rounded-2xl text-xs font-extrabold text-white bg-gradient-to-r from-brand-blue via-brand-purple to-brand-pink hover:opacity-95 shadow-xl shadow-brand-blue/30 transition-all flex items-center gap-2 disabled:opacity-50 hover:scale-[1.02]"
                 >
                   {generating ? (

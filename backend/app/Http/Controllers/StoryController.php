@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Story;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
-use App\Jobs\GenerateStoryProductsJob;
 use Illuminate\Support\Facades\Storage;
 
 class StoryController extends Controller
@@ -72,6 +71,12 @@ class StoryController extends Controller
             'photo'         => 'nullable|image|max:10240',
             'selected_outputs' => 'nullable|array',
             'selected_outputs.*' => 'string|in:story_text,narration_audio,story_book_pdf,coloring_book_pdf,video',
+            'page_count' => 'nullable|integer|in:8,12,16,20',
+            'story_tone' => 'nullable|string|in:gentle,funny,adventurous,educational',
+            'genre' => 'nullable|string|max:80',
+            'purpose' => 'nullable|string|in:entertainment,educational',
+            'illustration_style' => 'nullable|string|in:storybook,watercolor,cartoon',
+            'character_consistency' => 'nullable|boolean',
         ]);
 
         $selectedOutputs = $validated['selected_outputs'] ?? ['story_text'];
@@ -106,6 +111,18 @@ class StoryController extends Controller
             'custom_prompt' => $validated['custom_prompt'] ?? null,
             'status'        => 'draft',
             'selected_outputs' => $selectedOutputs,
+            'generation_settings' => [
+                'page_count' => (int)($validated['page_count'] ?? 8),
+                'scene_count' => in_array('video', $selectedOutputs, true)
+                    ? ((bool) array_intersect($selectedOutputs, ['story_book_pdf', 'coloring_book_pdf'])
+                        ? (int)($validated['page_count'] ?? 8) : 12)
+                    : 0,
+                'story_tone' => $validated['story_tone'] ?? 'gentle',
+                'genre' => $validated['genre'] ?? null,
+                'purpose' => $validated['purpose'] ?? 'entertainment',
+                'illustration_style' => $validated['illustration_style'] ?? 'storybook',
+                'character_consistency' => (bool)($validated['character_consistency'] ?? true),
+            ],
         ];
 
         if ($request->hasFile('photo')) {
@@ -141,51 +158,15 @@ class StoryController extends Controller
             return response()->json(['message' => $combinationError], 422);
         }
 
-        // Check product balances for selected outputs
-        $activePackage = $user->activeUserPackage();
-
-        // Map output types to product slugs
-        $productMap = [
-            'story_text'       => 'story',
-            'narration_audio'  => 'narration',
-            'story_book_pdf'   => 'story_book',
-            'coloring_book_pdf' => 'coloring_book',
-            'video'            => 'video',
-        ];
-
-        // Check if user has package and balances
-        if (!$activePackage) {
-            return response()->json(['message' => 'No active package. Please purchase a package to generate stories.'], 403);
-        }
-
-        $balances = $user->getAllProductBalances();
-        $missingProducts = [];
-
-        foreach ($selectedOutputs as $output) {
-            $productSlug = $productMap[$output] ?? null;
-            if ($productSlug) {
-                $balance = $balances[$productSlug] ?? null;
-                if (!$balance || $balance['quantity'] <= 0) {
-                    $missingProducts[] = $output;
-                }
-            }
-        }
-
-        if (!empty($missingProducts)) {
+        try {
+            app(\App\Services\AiCreditService::class)->reserve(
+                $user, $story, $selectedOutputs, $story->generation_settings ?? []
+            );
+        } catch (\RuntimeException $exception) {
             return response()->json([
-                'message' => 'Insufficient product balance. Please purchase more credits.',
-                'missing_outputs' => $missingProducts,
-                'balances' => $balances,
-            ], 403);
-        }
-
-        // Consume products
-        foreach ($selectedOutputs as $output) {
-            $productSlug = $productMap[$output] ?? null;
-            if ($productSlug && isset($balances[$productSlug])) {
-                $productId = $balances[$productSlug]['product_id'];
-                $user->consumeProduct($productId, 1, $story->id, $output);
-            }
+                'message' => $exception->getMessage(),
+                'credit_balance' => app(\App\Services\AiCreditService::class)->summarize($user),
+            ], 402);
         }
 
         $story->update(['status' => 'processing', 'processing_step' => 'queued']);
@@ -193,9 +174,32 @@ class StoryController extends Controller
         // NOTE: Use the new dependency-based pipeline entrypoint.
         // GenerateStoryTextJob conditionally dispatches GenerateImagesJob,
         // GenerateNarrationJob, etc. based on $story->selected_outputs.
-        \App\Jobs\GenerateStoryTextJob::dispatch($story);
+        try {
+            \App\Jobs\GenerateStoryTextJob::dispatch($story);
+        } catch (\Throwable $exception) {
+            foreach ($selectedOutputs as $outputType) {
+                app(\App\Services\AiCreditService::class)->refundOutput($story, $outputType, 'Could not queue generation');
+            }
+            $story->update(['status' => 'failed', 'error_message' => 'Generation could not be queued. Please try again.']);
+            report($exception);
+            return response()->json(['message' => 'Generation could not be queued. Your credits were returned.'], 503);
+        }
 
         return response()->json(['message' => 'Story generation started', 'story' => $story->fresh()], 202);
+    }
+
+    public function estimateCredits(Request $request)
+    {
+        $validated = $request->validate([
+            'selected_outputs' => 'required|array|min:1',
+            'selected_outputs.*' => 'required|string|in:story_text,narration_audio,story_book_pdf,coloring_book_pdf,video',
+            'page_count' => 'nullable|integer|in:8,12,16,20',
+            'duration_seconds' => 'nullable|integer|min:30|max:90',
+            'scene_count' => 'nullable|integer|min:1|max:30',
+        ]);
+        return response()->json(app(\App\Services\AiCreditService::class)->estimate(
+            $request->user(), $validated['selected_outputs'], $validated
+        ));
     }
 
     public function status(Request $request, Story $story)
@@ -204,6 +208,7 @@ class StoryController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $reservation = \App\Models\AiCreditReservation::with('outputs')->where('story_id', $story->id)->first();
         return response()->json([
             'status'          => $story->status,
             'processing_step' => $story->processing_step,
@@ -216,6 +221,13 @@ class StoryController extends Controller
                 'videos' => $story->videoAssets()->count(),
                 'coloring_pages' => $story->coloringPageAssets()->count(),
             ],
+            'credit_reservation' => $reservation ? [
+                'amount' => (int) $reservation->amount,
+                'status' => $reservation->status,
+                'outputs' => $reservation->outputs->map(fn ($output) => [
+                    'output_type' => $output->output_type, 'amount' => (int) $output->amount, 'status' => $output->status,
+                ])->values(),
+            ] : null,
         ]);
     }
 
@@ -224,17 +236,9 @@ class StoryController extends Controller
         if ($story->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
-
-        if (!$story->content || $story->imageAssets()->count() === 0) {
-            return response()->json(['message' => 'Story text and scene images are required before book products can be generated.'], 422);
-        }
-
-        GenerateStoryProductsJob::dispatchSync($story);
-
         return response()->json([
-            'message' => 'Story products generated',
-            'outputs' => $story->fresh()->outputs()->get()->keyBy('output_type'),
-        ]);
+            'message' => 'This legacy endpoint is disabled. Start a new generation to reserve credits and generate selected outputs.',
+        ], 410);
     }
 
     public function update(Request $request, Story $story)
@@ -290,6 +294,16 @@ class StoryController extends Controller
 
         $file = $request->file('file');
         $outputType = $validated['output_type'];
+        if (!in_array($outputType, $story->selected_outputs ?? [], true)) {
+            return response()->json(['message' => 'This output was not selected for this generation.'], 422);
+        }
+        $reservationOutput = \App\Models\AiCreditReservation::where('story_id', $story->id)
+            ->where('user_id', $story->user_id)
+            ->where('status', 'reserved')
+            ->first()?->outputs()->where('output_type', $outputType)->where('status', 'reserved')->first();
+        if (!$reservationOutput) {
+            return response()->json(['message' => 'No active credit reservation exists for this output.'], 409);
+        }
         // Always use 'public' — it is the only disk with a configured url()
         // resolver. config('filesystems.default') can be 'local' in .env,
         // which has no url() resolver and throws RuntimeException.
@@ -302,7 +316,9 @@ class StoryController extends Controller
         }
 
         // Store the PDF on the configured disk
-        Storage::disk($disk)->put($path, file_get_contents($file), ['visibility' => 'public']);
+        if (!Storage::disk($disk)->put($path, file_get_contents($file), ['visibility' => 'public'])) {
+            return response()->json(['message' => 'The generated PDF could not be saved. No credits were finalized.'], 500);
+        }
         $url = Storage::disk($disk)->url($path);
 
         // Update the StoryOutput status
@@ -319,6 +335,10 @@ class StoryController extends Controller
                 ],
             ]
         );
+
+        // The storybook pipeline prepares page assets; the downloadable PDF is
+        // uploaded by the browser afterward. Finalize only once the PDF is safely stored.
+        app(\App\Services\AiCreditService::class)->finalizeOutput($story, $outputType);
 
         // Decrement pending outputs count if it was in generating/processing/planned state
         if ($story->status === 'processing') {

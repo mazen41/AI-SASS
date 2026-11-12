@@ -122,7 +122,16 @@ class MoyasarWebhookController extends Controller
 
         // Idempotency guard
         $paymentId = $payment['id'] ?? null;
-        if ($paymentId && Transaction::where('gateway_transaction_id', $paymentId)->exists()) {
+        $existingTransaction = $paymentId ? Transaction::where('gateway_transaction_id', $paymentId)->first() : null;
+        if ($existingTransaction) {
+            $existingSubscription = $existingTransaction->subscription_id
+                ? Subscription::with('plan', 'user')->find($existingTransaction->subscription_id)
+                : null;
+            if ($existingSubscription?->plan && $existingSubscription->user) {
+                app(\App\Services\AiCreditService::class)->grantPlanCredits(
+                    $existingSubscription->user, $existingSubscription->plan, 'subscription-cycle:moyasar-payment:' . $paymentId
+                );
+            }
             Log::info('Moyasar payment.paid: already processed', ['payment_id' => $paymentId]);
             return;
         }
@@ -158,6 +167,10 @@ class MoyasarWebhookController extends Controller
             'type'                    => 'subscription',
             'gateway_response'        => $payment,
         ]);
+
+        app(\App\Services\AiCreditService::class)->grantPlanCredits(
+            $user, $plan, 'subscription-cycle:moyasar-payment:' . ($paymentId ?: $subscription->id)
+        );
 
         // Create invoice
         Invoice::create([

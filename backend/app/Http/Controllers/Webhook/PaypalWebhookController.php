@@ -173,6 +173,11 @@ class PaypalWebhookController extends Controller
 
         $existingTransaction = Transaction::where('gateway_transaction_id', $resource['id'])->first();
         if ($existingTransaction) {
+            if ($sub?->plan) {
+                app(\App\Services\AiCreditService::class)->grantPlanCredits(
+                    $sub->user, $sub->plan, 'subscription-cycle:paypal-sale:' . $resource['id']
+                );
+            }
             return;
         }
 
@@ -199,6 +204,12 @@ class PaypalWebhookController extends Controller
                 'payment_mode' => $resource['payment_mode'] ?? null,
             ],
         ]);
+
+        if ($sub->plan) {
+            app(\App\Services\AiCreditService::class)->grantPlanCredits(
+                $sub->user, $sub->plan, 'subscription-cycle:paypal-sale:' . $resource['id']
+            );
+        }
 
         ActivityLog::log('payment_received', $userId, 'Transaction', null, null, [
             'amount' => $resource['amount']['total'],
