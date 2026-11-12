@@ -270,7 +270,7 @@ export default function PricingPage() {
                     <div className="my-5 pb-5 border-b border-slate-200 dark:border-white/10">
                       <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-black text-slate-900 dark:text-white font-display">
-                          {isFree ? (isRTL ? 'مجاني' : '$0') : `$${displayPrice}`}
+                          {isFree ? (isRTL ? 'مجاني' : 'Free') : `${Math.round(Number(displayPrice))} ${isRTL ? 'ر.س' : 'SAR'}`}
                         </span>
                         {!isFree && (
                           <span className="text-[11px] font-mono text-slate-400">
@@ -281,7 +281,7 @@ export default function PricingPage() {
 
                       {billingCycle === 'yearly' && hasYearly && (
                         <div className="text-[10px] font-mono text-emerald-500 font-bold mt-1">
-                          ${parseFloat(plan.yearly_price!).toLocaleString()}/{isRTL ? 'سنوياً' : 'yr billed'}
+                          {parseFloat(plan.yearly_price!).toLocaleString()} {isRTL ? 'ر.س سنوياً' : 'SAR / yr'}
                         </div>
                       )}
 

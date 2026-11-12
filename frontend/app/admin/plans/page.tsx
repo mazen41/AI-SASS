@@ -83,8 +83,8 @@ export default function PlansPage() {
     name: isRTL ? 'اسم الخطة' : 'Plan Name',
     slug: isRTL ? 'المعرف الفريد (Slug)' : 'Unique Slug',
     description: isRTL ? 'الوصف الترويجي' : 'Marketing Description',
-    price: isRTL ? 'السعر الشهري ($)' : 'Monthly Price ($)',
-    yearlyPrice: isRTL ? 'السعر السنوي ($)' : 'Yearly Price ($)',
+    price: isRTL ? 'السعر الشهري (ر.س)' : 'Monthly Price (SAR)',
+    yearlyPrice: isRTL ? 'السعر السنوي (ر.س)' : 'Yearly Price (SAR)',
     billingPeriod: isRTL ? 'دورة الفوترة الافتراضية' : 'Default Billing Cycle',
     monthly: isRTL ? 'شهري' : 'Monthly',
     yearly: isRTL ? 'سنوي' : 'Yearly',
@@ -617,16 +617,18 @@ export default function PlansPage() {
                     <div className="flex items-baseline justify-between">
                       <div>
                         <span className="text-3xl font-black text-slate-900 dark:text-white font-display">
-                          ${parseFloat(plan.price).toLocaleString()}
+                          {Number(plan.price) === 0 ? (isRTL ? 'مجاني' : 'Free') : `${parseFloat(plan.price).toLocaleString()} ${isRTL ? 'ر.س' : 'SAR'}`}
                         </span>
-                        <span className="text-xs text-slate-400 font-mono ms-1">
-                          /{plan.billing_period === 'monthly' ? t.mo : t.yr}
-                        </span>
+                        {Number(plan.price) > 0 && (
+                          <span className="text-xs text-slate-400 font-mono ms-1">
+                            /{plan.billing_period === 'monthly' ? t.mo : t.yr}
+                          </span>
+                        )}
                       </div>
                       {plan.yearly_price && Number(plan.yearly_price) > 0 && (
                         <div className="text-end">
                           <span className="text-xs font-bold text-emerald-500 font-mono">
-                            ${parseFloat(plan.yearly_price).toLocaleString()}/yr
+                            {parseFloat(plan.yearly_price).toLocaleString()} {isRTL ? 'ر.س سنوياً' : 'SAR/yr'}
                           </span>
                         </div>
                       )}

@@ -247,7 +247,7 @@ export default function BillingPage() {
                   {t.activeSubTitle}
                 </span>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white font-display">
-                  {activeSub.plan?.name} · ${activeSub.plan?.price}/{isRTL ? 'شهر' : 'mo'}
+                  {activeSub.plan?.name} · {activeSub.plan?.price} {isRTL ? 'ر.س' : 'SAR'}/{isRTL ? 'شهر' : 'mo'}
                 </h3>
                 {activeSub.current_period_end && (
                   <p className="text-xs text-slate-400 font-mono">
@@ -394,11 +394,13 @@ export default function BillingPage() {
 
                       <div className="my-6">
                         <span className="text-4xl font-black text-slate-900 dark:text-white font-display">
-                          ${parseFloat(plan.price).toLocaleString()}
+                          {Number(plan.price) === 0 ? (isRTL ? 'مجاني' : 'Free') : `${parseFloat(plan.price).toLocaleString()} ${isRTL ? 'ر.س' : 'SAR'}`}
                         </span>
-                        <span className="text-xs text-slate-400 font-mono ms-1">
-                          /{isRTL ? 'شهرياً' : 'mo'}
-                        </span>
+                        {Number(plan.price) > 0 && (
+                          <span className="text-xs text-slate-400 font-mono ms-1">
+                            /{isRTL ? 'شهرياً' : 'mo'}
+                          </span>
+                        )}
                       </div>
 
                       <ul className="space-y-3 mb-8">

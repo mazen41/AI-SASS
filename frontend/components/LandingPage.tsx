@@ -9,7 +9,7 @@ import SmoothScroll from './SmoothScroll';
 import SplitTextReveal from './SplitTextReveal';
 import StudioCanvas3D from './StudioCanvas3D';
 import { useLang } from '@/context/LangContext';
-import { apiGetPublicPackages, Package } from '@/lib/api';
+import { apiGetPublicPackages, Package, apiGetPublicPricingPlans, Plan } from '@/lib/api';
 import {
   Sparkles,
   Film,
@@ -86,6 +86,22 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [packages, setPackages] = useState<Package[]>([]);
   const [pkgLoading, setPkgLoading] = useState(true);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+
+  useEffect(() => {
+    apiGetPublicPricingPlans()
+      .then((res) => {
+        const sorted = (res.plans || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        setPlans(sorted);
+      })
+      .catch((err) => {
+        console.error('Failed to load subscription plans:', err);
+        setPlans([]);
+      })
+      .finally(() => setPlansLoading(false));
+  }, []);
 
   // Studio Centerpiece Active Output Tab
   const [activeOutputTab, setActiveOutputTab] = useState<'video' | 'book' | 'coloring' | 'dna'>('video');
@@ -1157,148 +1173,164 @@ export default function LandingPage() {
           PRICING PACKAGES (CONNECTED TO LIVE API)
       ═════════════════════════════════════════════════════════════ */}
       <SectionReveal id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-12">
           <motion.div variants={fadeUp}>
             <div className="studio-badge mb-3">
               <span className="studio-badge-pulse" />
-              <span>{t('pricing_badge')}</span>
+              <span>{locale === 'ar' ? 'الخطط والاشتراكات' : 'Studio Tiers'}</span>
             </div>
             <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 font-display">
-              {t('pricing_title')}
+              {locale === 'ar' ? 'اختر خطتك وأطلق العنان لإبداع طفلك' : 'Choose Your Studio Tier'}
             </h2>
             <p className="text-base sm:text-lg text-[var(--text-2)] leading-relaxed">
-              {t('pricing_sub')}
+              {locale === 'ar'
+                ? 'خطط شهرية وسنوية مرنة برصيد ذكاء اصطناعي يتجدد دورياً بالريال السعودي (ر.س)'
+                : 'Flexible monthly & yearly plans in Saudi Riyals (SAR) with renewing AI credits'}
             </p>
+
+            {/* Monthly / Yearly Switcher */}
+            <div className="pt-6 flex items-center justify-center">
+              <div className="inline-flex items-center p-1.5 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`py-2 px-5 rounded-xl text-xs font-bold transition-all ${
+                    billingCycle === 'monthly'
+                      ? 'bg-[var(--k-blue)] text-white shadow-md'
+                      : 'text-[var(--text-3)] hover:text-white'
+                  }`}
+                >
+                  {locale === 'ar' ? 'شهرياً' : 'Monthly'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`py-2 px-5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    billingCycle === 'yearly'
+                      ? 'bg-gradient-to-r from-[var(--k-blue)] to-[var(--k-purple)] text-white shadow-md'
+                      : 'text-[var(--text-3)] hover:text-white'
+                  }`}
+                >
+                  <span>{locale === 'ar' ? 'سنوياً' : 'Yearly'}</span>
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 rounded-full">
+                    {locale === 'ar' ? 'وفر حتى 20%' : 'Save ~20%'}
+                  </span>
+                </button>
+              </div>
+            </div>
           </motion.div>
         </div>
 
-        {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-          {pkgLoading ? (
-            [0, 1, 2].map((i) => (
+        {/* 5 Plans Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 items-stretch">
+          {plansLoading ? (
+            [0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="studio-card-glass min-h-[420px] animate-pulse flex flex-col p-8 opacity-60"
+                className="studio-card-glass min-h-[440px] animate-pulse flex flex-col p-6 opacity-60 rounded-3xl"
               />
             ))
-          ) : packages.length === 0 ? (
-            <div className="col-span-3 text-center py-12 text-[var(--text-3)]">
-              {locale === 'ar' ? 'لا توجد باقات متاحة حالياً.' : 'No active packages available right now.'}
+          ) : plans.length === 0 ? (
+            <div className="col-span-5 text-center py-12 text-[var(--text-3)]">
+              {locale === 'ar' ? 'جاري تهيئة الخطط...' : 'No active plans available.'}
             </div>
           ) : (
-            packages.map((pkg, i) => {
-              const isFeatured = i === 1;
-              const price =
-                Number(pkg.total_price) === 0
-                  ? locale === 'ar'
-                    ? 'مجاني'
-                    : 'Free'
-                  : formatSar(Number(pkg.total_price));
+            plans.map((plan, i) => {
+              const isFeatured = plan.is_featured;
+              const isFree = Number(plan.price) === 0 || plan.slug === 'free';
+              const hasYearly = plan.yearly_price && Number(plan.yearly_price) > 0;
+              const monthlyRate =
+                billingCycle === 'yearly' && hasYearly
+                  ? Math.round(Number(plan.yearly_price) / 12)
+                  : Math.round(Number(plan.price));
+
+              const priceText = isFree
+                ? locale === 'ar'
+                  ? 'مجاني'
+                  : 'Free'
+                : `${monthlyRate} ${locale === 'ar' ? 'ر.س' : 'SAR'}`;
 
               return (
                 <motion.div
-                  key={pkg.id}
+                  key={plan.id}
                   variants={fadeUp}
                   custom={i}
                   whileHover={{ y: -8 }}
-                  className={`studio-card-glass p-8 flex flex-col justify-between relative ${
+                  className={`studio-card-glass p-6 rounded-3xl flex flex-col justify-between relative ${
                     isFeatured
-                      ? 'border-2 border-[var(--k-blue)] shadow-[0_20px_50px_rgba(30,144,255,0.2)]'
+                      ? 'border-2 border-[var(--k-blue)] shadow-[0_20px_50px_rgba(30,144,255,0.25)] ring-2 ring-[var(--k-blue)]/20'
                       : ''
                   }`}
                 >
                   {isFeatured && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-extrabold text-white bg-gradient-to-r from-[var(--k-blue)] to-[var(--k-navy)] shadow-md">
-                      {t('plan_popular')}
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase text-white bg-gradient-to-r from-[var(--k-blue)] to-[var(--k-purple)] shadow-md tracking-wider">
+                      {plan.badge || (locale === 'ar' ? 'الأكثر طلباً' : 'RECOMMENDED')}
                     </div>
                   )}
 
                   <div>
-                    <h3 className="text-2xl font-bold tracking-tight mb-2 font-display">{pkg.name}</h3>
-                    <p className="text-xs sm:text-sm text-[var(--text-3)] mb-6 min-h-[38px]">
-                      {pkg.description || (locale === 'ar' ? 'باقة إنتاج شاملة' : 'Complete studio experience')}
+                    <h3 className="text-xl font-bold tracking-tight mb-1 font-display">{plan.name}</h3>
+                    <p className="text-xs text-[var(--text-3)] mb-4 min-h-[34px] line-clamp-2">
+                      {plan.description}
                     </p>
 
-                    <div className="mb-6 pb-6 border-b border-[var(--border)]">
-                      <span className="text-4xl sm:text-5xl font-extrabold tracking-tight gradient-text">
-                        {price}
-                      </span>
-                      {Number(pkg.total_price) > 0 && (
-                        <span className="text-xs text-[var(--text-3)] ml-2 rtl:mr-2">
-                          {locale === 'ar' ? 'دفعة واحدة' : 'One-time access'}
+                    <div className="mb-4 pb-4 border-b border-[var(--border)]">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-extrabold tracking-tight gradient-text">
+                          {priceText}
                         </span>
+                        {!isFree && (
+                          <span className="text-xs text-[var(--text-3)] font-mono">
+                            /{locale === 'ar' ? 'شهرياً' : 'mo'}
+                          </span>
+                        )}
+                      </div>
+
+                      {billingCycle === 'yearly' && hasYearly && (
+                        <div className="text-[10px] font-mono text-emerald-400 font-bold mt-1">
+                          {plan.yearly_price} {locale === 'ar' ? 'ر.س سنوياً' : 'SAR / yr'}
+                        </div>
                       )}
+
+                      <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--k-blue)]/10 text-[var(--k-blue)] text-xs font-bold">
+                        <Sparkles size={13} />
+                        <span>{Number(plan.monthly_credits).toLocaleString()} {locale === 'ar' ? 'رصيد شهرياً' : 'Credits/mo'}</span>
+                      </div>
                     </div>
 
-                    <ul className="space-y-3 mb-8">
-                      {pkg.items?.map((item) => (
-                        <li key={item.id} className="flex items-center gap-2.5 text-xs sm:text-sm">
-                          <div className="w-5 h-5 rounded-full bg-[var(--k-blue)]/15 text-[var(--k-blue)] flex items-center justify-center shrink-0">
-                            <Check className="w-3.5 h-3.5" />
+                    <ul className="space-y-2.5 mb-6 text-xs text-[var(--text-2)]">
+                      {plan.features?.slice(0, 5).map((f, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <Check className="w-3 h-3" />
                           </div>
-                          <span>
-                            {item.quantity} × {item.product?.name}
-                          </span>
+                          <span className="leading-tight">{f}</span>
                         </li>
                       ))}
-                      <li className="flex items-center gap-2.5 text-xs sm:text-sm text-[var(--text-2)]">
-                        <div className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
-                          <Check className="w-3.5 h-3.5" />
-                        </div>
-                        <span>{locale === 'ar' ? 'فيديو سينمائي 4K' : '4K Cinematic Video'}</span>
-                      </li>
-                      <li className="flex items-center gap-2.5 text-xs sm:text-sm text-[var(--text-2)]">
-                        <div className="w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
-                          <Check className="w-3.5 h-3.5" />
-                        </div>
-                        <span>{locale === 'ar' ? 'صفحات تلوين A4' : 'A4 Printable Coloring Sheets'}</span>
-                      </li>
                     </ul>
                   </div>
 
                   <Link
-                    href={`/register?package=${pkg.id}`}
-                    className={`w-full text-center py-3.5 rounded-full font-bold text-sm transition-all ${
+                    href={
+                      isFree
+                        ? '/register?plan=free'
+                        : `/register?plan=${plan.slug}&cycle=${billingCycle}`
+                    }
+                    className={`w-full text-center py-3 rounded-full font-bold text-xs transition-all flex items-center justify-center gap-2 ${
                       isFeatured
-                        ? 'studio-btn-primary shadow-lg'
+                        ? 'studio-btn-primary shadow-lg shadow-[var(--k-blue)]/20'
+                        : isFree
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                         : 'studio-btn-secondary'
                     }`}
                   >
-                    {Number(pkg.total_price) === 0
-                      ? locale === 'ar'
-                        ? 'ابدأ مجاناً الآن'
-                        : 'Start Free ✦'
-                      : t('plan_cta')}
+                    <span>{isFree ? (locale === 'ar' ? 'ابدأ مجاناً الآن' : 'Start Free ✦') : (locale === 'ar' ? 'اشترك الآن' : 'Upgrade Plan')}</span>
+                    <ArrowRight size={13} className="rtl:rotate-180" />
                   </Link>
                 </motion.div>
               );
             })
           )}
-        </div>
-
-        {/* Monthly Subscription Tiers Banner */}
-        <div className="mt-12 p-6 sm:p-8 rounded-3xl studio-card-glass border border-[var(--k-blue)]/30 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-start">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--k-blue)] uppercase">
-              <Sparkles size={14} />
-              <span>{locale === 'ar' ? 'الاشتراكات الشهرية والسنوية' : 'Monthly & Yearly Memberships'}</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black font-display text-[var(--text)]">
-              {locale === 'ar' ? 'هل تفضل اشتراكاً شهرياً مع رصيد ذكاء اصطناعي متجدد؟' : 'Prefer a monthly membership with auto-renewing AI credits?'}
-            </h3>
-            <p className="text-xs sm:text-sm text-[var(--text-3)] max-w-xl">
-              {locale === 'ar'
-                ? 'استكشف خططنا الشهرية (تبدأ من 30 رصيداً مجاناً وحتى 4,000 رصيد) مع أولوية المعالجة ودعم متواصل.'
-                : 'Explore our 5 tiers (from Free 30 credits up to Ultimate 4,000 credits) with priority generation and commercial usage.'}
-            </p>
-          </div>
-          <Link
-            href="/pricing"
-            className="py-3 px-6 rounded-full font-bold text-xs bg-gradient-to-r from-[var(--k-blue)] to-[var(--k-purple)] text-white hover:opacity-95 transition-all shadow-md shrink-0 flex items-center gap-2"
-          >
-            <span>{locale === 'ar' ? 'عرض خطط الاشتراك' : 'Explore Studio Tiers'}</span>
-            <ArrowRight size={14} className="rtl:rotate-180" />
-          </Link>
         </div>
       </SectionReveal>
 

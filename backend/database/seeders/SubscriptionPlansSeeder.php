@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 class SubscriptionPlansSeeder extends Seeder
 {
     /**
-     * Initial subscription plans configuration.
+     * Initial subscription plans configuration in Saudi Riyals (SAR / ر.س).
      * These represent factory baseline defaults. Admin modifications in the database
      * are strictly preserved and never overwritten by subsequent seeder executions.
      */
@@ -64,8 +64,8 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Starter',
                 'slug' => 'starter',
                 'description' => 'Great for parents starting a regular bedtime story and imagination routine.',
-                'price' => 9.99,
-                'yearly_price' => 99.99,
+                'price' => 39.00,
+                'yearly_price' => 390.00,
                 'monthly_credits' => 250,
                 'story_limit' => 15,
                 'video_limit' => 2,
@@ -109,8 +109,8 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Family',
                 'slug' => 'family',
                 'description' => 'Our most popular plan for families who want rich storytelling, videos, and full creative magic.',
-                'price' => 19.99,
-                'yearly_price' => 199.99,
+                'price' => 79.00,
+                'yearly_price' => 790.00,
                 'monthly_credits' => 750,
                 'story_limit' => 40,
                 'video_limit' => 8,
@@ -155,8 +155,8 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Creator',
                 'slug' => 'creator',
                 'description' => 'Built for teachers, content creators, and prolific storytellers crafting professional narratives.',
-                'price' => 39.99,
-                'yearly_price' => 399.99,
+                'price' => 159.00,
+                'yearly_price' => 1590.00,
                 'monthly_credits' => 1800,
                 'story_limit' => 100,
                 'video_limit' => 25,
@@ -201,8 +201,8 @@ class SubscriptionPlansSeeder extends Seeder
                 'name' => 'Ultimate',
                 'slug' => 'ultimate',
                 'description' => 'Unrestricted studio power with maximum monthly credits, longest videos, and dedicated rendering.',
-                'price' => 79.99,
-                'yearly_price' => 799.99,
+                'price' => 319.00,
+                'yearly_price' => 3190.00,
                 'monthly_credits' => 4000,
                 'story_limit' => 250,
                 'video_limit' => 60,

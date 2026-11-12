@@ -34,19 +34,19 @@ class SubscriptionPlanTest extends TestCase
         $this->assertSame(30, $free->monthly_credits);
 
         $this->assertNotNull($starter);
-        $this->assertSame('9.99', (string) $starter->price);
+        $this->assertSame('39.00', (string) $starter->price);
         $this->assertSame(250, $starter->monthly_credits);
 
         $this->assertNotNull($family);
-        $this->assertSame('19.99', (string) $family->price);
+        $this->assertSame('79.00', (string) $family->price);
         $this->assertSame(750, $family->monthly_credits);
 
         $this->assertNotNull($creator);
-        $this->assertSame('39.99', (string) $creator->price);
+        $this->assertSame('159.00', (string) $creator->price);
         $this->assertSame(1800, $creator->monthly_credits);
 
         $this->assertNotNull($ultimate);
-        $this->assertSame('79.99', (string) $ultimate->price);
+        $this->assertSame('319.00', (string) $ultimate->price);
         $this->assertSame(4000, $ultimate->monthly_credits);
 
         // Second run must not duplicate any plans
@@ -61,7 +61,7 @@ class SubscriptionPlanTest extends TestCase
         // Admin modifies starter plan price and credits
         $starter = Plan::where('slug', 'starter')->first();
         $starter->update([
-            'price' => 14.99,
+            'price' => 49.00,
             'monthly_credits' => 350,
             'description' => 'Admin customized starter description',
         ]);
@@ -70,7 +70,7 @@ class SubscriptionPlanTest extends TestCase
         (new SubscriptionPlansSeeder)->run();
 
         $fresh = Plan::where('slug', 'starter')->first();
-        $this->assertSame('14.99', (string) $fresh->price);
+        $this->assertSame('49.00', (string) $fresh->price);
         $this->assertSame(350, $fresh->monthly_credits);
         $this->assertSame('Admin customized starter description', $fresh->description);
     }
