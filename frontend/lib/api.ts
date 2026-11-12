@@ -104,10 +104,12 @@ export async function apiRegisterInitiate(payload: {
   email: string;
   password: string;
   password_confirmation: string;
-  package_id: number; // required — no more optional package
+  package_id?: number;
+  plan_id?: number;
+  plan_slug?: string;
+  billing_cycle?: 'monthly' | 'yearly';
   terms_accepted: true;
-  privacy_accepted: true;
-}): Promise<RegisterInitiateResponse> {
+  privacy_accepted: true;}): Promise<RegisterInitiateResponse> {
   return apiFetch<RegisterInitiateResponse>('/register/initiate', {
     method: 'POST',
     body: JSON.stringify(payload),

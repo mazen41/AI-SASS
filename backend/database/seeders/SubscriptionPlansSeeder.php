@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Plan;
+use App\Models\Package;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Cache;
 
@@ -259,7 +260,20 @@ class SubscriptionPlansSeeder extends Seeder
             if (!$exists) {
                 Plan::create($planData);
             }
+
+            // Also ensure packages table has matching active packages
+            Package::firstOrCreate(
+                ['name' => $planData['name']],
+                [
+                    'description' => $planData['description'],
+                    'total_price' => $planData['price'],
+                    'is_active' => true,
+                ]
+            );
         }
+
+        // Deactivate old legacy test package
+        Package::where('name', 'starter')->where('total_price', 100)->update(['is_active' => false]);
 
         Cache::forget('active_plans');
     }

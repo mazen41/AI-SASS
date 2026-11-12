@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\MailTemplate;
 use App\Models\Package;
+use App\Models\Plan;
 use App\Models\PaymentSetting;
 use App\Models\PendingRegistration;
 use App\Models\MyFatoorahCheckoutSession;
@@ -58,15 +59,46 @@ class RegistrationController extends Controller
             'name'                  => ['required', 'string', 'max:255'],
             'email'                 => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password'              => ['required', 'string', 'min:8', 'confirmed'],
-            // package_id is REQUIRED — this is the enforcement point for task 4.
-            'package_id'            => ['required', 'integer', 'exists:packages,id'],
+            'package_id'            => ['nullable', 'integer', 'exists:packages,id'],
+            'plan_id'               => ['nullable', 'integer', 'exists:plans,id'],
+            'plan_slug'             => ['nullable', 'string', 'exists:plans,slug'],
+            'billing_cycle'         => ['nullable', 'string', 'in:monthly,yearly'],
             'terms_accepted'        => ['required', 'accepted'],
             'privacy_accepted'      => ['required', 'accepted'],
         ]);
 
-        $package = Package::where('id', $request->package_id)->where('is_active', true)->first();
+        $plan = null;
+        if ($request->plan_slug) {
+            $plan = Plan::where('slug', $request->plan_slug)->where('is_active', true)->first();
+        } elseif ($request->plan_id) {
+            $plan = Plan::where('id', $request->plan_id)->where('is_active', true)->first();
+        }
+
+        $package = null;
+        if ($plan) {
+            $isYearly = $request->billing_cycle === 'yearly';
+            $packagePrice = ($isYearly && (float) $plan->yearly_price > 0)
+                ? (float) $plan->yearly_price
+                : (float) $plan->price;
+
+            $packageName = $plan->name . ($isYearly ? ' (Yearly)' : '');
+            $package = Package::firstOrCreate(
+                ['name' => $packageName],
+                [
+                    'description' => $plan->description ?? ($plan->name . ' Plan'),
+                    'total_price' => $packagePrice,
+                    'is_active' => true,
+                ]
+            );
+            if ((float) $package->total_price !== (float) $packagePrice || !$package->is_active) {
+                $package->update(['total_price' => $packagePrice, 'is_active' => true]);
+            }
+        } elseif ($request->package_id) {
+            $package = Package::where('id', $request->package_id)->where('is_active', true)->first();
+        }
+
         if (!$package) {
-            return response()->json(['message' => 'Selected package is not available.'], 422);
+            return response()->json(['message' => 'Selected plan or package is not available.'], 422);
         }
 
         // A verified registration is resumable. Do not delete it when the user

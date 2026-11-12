@@ -3,18 +3,19 @@
 import { FormEvent, useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useLang } from '@/context/LangContext';
 import {
+  apiGetPublicPricingPlans,
   apiGetPublicPackage,
-  apiGetPublicPackages,
   apiRegisterInitiate,
   apiRegisterResendOtp,
   apiRegisterVerifyOtp,
   apiRegisterComplete,
   apiRegisterStatus,
+  Plan,
   Package,
 } from '@/lib/api';
 import CustomCursor from '@/components/CustomCursor';
@@ -68,12 +69,18 @@ function RegisterForm() {
   const { t, locale, toggleLocale, isRTL } = useLang();
 
   const searchParams = useSearchParams();
+  const urlPlanParam = searchParams.get('plan') || '';
+  const urlCycleParam = (searchParams.get('cycle') === 'yearly' ? 'yearly' : 'monthly') as 'monthly' | 'yearly';
   const urlPackageId = searchParams.get('package') ? Number(searchParams.get('package')) : undefined;
   const resumeId = searchParams.get('resume');
 
   const [step, setStep] = useState<Step>('package');
-  const [packages, setPackages] = useState<Package[] | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [plans, setPlans] = useState<Plan[] | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>(urlCycleParam);
+
+  // Fallback package for resume sessions
+  const [resumedPackage, setResumedPackage] = useState<Package | null>(null);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -89,8 +96,37 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Restore a verified or in-progress signup after login redirect, page reload,
-  // or returning from a payment gateway. OTPs/passwords are never persisted.
+  // 1. Fetch public plans on mount
+  useEffect(() => {
+    let cancelled = false;
+    apiGetPublicPricingPlans()
+      .then((res) => {
+        if (cancelled) return;
+        const activePlans = (res.plans || []).filter((p) => p.is_active);
+        setPlans(activePlans);
+
+        // Pre-select if URL has plan param
+        if (urlPlanParam) {
+          const matched = activePlans.find(
+            (p) =>
+              p.slug.toLowerCase() === urlPlanParam.toLowerCase() ||
+              String(p.id) === urlPlanParam
+          );
+          if (matched) {
+            setSelectedPlan(matched);
+            setStep('details');
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPlans([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [urlPlanParam]);
+
+  // 2. Restore an in-progress session if resumeId or sessionStorage exists
   useEffect(() => {
     const savedId = resumeId || sessionStorage.getItem('nazstudio_pending_registration');
     if (!savedId) return;
@@ -106,9 +142,11 @@ function RegisterForm() {
         }
         if (status.status === 'expired' || status.status === 'failed' || !status.package_id) {
           sessionStorage.removeItem('nazstudio_pending_registration');
-          setError(locale === 'ar'
-            ? 'انتهت جلسة التسجيل. ابدأ التسجيل مجددًا واختر الباقة.'
-            : 'This registration session expired. Start again and choose your plan.');
+          setError(
+            locale === 'ar'
+              ? 'انتهت جلسة التسجيل. ابدأ التسجيل مجددًا واختر الخطة.'
+              : 'This registration session expired. Start again and choose your plan.'
+          );
           return;
         }
         const packageResponse = await apiGetPublicPackage(status.package_id, locale);
@@ -116,41 +154,43 @@ function RegisterForm() {
         setPendingId(savedId);
         setName(status.name || '');
         setEmail(status.email || '');
-        setSelectedPackage(packageResponse.package);
-        setEmailVerified(Boolean(status.email_verified) || status.status === 'otp_verified' || status.status === 'awaiting_payment');
+        setResumedPackage(packageResponse.package);
+        setEmailVerified(
+          Boolean(status.email_verified) ||
+            status.status === 'otp_verified' ||
+            status.status === 'awaiting_payment'
+        );
         setStep('otp');
         if (resumeId) router.replace('/register');
       })
       .catch(() => {
         if (!cancelled) {
           sessionStorage.removeItem('nazstudio_pending_registration');
-          setError(locale === 'ar'
-            ? 'تعذر استعادة التسجيل. ابدأ التسجيل مجددًا.'
-            : 'Could not restore your registration. Please start again.');
+          setError(
+            locale === 'ar'
+              ? 'تعذر استعادة التسجيل. ابدأ التسجيل مجددًا.'
+              : 'Could not restore your registration. Please start again.'
+          );
         }
       })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [resumeId, locale, router]);
 
-  // Pre-selected via ?package=ID (e.g. from Pricing section)
+  // 3. Fallback for legacy ?package=ID
   useEffect(() => {
-    if (!urlPackageId) return;
+    if (!urlPackageId || selectedPlan) return;
     apiGetPublicPackage(urlPackageId, locale)
       .then((res) => {
-        setSelectedPackage(res.package);
+        setResumedPackage(res.package);
         setStep('details');
       })
       .catch(() => {});
-  }, [urlPackageId, locale]);
-
-  // Load packages if none is preselected
-  useEffect(() => {
-    if (urlPackageId || selectedPackage) return;
-    apiGetPublicPackages(locale)
-      .then((res) => setPackages(res.packages.filter((p) => p.is_active)))
-      .catch(() => setPackages([]));
-  }, [urlPackageId, selectedPackage, locale]);
+  }, [urlPackageId, locale, selectedPlan]);
 
   const formatSar = (amount: number) =>
     new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-SA', {
@@ -165,15 +205,25 @@ function RegisterForm() {
     return () => clearInterval(interval);
   }, [resendCooldown]);
 
-  function choosePackage(pkg: Package) {
-    setSelectedPackage(pkg);
+  function choosePlan(plan: Plan) {
+    setSelectedPlan(plan);
     setStep('details');
-    router.replace(`/register?package=${pkg.id}`);
+    router.replace(`/register?plan=${plan.slug}&cycle=${billingCycle}`);
   }
+
+  const currentPrice = selectedPlan
+    ? billingCycle === 'yearly' && Number(selectedPlan.yearly_price) > 0
+      ? Number(selectedPlan.yearly_price)
+      : Number(selectedPlan.price)
+    : resumedPackage
+    ? Number(resumedPackage.total_price)
+    : 0;
+
+  const currentPlanName = selectedPlan ? selectedPlan.name : resumedPackage ? resumedPackage.name : '';
 
   async function onSubmitDetails(e: FormEvent) {
     e.preventDefault();
-    if (!selectedPackage) return;
+    if (!selectedPlan && !resumedPackage) return;
     if (password !== confirm) {
       return setError(locale === 'ar' ? 'كلمات المرور غير متطابقة' : 'Passwords do not match');
     }
@@ -187,21 +237,27 @@ function RegisterForm() {
     setLoading(true);
     setError('');
     try {
-      const res = await apiRegisterInitiate({
+      const payload = {
         name,
         email,
         password,
         password_confirmation: confirm,
-        package_id: selectedPackage.id,
-        terms_accepted: true,
-        privacy_accepted: true,
-      });
+        terms_accepted: true as const,
+        privacy_accepted: true as const,
+        ...(selectedPlan
+          ? {
+              plan_id: selectedPlan.id,
+              plan_slug: selectedPlan.slug,
+              billing_cycle: billingCycle,
+            }
+          : {
+              package_id: resumedPackage?.id,
+            }),
+      };
+
+      const res = await apiRegisterInitiate(payload);
       setPendingId(res.pending_registration_id);
       sessionStorage.setItem('nazstudio_pending_registration', res.pending_registration_id);
-      if (res.package_id && res.package_id !== selectedPackage.id) {
-        const savedPackage = await apiGetPublicPackage(res.package_id, locale);
-        setSelectedPackage(savedPackage.package);
-      }
       setEmailVerified(Boolean(res.email_verified || res.already_verified));
       setResendCooldown(res.already_verified ? 0 : 60);
       setStep('otp');
@@ -234,10 +290,12 @@ function RegisterForm() {
           await apiRegisterVerifyOtp(pendingId, otp);
           setEmailVerified(true);
         } catch (verifyError) {
-          // A previous attempt may have verified successfully before the
-          // browser lost its response. Check server state and resume safely.
           const status = await apiRegisterStatus(pendingId);
-          if (!status.email_verified && status.status !== 'otp_verified' && status.status !== 'awaiting_payment') {
+          if (
+            !status.email_verified &&
+            status.status !== 'otp_verified' &&
+            status.status !== 'awaiting_payment'
+          ) {
             throw verifyError;
           }
           setEmailVerified(true);
@@ -251,7 +309,7 @@ function RegisterForm() {
         login(completeRes.token, completeRes.user);
         router.push('/dashboard');
       } else {
-        // Paid tier: redirect to Moyasar payment checkout
+        // Paid tier: redirect to payment checkout (MyFatoorah / Moyasar)
         window.location.href = completeRes.url;
       }
     } catch (err: unknown) {
@@ -262,7 +320,7 @@ function RegisterForm() {
   }
 
   const stepsMeta = [
-    { id: 'package', num: '01', label: locale === 'ar' ? 'اختيار الباقة' : 'Choose Plan' },
+    { id: 'package', num: '01', label: locale === 'ar' ? 'اختيار الخطة' : 'Choose Plan' },
     { id: 'details', num: '02', label: locale === 'ar' ? 'بيانات الحساب' : 'Account Details' },
     { id: 'otp', num: '03', label: locale === 'ar' ? 'التحقق الآمن' : 'Verification' },
   ];
@@ -393,22 +451,49 @@ function RegisterForm() {
               })}
             </div>
 
-            {/* Selected Package Banner Summary if selected */}
-            {selectedPackage && (
+            {/* Selected Plan Summary Banner if selected */}
+            {(selectedPlan || resumedPackage) && (
               <div className="relative z-10 p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-slate-300">
                 <div className="flex items-center justify-between text-white font-bold mb-1">
-                  <span>{selectedPackage.name}</span>
-                  <span className="text-cyan-400">
-                    {Number(selectedPackage.total_price) === 0
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{currentPlanName}</span>
+                  </span>
+                  <span className="text-cyan-400 font-extrabold">
+                    {currentPrice === 0
                       ? locale === 'ar'
                         ? 'مجاني'
                         : 'Free'
-                      : formatSar(Number(selectedPackage.total_price))}
+                      : `${formatSar(currentPrice)} / ${
+                          billingCycle === 'yearly'
+                            ? locale === 'ar'
+                              ? 'سنوياً'
+                              : 'year'
+                            : locale === 'ar'
+                            ? 'شهرياً'
+                            : 'mo'
+                        }`}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  {selectedPackage.description || (locale === 'ar' ? 'باقة شاملة' : 'Complete package')}
-                </p>
+                {selectedPlan && (
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-white/10">
+                    <span>
+                      {selectedPlan.monthly_credits}{' '}
+                      {locale === 'ar' ? 'نقطة ذكاء اصطناعي' : 'AI credits / month'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlan(null);
+                        setStep('package');
+                        router.replace('/register');
+                      }}
+                      className="text-cyan-300 hover:underline font-bold"
+                    >
+                      {locale === 'ar' ? 'تغيير الخطة' : 'Change plan'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -439,8 +524,8 @@ function RegisterForm() {
                 <span className="text-[var(--text-3)] font-normal">
                   {step === 'package'
                     ? locale === 'ar'
-                      ? 'اختيار الباقة'
-                      : 'Choose Package'
+                      ? 'اختيار الخطة'
+                      : 'Choose Plan'
                     : step === 'details'
                     ? locale === 'ar'
                       ? 'بيانات الحساب'
@@ -464,75 +549,138 @@ function RegisterForm() {
               )}
 
               {/* ════════════════════════════════════════════
-                  STEP 1: PACKAGE SELECTION
+                  STEP 1: PLAN SELECTION
               ═════════════════════════════════════════════ */}
               {step === 'package' && (
                 <motion.div variants={fadeUp} initial="hidden" animate="visible">
-                  <div className="mb-6">
-                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
-                      <SplitTextReveal as="span" by="words" delay={0.1}>
-                        {locale === 'ar' ? 'اختر باقة الاستوديو' : 'Select Your Studio Plan'}
-                      </SplitTextReveal>
-                    </h1>
-                    <p className="text-sm text-[var(--text-2)] leading-relaxed">
-                      {locale === 'ar'
-                        ? 'اختر الخطة المناسبة لبدء إنتاج قصتك السينمائية الأولى.'
-                        : 'Choose your desired studio plan to begin personalizing stories.'}
-                    </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-1">
+                        <SplitTextReveal as="span" by="words" delay={0.1}>
+                          {locale === 'ar' ? 'اختر خطة الاستوديو' : 'Select Your Studio Plan'}
+                        </SplitTextReveal>
+                      </h1>
+                      <p className="text-xs sm:text-sm text-[var(--text-2)] leading-relaxed">
+                        {locale === 'ar'
+                          ? 'اختر الباقة المناسبة للبدء، يمكنك الترقية أو الإلغاء في أي وقت.'
+                          : 'Choose the right tier to begin. Upgrade or cancel anytime.'}
+                      </p>
+                    </div>
+
+                    {/* Monthly / Yearly Toggle */}
+                    <div className="inline-flex items-center p-1 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] shrink-0 self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setBillingCycle('monthly')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          billingCycle === 'monthly'
+                            ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm'
+                            : 'text-[var(--text-3)] hover:text-[var(--text)]'
+                        }`}
+                      >
+                        {locale === 'ar' ? 'شهري' : 'Monthly'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBillingCycle('yearly')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                          billingCycle === 'yearly'
+                            ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm'
+                            : 'text-[var(--text-3)] hover:text-[var(--text)]'
+                        }`}
+                      >
+                        <span>{locale === 'ar' ? 'سنوي' : 'Yearly'}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-500 font-extrabold">
+                          {locale === 'ar' ? 'خصم شهرين' : '-17%'}
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
-                  {packages === null ? (
+                  {plans === null ? (
                     <div className="space-y-3">
-                      {[0, 1, 2].map((i) => (
+                      {[0, 1, 2, 3, 4].map((i) => (
                         <div
                           key={i}
                           className="h-20 rounded-2xl bg-[var(--surface-2)] animate-pulse"
                         />
                       ))}
                     </div>
-                  ) : packages.length === 0 ? (
+                  ) : plans.length === 0 ? (
                     <div className="text-center py-8 text-[var(--text-3)] text-sm">
-                      {locale === 'ar' ? 'لا توجد باقات متاحة حالياً.' : 'No packages available right now.'}
+                      {locale === 'ar' ? 'لا توجد خطط متاحة حالياً.' : 'No plans available right now.'}
                     </div>
                   ) : (
                     <div className="space-y-3 mt-4">
-                      {packages.map((pkg) => {
-                        const price =
-                          Number(pkg.total_price) === 0
-                            ? locale === 'ar'
-                              ? 'مجاني'
-                              : 'Free'
-                            : formatSar(Number(pkg.total_price));
+                      {plans.map((p) => {
+                        const priceNum =
+                          billingCycle === 'yearly' && Number(p.yearly_price) > 0
+                            ? Number(p.yearly_price)
+                            : Number(p.price);
+
+                        const isFree = priceNum === 0;
+                        const priceLabel = isFree
+                          ? locale === 'ar'
+                            ? 'مجاني'
+                            : 'Free'
+                          : `${formatSar(priceNum)} / ${
+                              billingCycle === 'yearly'
+                                ? locale === 'ar'
+                                  ? 'سنوياً'
+                                  : 'yr'
+                                : locale === 'ar'
+                                ? 'شهرياً'
+                                : 'mo'
+                            }`;
+
+                        const isRecommended = p.slug === 'family' || p.is_featured;
 
                         return (
                           <button
-                            key={pkg.id}
+                            key={p.id}
                             type="button"
-                            onClick={() => choosePackage(pkg)}
-                            className="w-full text-left rtl:text-right p-4 sm:p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--k-blue)] hover:bg-[var(--surface-hover)] transition-all flex items-center justify-between gap-4 group"
+                            onClick={() => choosePlan(p)}
+                            className={`w-full text-left rtl:text-right p-4 sm:p-5 rounded-2xl border transition-all flex items-center justify-between gap-4 group relative overflow-hidden ${
+                              isRecommended
+                                ? 'border-[var(--k-blue)] bg-[var(--surface)] shadow-md hover:bg-[var(--surface-hover)]'
+                                : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--k-blue)] hover:bg-[var(--surface-hover)]'
+                            }`}
                           >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-base text-[var(--text)] group-hover:text-[var(--k-blue)] transition-colors">
-                                  {pkg.name}
-                                </span>
-                                {Number(pkg.total_price) === 0 && (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-500">
-                                    {locale === 'ar' ? 'تجربة مجانية' : 'Free Trial'}
-                                  </span>
-                                )}
+                            {isRecommended && (
+                              <div
+                                className="absolute top-0 right-0 rtl:left-0 rtl:right-auto px-3 py-0.5 rounded-bl-xl rtl:rounded-br-xl rtl:rounded-bl-none text-[10px] font-extrabold tracking-wider uppercase text-white shadow-sm"
+                                style={{
+                                  background:
+                                    'linear-gradient(135deg, var(--k-blue), var(--k-purple))',
+                                }}
+                              >
+                                {locale === 'ar' ? 'الأكثر طلباً' : 'RECOMMENDED'}
                               </div>
-                              {pkg.description && (
-                                <p className="text-xs text-[var(--text-3)] mt-1 line-clamp-1">
-                                  {pkg.description}
-                                </p>
-                              )}
+                            )}
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-base text-[var(--text)] group-hover:text-[var(--k-blue)] transition-colors">
+                                  {p.name}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-500">
+                                  {p.monthly_credits}{' '}
+                                  {locale === 'ar' ? 'نقطة AI' : 'credits'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-3)] mt-1 line-clamp-1">
+                                {p.description ||
+                                  (p.features && p.features[0]) ||
+                                  (locale === 'ar' ? 'خطة استوديو متكاملة' : 'Full studio plan')}
+                              </p>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                              <span className="font-extrabold text-base sm:text-lg gradient-text whitespace-nowrap">
-                                {price}
-                              </span>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <div className="text-right rtl:text-left">
+                                <span className="font-extrabold text-base sm:text-lg gradient-text whitespace-nowrap block">
+                                  {priceLabel}
+                                </span>
+                              </div>
                               <div className="w-8 h-8 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center text-[var(--text-3)] group-hover:text-[var(--k-blue)] group-hover:border-[var(--k-blue)] transition-all">
                                 <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                               </div>
@@ -548,7 +696,7 @@ function RegisterForm() {
               {/* ════════════════════════════════════════════
                   STEP 2: CREATOR DETAILS
               ═════════════════════════════════════════════ */}
-              {step === 'details' && selectedPackage && (
+              {step === 'details' && (selectedPlan || resumedPackage) && (
                 <motion.div variants={fadeUp} initial="hidden" animate="visible">
                   <div className="mb-6">
                     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display mb-2">
@@ -561,35 +709,43 @@ function RegisterForm() {
                     </p>
                   </div>
 
-                  {/* Selected Package Banner */}
+                  {/* Selected Plan Banner */}
                   <div className="mb-6 p-4 rounded-2xl bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-between gap-3">
                     <div>
                       <span className="text-xs font-bold text-[var(--text)]">
-                        {locale === 'ar' ? 'الباقة المختارة:' : 'Selected Plan:'}{' '}
-                        <span className="text-[var(--k-blue)]">{selectedPackage.name}</span>
+                        {locale === 'ar' ? 'الخطة المختارة:' : 'Selected Plan:'}{' '}
+                        <span className="text-[var(--k-blue)] font-extrabold">{currentPlanName}</span>
                       </span>
                       <div className="text-[11px] text-[var(--text-3)] mt-0.5">
-                        {Number(selectedPackage.total_price) === 0
+                        {currentPrice === 0
                           ? locale === 'ar'
-                            ? 'مجاني — لا يلزم دفع'
-                            : 'Free — No payment required'
-                          : `${formatSar(Number(selectedPackage.total_price))} — ${
+                            ? 'مجاني — لا يلزم أي دفع أو بطاقة'
+                            : 'Free tier — No payment required'
+                          : `${formatSar(currentPrice)} / ${
+                              billingCycle === 'yearly'
+                                ? locale === 'ar'
+                                  ? 'سنوياً'
+                                  : 'year'
+                                : locale === 'ar'
+                                ? 'شهرياً'
+                                : 'month'
+                            } — ${
                               locale === 'ar'
-                                ? 'سيتم الدفع بأمان بعد تأكيد البريد'
-                                : 'Payment after email confirmation'
+                                ? 'الدفع الآمن بعد تأكيد البريد الإلكتروني'
+                                : 'Secure checkout after email confirmation'
                             }`}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedPackage(null);
+                        setSelectedPlan(null);
                         setStep('package');
                         router.replace('/register');
                       }}
-                      className="text-xs font-bold text-[var(--k-blue)] hover:underline whitespace-nowrap"
+                      className="text-xs font-bold text-[var(--k-blue)] hover:underline whitespace-nowrap px-2.5 py-1 rounded-lg bg-[var(--surface)] border border-[var(--border)]"
                     >
-                      {locale === 'ar' ? 'تغيير' : 'Change'}
+                      {locale === 'ar' ? 'تغيير الخطة' : 'Change'}
                     </button>
                   </div>
 
@@ -717,20 +873,22 @@ function RegisterForm() {
                   )}
 
                   <form onSubmit={onVerifyOtp} className="space-y-6">
-                    {!emailVerified && <div>
-                      <StudioInput
-                        label={locale === 'ar' ? 'رمز التحقق (٦ أرقام)' : 'Verification Code (6 digits)'}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                        placeholder="123456"
-                        icon={KeyRound}
-                        required
-                        className="text-center text-xl font-mono tracking-[0.4em]"
-                      />
-                    </div>}
+                    {!emailVerified && (
+                      <div>
+                        <StudioInput
+                          label={locale === 'ar' ? 'رمز التحقق (٦ أرقام)' : 'Verification Code (6 digits)'}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                          placeholder="123456"
+                          icon={KeyRound}
+                          required
+                          className="text-center text-xl font-mono tracking-[0.4em]"
+                        />
+                      </div>
+                    )}
 
                     <button
                       type="submit"
@@ -740,43 +898,61 @@ function RegisterForm() {
                       {loading ? (
                         <span className="flex items-center justify-center gap-2">
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>{emailVerified
-                            ? (locale === 'ar' ? 'جارٍ تجهيز الدفع...' : 'Starting secure checkout...')
-                            : (locale === 'ar' ? 'جارٍ التحقق...' : 'Verifying & Continuing...')}</span>
+                          <span>
+                            {emailVerified
+                              ? locale === 'ar'
+                                ? 'جارٍ تجهيز الدفع...'
+                                : 'Starting secure checkout...'
+                              : locale === 'ar'
+                              ? 'جارٍ التحقق...'
+                              : 'Verifying & Continuing...'}
+                          </span>
                         </span>
                       ) : (
                         <span className="flex items-center justify-center gap-2">
-                          <span>{emailVerified
-                            ? (locale === 'ar' ? 'المتابعة إلى الدفع' : 'Continue to payment')
-                            : (locale === 'ar' ? 'تأكيد الحساب ومتابعة' : 'Verify & Continue')}</span>
+                          <span>
+                            {emailVerified
+                              ? locale === 'ar'
+                                ? 'المتابعة إلى الدفع'
+                                : 'Continue to payment'
+                              : locale === 'ar'
+                              ? 'تأكيد الحساب ومتابعة'
+                              : 'Verify & Continue'}
+                          </span>
                           <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                         </span>
                       )}
                     </button>
 
-                    {!emailVerified && <div className="text-center">
-                      <button
-                        type="button"
-                        onClick={onResendOtp}
-                        disabled={resendCooldown > 0}
-                        className={`text-xs font-bold flex items-center justify-center gap-1.5 mx-auto ${
-                          resendCooldown > 0
-                            ? 'text-[var(--text-3)] cursor-default'
-                            : 'text-[var(--k-blue)] hover:underline cursor-pointer'
-                        }`}
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${resendCooldown > 0 ? '' : 'hover:rotate-180 transition-transform'}`} />
-                        <span>
-                          {resendCooldown > 0
-                            ? locale === 'ar'
-                              ? `إعادة الإرسال خلال ${resendCooldown} ثانية`
-                              : `Resend code in ${resendCooldown}s`
-                            : locale === 'ar'
-                            ? 'إعادة إرسال رمز التحقق'
-                            : 'Resend Verification Code'}
-                        </span>
-                      </button>
-                    </div>}
+                    {!emailVerified && (
+                      <div className="text-center">
+                        <button
+                          type="button"
+                          onClick={onResendOtp}
+                          disabled={resendCooldown > 0}
+                          className={`text-xs font-bold flex items-center justify-center gap-1.5 mx-auto ${
+                            resendCooldown > 0
+                              ? 'text-[var(--text-3)] cursor-default'
+                              : 'text-[var(--k-blue)] hover:underline cursor-pointer'
+                          }`}
+                        >
+                          <RefreshCw
+                            className={`w-3.5 h-3.5 ${
+                              resendCooldown > 0 ? '' : 'hover:rotate-180 transition-transform'
+                            }`}
+                          />
+                          <span>
+                            {resendCooldown > 0
+                              ? locale === 'ar'
+                                ? `إعادة الإرسال خلال ${resendCooldown} ثانية`
+                                : `Resend code in ${resendCooldown}s`
+                              : locale === 'ar'
+                              ? 'إعادة إرسال رمز التحقق'
+                              : 'Resend Verification Code'}
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </form>
                 </motion.div>
               )}

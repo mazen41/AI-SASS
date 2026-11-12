@@ -4,6 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Plan;
+use App\Models\Subscription;
+use App\Models\LegalAcceptance;
+use App\Models\User;
+use App\Models\Package;
 
 class PendingRegistration extends Model
 {
@@ -81,7 +86,48 @@ class PendingRegistration extends Model
                 ]);
             }
 
-            $user->assignPackage($this->package_id);
+            if ($this->package_id) {
+                $user->assignPackage($this->package_id);
+            }
+
+            // Assign matching Subscription Plan & grant AI credits
+            try {
+                $plan = null;
+                if ($this->package) {
+                    $cleanName = trim(preg_replace('/\(.*?\)/', '', $this->package->name));
+                    $plan = Plan::where('name', $cleanName)
+                        ->orWhere('slug', strtolower($cleanName))
+                        ->first();
+                }
+                if (!$plan) {
+                    $plan = Plan::where('slug', 'free')->first();
+                }
+
+                if ($plan) {
+                    Subscription::updateOrCreate(
+                        ['user_id' => $user->id, 'status' => 'active'],
+                        [
+                            'plan_id' => $plan->id,
+                            'gateway' => (float)$plan->price <= 0 ? 'free' : 'registration',
+                            'gateway_subscription_id' => 'reg_' . $user->id . '_' . time(),
+                            'gateway_customer_id' => 'reg_' . $user->id,
+                            'status' => 'active',
+                            'current_period_start' => now(),
+                            'current_period_end' => now()->addMonth(),
+                        ]
+                    );
+
+                    if ($plan->monthly_credits > 0) {
+                        $reference = 'reg_grant:' . $user->id . ':' . now()->format('Y-m');
+                        app(\App\Services\AiCreditService::class)->grantPlanCredits($user, $plan, $reference);
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed auto-enrolling user to plan on registration', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             $this->update(['status' => 'completed', 'created_user_id' => $user->id]);
 

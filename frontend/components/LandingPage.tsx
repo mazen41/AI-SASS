@@ -9,7 +9,7 @@ import SmoothScroll from './SmoothScroll';
 import SplitTextReveal from './SplitTextReveal';
 import StudioCanvas3D from './StudioCanvas3D';
 import { useLang } from '@/context/LangContext';
-import { apiGetPublicPackages, Package, apiGetPublicPricingPlans, Plan } from '@/lib/api';
+import { apiGetPublicPricingPlans, Plan } from '@/lib/api';
 import {
   Sparkles,
   Film,
@@ -84,8 +84,6 @@ function SectionReveal({
 export default function LandingPage() {
   const { t, locale, isRTL } = useLang();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [packages, setPackages] = useState<Package[]>([]);
-  const [pkgLoading, setPkgLoading] = useState(true);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
@@ -109,12 +107,6 @@ export default function LandingPage() {
   const [coloringMode, setColoringMode] = useState<'colored' | 'lineart'>('colored');
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
-  useEffect(() => {
-    apiGetPublicPackages(locale)
-      .then((res) => setPackages(res.packages.filter((p) => p.is_active)))
-      .catch(() => setPackages([]))
-      .finally(() => setPkgLoading(false));
-  }, [locale]);
 
   const formatSar = (amount: number) =>
     new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-SA', {
