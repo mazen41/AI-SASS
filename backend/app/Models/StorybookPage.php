@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Services\PrivateImageStorage;
 
 class StorybookPage extends Model
 {
@@ -31,6 +32,28 @@ class StorybookPage extends Model
         'decorative_elements' => 'array',
         'metadata' => 'array',
     ];
+
+    public function getIllustrationUrlAttribute($value): ?string
+    {
+        return app(PrivateImageStorage::class)->url($value);
+    }
+
+    public function getBackgroundUrlAttribute($value): ?string
+    {
+        return app(PrivateImageStorage::class)->url($value);
+    }
+
+    public function getDecorativeElementsAttribute($value): ?array
+    {
+        if ($value === null || $value === '') return null;
+        $elements = is_array($value) ? $value : json_decode($value, true);
+        if (!is_array($elements)) return null;
+        $storage = app(PrivateImageStorage::class);
+        return array_map(static function ($element) use ($storage) {
+            if (is_array($element) && isset($element['url'])) $element['url'] = $storage->url($element['url']);
+            return $element;
+        }, $elements);
+    }
 
     public function story()
     {

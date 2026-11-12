@@ -6,6 +6,7 @@ use App\Models\Story;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Services\PrivateImageStorage;
 
 class StoryController extends Controller
 {
@@ -125,13 +126,26 @@ class StoryController extends Controller
             ],
         ];
 
-        if ($request->hasFile('photo')) {
-            $disk        = config('filesystems.default');
-            $path        = $request->file('photo')->store('stories/photos', ['disk' => $disk, 'visibility' => 'public']);
-            $data['photo_url'] = Storage::disk($disk)->url($path);
-        }
-
         $story = Story::create($data);
+
+        if ($request->hasFile('photo')) {
+            try {
+                $extension = $request->file('photo')->guessExtension() ?: 'jpg';
+                $path = "stories/{$story->id}/reference/child-photo.{$extension}";
+                $reference = app(PrivateImageStorage::class)->storeUploaded($request->file('photo'), $path);
+                $story->update(['photo_url' => $reference]);
+                $story->refresh();
+            } catch (\Throwable $exception) {
+                try {
+                    app(PrivateImageStorage::class)->deleteStoryImages($story->id);
+                } catch (\Throwable $cleanupException) {
+                    report($cleanupException);
+                }
+                $story->delete();
+                report($exception);
+                return response()->json(['message' => 'The photo could not be securely stored. Please try again.'], 503);
+            }
+        }
 
         ActivityLog::log(userId: $user->id, action: 'story_created', entityType: 'story', entityId: $story->id, newValues: $data);
 
@@ -265,16 +279,16 @@ class StoryController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($story->photo_url) {
-            $disk = config('filesystems.default');
-            if (preg_match('/stories\/photos\/.+$/', $story->photo_url, $matches)) {
-                Storage::disk($disk)->delete($matches[0]);
-            }
+        $photoReference = $story->getRawOriginal('photo_url');
+        if (str_starts_with((string) $photoReference, 'r2://')) {
+            app(PrivateImageStorage::class)->deleteStoryImages($story->id);
+        } elseif ($photoReference && preg_match('/stories\/photos\/.+$/', $photoReference, $matches)) {
+            // Clean up legacy public uploads created before images moved to R2.
+            Storage::disk('public')->delete($matches[0]);
+            Storage::disk('public')->deleteDirectory("stories/{$story->id}");
         }
-
-        // Delete all story storage folder
-        $disk = config('filesystems.default');
-        Storage::disk($disk)->deleteDirectory("stories/{$story->id}");
+        // Video, PDF and audio outputs are not part of the R2 image migration.
+        Storage::disk('public')->deleteDirectory("stories/{$story->id}");
 
         $story->delete();
 

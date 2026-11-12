@@ -80,7 +80,7 @@ class GenerateImagesJob implements ShouldQueue
             foreach ($scenesToProcess as $scene) {
                 $sceneNum = $scene['scene_number'];
                 $prompt   = $scene['image_prompt'];
-                $photoUrl = $story->photo_url;
+                $photoUrl = $story->photoImageReference();
                 $childAge = $story->child_age;
 
                 // Always generate images when story_book_pdf OR video is selected.
@@ -98,7 +98,7 @@ class GenerateImagesJob implements ShouldQueue
 
                     $sceneSeed = $keepCharacterConsistent ? $storySeed : random_int(1, 2147483646);
                     $imageUrl  = $fal->generateImage($enhancedPrompt, $photoUrl, $childAge, $sceneSeed);
-                    $storedUrl = $fal->downloadAndStore(
+                    $storedUrl = $fal->downloadImageAndStore(
                         $imageUrl,
                         "stories/{$story->id}/scene_{$sceneNum}.jpg"
                     );

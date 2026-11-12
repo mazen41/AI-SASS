@@ -726,7 +726,7 @@ export default function StoryViewPage() {
               {asset.url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={`/api/proxy-image?url=${encodeURIComponent(asset.url)}`}
+                  src={asset.url}
                   alt={`Scene ${asset.scene_number}`}
                   className="w-full h-auto"
                 />
@@ -743,7 +743,7 @@ export default function StoryViewPage() {
               {asset.url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={`/api/proxy-image?url=${encodeURIComponent(asset.url)}`}
+                  src={asset.url}
                   alt={`Coloring ${asset.scene_number}`}
                   className="w-full h-auto"
                 />

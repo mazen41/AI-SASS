@@ -67,13 +67,27 @@ class GenerateSingleSceneVideoJob implements ShouldQueue
                 ?? "scene {$this->sceneNumber} from a children's story";
 
             // ── 3. Resolve image URL for Fal.ai ─────────────────────────────
+            $imageReference = $asset->storageReference() ?: $asset->url;
             $imageUrlForFal = $asset->url;
+            $temporaryImagePath = null;
             if (!$this->isPublicFalUrl($imageUrlForFal)) {
-                $disk      = 'public';
-                $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
-                $relative  = ltrim(substr($imageUrlForFal, strlen($baseUrl)), '/');
-                $localPath = Storage::disk($disk)->path($relative);
-                $imageUrlForFal = $fal->uploadFileToFal($localPath);
+                if (str_starts_with($imageReference, 'r2://')) {
+                    $temporaryImagePath = app(\App\Services\PrivateImageStorage::class)->materialize($imageReference);
+                    try {
+                        $imageUrlForFal = $fal->uploadFileToFal($temporaryImagePath);
+                    } finally {
+                        @unlink($temporaryImagePath);
+                    }
+                } else {
+                    $disk = 'public';
+                    $baseUrl = rtrim(Storage::disk($disk)->url(''), '/');
+                    if (!str_starts_with($imageUrlForFal, $baseUrl . '/')) {
+                        throw new \RuntimeException('The source scene image is unavailable.');
+                    }
+                    $relative = ltrim(substr($imageUrlForFal, strlen($baseUrl)), '/');
+                    $localPath = Storage::disk($disk)->path($relative);
+                    $imageUrlForFal = $fal->uploadFileToFal($localPath);
+                }
             }
 
             Log::info("GenerateSingleSceneVideoJob: starting scene {$this->sceneNumber}", [

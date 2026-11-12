@@ -17,7 +17,7 @@ class StorybookIllustrationService
         $this->falAi = $falAi;
         // Hardcoded 'public' — see FalAiService::downloadAndStore() for why
         // config('filesystems.default') must never be used for this.
-        $this->disk = 'public';
+        $this->disk = 'public'; // PDFs remain on the public disk; illustration images use private R2.
     }
 
     /**
@@ -56,7 +56,7 @@ class StorybookIllustrationService
 
         // Process pages concurrently using multi-curl approach
         // This reduces 12+ minutes to ~3-4 minutes by making API calls simultaneously
-        $photoUrl = $story->photo_url ?? null;
+        $photoUrl = $story->photoImageReference();
         
         $this->processPagesConcurrently($pagesNeedingIllustration, $photoUrl, $story);
 
@@ -146,7 +146,7 @@ class StorybookIllustrationService
 
             // Download and store
             $filename = "stories/{$page->story_id}/storybook/page_{$page->page_number}.jpg";
-            $storedUrl = $this->falAi->downloadAndStore($imageUrl, $filename);
+            $storedUrl = $this->falAi->downloadImageAndStore($imageUrl, $filename);
 
             Log::info("ILLUSTRATION STEP 2 COMPLETE: FalAiService::downloadAndStore() returned", [
                 'story_id' => $page->story_id,
@@ -215,7 +215,7 @@ class StorybookIllustrationService
             ]);
 
             $filename = "stories/{$page->story_id}/storybook/background_{$page->page_number}.jpg";
-            $storedUrl = $this->falAi->downloadAndStore($imageUrl, $filename);
+            $storedUrl = $this->falAi->downloadImageAndStore($imageUrl, $filename);
 
             Log::info("BACKGROUND STEP 2 COMPLETE: FalAiService::downloadAndStore() returned", [
                 'story_id' => $page->story_id,
@@ -304,7 +304,7 @@ class StorybookIllustrationService
                 ]);
 
                 $filename = "stories/{$page->story_id}/storybook/decorative_{$page->page_number}_{$i}.png";
-                $storedUrl = $this->falAi->downloadAndStore($imageUrl, $filename);
+                $storedUrl = $this->falAi->downloadImageAndStore($imageUrl, $filename);
 
                 Log::info("DECORATIVE STEP 1.{$i}.2 COMPLETE: FalAiService::downloadAndStore() returned", [
                     'story_id' => $page->story_id,

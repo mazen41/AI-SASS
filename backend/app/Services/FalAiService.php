@@ -256,13 +256,30 @@ class FalAiService
         if ($photoUrl) {
             // Always upload photos to Fal storage to avoid accessibility issues
             // This ensures fal.ai can always access the reference image regardless of network/firewall
-            Log::info('Uploading photo to Fal storage for reliable access', ['original_url' => $photoUrl]);
-            // Always 'public' — see downloadAndStore() below for why.
-            $disk      = 'public';
-            $baseUrl   = rtrim(Storage::disk($disk)->url(''), '/');
-            $relative  = ltrim(substr($photoUrl, strlen($baseUrl)), '/');
-            $localPath = Storage::disk($disk)->path($relative);
-            $photoUrl  = $this->uploadFileToFal($localPath);
+            Log::info('Uploading private reference photo to Fal storage', ['is_r2_reference' => str_starts_with($photoUrl, 'r2://')]);
+            $localPath = null;
+            try {
+                if (str_starts_with($photoUrl, 'r2://')) {
+                    $localPath = app(PrivateImageStorage::class)->materialize($photoUrl);
+                } else {
+                    $disk = 'public';
+                    $baseUrl = rtrim(Storage::disk($disk)->url(''), '/');
+                    if (str_starts_with($photoUrl, $baseUrl . '/')) {
+                        $relative = ltrim(substr($photoUrl, strlen($baseUrl)), '/');
+                        $localPath = Storage::disk($disk)->path($relative);
+                    } else {
+                        $download = Http::timeout(60)->get($photoUrl);
+                        if (!$download->successful()) throw new \RuntimeException('Reference image could not be fetched.');
+                        $localPath = tempnam(sys_get_temp_dir(), 'naz-reference-');
+                        file_put_contents($localPath, $download->body());
+                    }
+                }
+                if (!$localPath || !is_file($localPath)) throw new \RuntimeException('Reference image is unavailable.');
+                $photoUrl = $this->uploadFileToFal($localPath);
+            } finally {
+                if ($localPath && str_contains(basename($localPath), 'naz-private-image-')) @unlink($localPath);
+                elseif ($localPath && str_contains(basename($localPath), 'naz-reference-')) @unlink($localPath);
+            }
             Log::info('Photo uploaded to Fal storage', ['fal_url' => $photoUrl]);
 
             // Use PuLID — face-identity-preserving model.
@@ -555,5 +572,11 @@ class FalAiService
         Storage::disk($disk)->put($storagePath, $response->body());
 
         return Storage::disk($disk)->url($storagePath);
+    }
+
+    /** Store generated image output privately in R2 and persist only its object reference. */
+    public function downloadImageAndStore(string $url, string $storagePath): string
+    {
+        return app(PrivateImageStorage::class)->storeDownloaded($url, $storagePath);
     }
 }

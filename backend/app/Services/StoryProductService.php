@@ -92,38 +92,44 @@ class StoryProductService
             return null;
         }
 
+        $privateImagePath = null;
         try {
-            $localPath = $this->resolveLocalPath($url);
+            if (str_starts_with($url, 'r2://')) {
+                $privateImagePath = app(PrivateImageStorage::class)->materialize($url);
+                $localPath = $privateImagePath;
+            } else {
+                $localPath = $this->resolveLocalPath($url);
+            }
             $bytes = ($localPath && file_exists($localPath))
                 ? file_get_contents($localPath)
                 : @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => 15]]));
 
             if (!$bytes) {
-                Log::warning("Failed to fetch image bytes", ['url' => $url, 'local_path' => $localPath]);
+                Log::warning("Failed to fetch image bytes", ['is_private_reference' => str_starts_with($url, 'r2://'), 'local_path' => $localPath]);
                 return null;
             }
 
             $size = @getimagesizefromstring($bytes);
             if (!$size || $size[0] <= 0 || $size[1] <= 0) {
-                Log::warning("Invalid image dimensions", ['url' => $url, 'size' => $size]);
+                Log::warning("Invalid image dimensions", ['is_private_reference' => str_starts_with($url, 'r2://'), 'size' => $size]);
                 return null;
             }
 
             // Additional validation: ensure minimum dimensions
             if ($size[0] < 50 || $size[1] < 50) {
-                Log::warning("Image too small for PDF rendering", ['url' => $url, 'dimensions' => $size]);
+                Log::warning("Image too small for PDF rendering", ['is_private_reference' => str_starts_with($url, 'r2://'), 'dimensions' => $size]);
                 return null;
             }
 
             // Additional validation: ensure maximum dimensions to prevent memory issues
             if ($size[0] > 10000 || $size[1] > 10000) {
-                Log::warning("Image too large for PDF rendering", ['url' => $url, 'dimensions' => $size]);
+                Log::warning("Image too large for PDF rendering", ['is_private_reference' => str_starts_with($url, 'r2://'), 'dimensions' => $size]);
                 return null;
             }
 
             $image = @imagecreatefromstring($bytes);
             if (!$image) {
-                Log::warning("Failed to create GD image from bytes", ['url' => $url]);
+                Log::warning("Failed to create GD image from bytes", ['is_private_reference' => str_starts_with($url, 'r2://')]);
                 return null;
             }
 
@@ -153,10 +159,12 @@ class StoryProductService
             return "data:image/{$imageType};base64,{$imageData}";
         } catch (\Throwable $e) {
             Log::error("Exception in cacheImageLocally", [
-                'url' => $url,
+                'is_private_reference' => str_starts_with($url, 'r2://'),
                 'error' => $e->getMessage()
             ]);
             return null;
+        } finally {
+            if ($privateImagePath) @unlink($privateImagePath);
         }
     }
 
@@ -225,9 +233,16 @@ class StoryProductService
 
                 foreach ($imagesToProcess as $asset) {
                     $scene = $scenes->get($asset->scene_number);
+                    $privateTempPath = null;
                     
                     // Get the local path of the story book image
-                    $localPath = $this->resolveLocalPath($asset->url);
+                    $assetReference = $asset->storageReference() ?: $asset->url;
+                    if (str_starts_with($assetReference, 'r2://')) {
+                        $privateTempPath = app(PrivateImageStorage::class)->materialize($assetReference);
+                        $localPath = $privateTempPath;
+                    } else {
+                        $localPath = $this->resolveLocalPath($assetReference);
+                    }
                     if (!$localPath || !file_exists($localPath)) {
                         throw new \RuntimeException("Source illustration for scene {$asset->scene_number} is unavailable.");
                     }
@@ -251,13 +266,15 @@ class StoryProductService
                             
                             // Store the line art as the coloring page asset
                             $coloringStoragePath = "stories/{$story->id}/coloring/pages/scene_{$asset->scene_number}.jpg";
-                            if (!Storage::disk($this->disk)->put($coloringStoragePath, file_get_contents($lineArtPath), ['visibility' => 'public'])) {
-                                throw new \RuntimeException("Could not store coloring page for scene {$asset->scene_number}.");
-                            }
+                            $coloringReference = app(PrivateImageStorage::class)->storeBytes(
+                                $coloringStoragePath,
+                                file_get_contents($lineArtPath),
+                                'image/jpeg'
+                            );
 
                             StoryAsset::updateOrCreate(
                                 ['story_id' => $story->id, 'scene_number' => $asset->scene_number, 'asset_type' => 'coloring_page'],
-                                ['url' => Storage::disk($this->disk)->url($coloringStoragePath), 'prompt' => 'Fal.ai (nano-banana) line art conversion']
+                                ['url' => $coloringReference, 'prompt' => 'Fal.ai (nano-banana) line art conversion']
                             );
 
                             // Clean up temp file
@@ -273,6 +290,8 @@ class StoryProductService
                             'error' => $e->getMessage()
                         ]);
                         throw new \RuntimeException("Coloring page conversion failed for scene {$asset->scene_number}.", 0, $e);
+                    } finally {
+                        if ($privateTempPath) @unlink($privateTempPath);
                     }
                 }
 

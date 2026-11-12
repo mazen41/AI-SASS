@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 use Illuminate\Support\Facades\DB;
+use App\Services\PrivateImageStorage;
 
 
 
@@ -65,6 +66,17 @@ class Story extends Model
 
         ];
 
+    }
+
+    /** Persisted image values may be private R2 references; expose short-lived URLs to clients. */
+    public function getPhotoUrlAttribute($value): ?string
+    {
+        return app(PrivateImageStorage::class)->url($value);
+    }
+
+    public function photoImageReference(): ?string
+    {
+        return $this->getRawOriginal('photo_url');
     }
 
 
