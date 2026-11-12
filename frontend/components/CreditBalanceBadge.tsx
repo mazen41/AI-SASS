@@ -8,12 +8,12 @@ import { useLang } from '@/context/LangContext';
 
 export default function CreditBalanceBadge() {
   const { locale } = useLang();
-  const [balance, setBalance] = useState<number | null>(null);
+  const [balance, setBalance] = useState<{ value: number; unlimited: boolean } | null>(null);
 
   useEffect(() => {
     let active = true;
     apiGetAiCredits().then(({ credits }) => {
-      if (active) setBalance(credits.available_credits);
+      if (active) setBalance({ value: credits.available_credits, unlimited: Boolean(credits.is_unlimited) });
     }).catch(() => {
       if (active) setBalance(null);
     });
@@ -27,7 +27,7 @@ export default function CreditBalanceBadge() {
       title={locale === 'ar' ? 'رصيد الذكاء الاصطناعي' : 'AI credit balance'}
     >
       <Coins className="h-3.5 w-3.5 text-[var(--k-blue)]" />
-      <span>{balance === null ? '—' : balance.toLocaleString(locale === 'ar' ? 'ar' : 'en')}</span>
+      <span>{balance === null ? '—' : balance.unlimited ? (locale === 'ar' ? 'غير محدود' : 'Unlimited') : balance.value.toLocaleString(locale === 'ar' ? 'ar' : 'en')}</span>
       <span className="hidden sm:inline text-[var(--text-3)]">{locale === 'ar' ? 'رصيد' : 'credits'}</span>
     </Link>
   );

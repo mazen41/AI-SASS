@@ -592,7 +592,7 @@ export default function UsersPage() {
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {[
-                  [isRTL ? 'أرصدة AI المتاحة' : 'Available AI credits', (detailUser.ai_credit_wallet?.available_credits ?? 0).toLocaleString()],
+                  [isRTL ? 'أرصدة AI المتاحة' : 'Available AI credits', detailUser.ai_credit_wallet?.is_unlimited ? (isRTL ? 'غير محدود' : 'Unlimited') : (detailUser.ai_credit_wallet?.available_credits ?? 0).toLocaleString()],
                   [isRTL ? 'الاشتراكات' : 'Subscriptions', detailUser.subscriptions_count ?? 0],
                   [isRTL ? 'المعاملات' : 'Transactions', detailUser.transactions_count ?? 0],
                   [isRTL ? 'الأجيال' : 'Generations', detailUser.stories_count ?? 0],

@@ -42,7 +42,7 @@ export default function AiCreditsPanel() {
   };
 
   const cards = credits ? [
-    [ar ? 'الرصيد المتاح' : 'Available', credits.available_credits],
+    [ar ? 'الرصيد المتاح' : 'Available', credits.is_unlimited ? (ar ? 'غير محدود' : 'Unlimited') : credits.available_credits],
     [ar ? 'رصيد الاشتراك' : 'Subscription', credits.subscription_credits],
     [ar ? 'الرصيد المشترى' : 'Purchased', credits.purchased_credits],
     [ar ? 'محجوز حالياً' : 'Reserved', credits.reserved_credits],
@@ -56,7 +56,7 @@ export default function AiCreditsPanel() {
     </div>
     {error && <p role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-400">{error}</p>}
     {loading && !credits ? <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 size={16} className="animate-spin"/>{ar ? 'جارٍ تحميل الرصيد...' : 'Loading credits…'}</div> : credits && <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{cards.map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4"><div className="text-xs text-slate-500">{label}</div><div className="mt-2 text-2xl font-bold tabular-nums">{Number(value).toLocaleString()}</div></div>)}</div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{cards.map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4"><div className="text-xs text-slate-500">{label}</div><div className="mt-2 text-2xl font-bold tabular-nums">{typeof value === 'number' ? value.toLocaleString() : value}</div></div>)}</div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500"><span>{ar ? 'تاريخ بدء دورة الرصيد' : 'Credit cycle started'}: {credits.cycle_started_at ? new Date(credits.cycle_started_at).toLocaleDateString() : (ar ? 'غير متاح' : 'Not available')}</span><span>{ar ? 'التجديد القادم' : 'Next renewal'}: {credits.renewal_at ? new Date(credits.renewal_at).toLocaleDateString() : (ar ? 'لا يوجد اشتراك نشط' : 'No active subscription')}</span></div>
     </>}
     <div className="space-y-3"><h3 className="flex items-center gap-2 text-sm font-bold"><ShoppingBag size={16}/>{ar ? 'شراء رصيد إضافي' : 'Buy additional credits'}</h3><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{packages.map(pack => <article key={pack.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 p-4"><div><div className="font-semibold">{Number(pack.credits).toLocaleString()} {ar ? 'رصيد' : 'credits'}</div><div className="mt-1 text-xs text-slate-500">{Number(pack.price).toFixed(2)} {pack.currency}</div></div><button type="button" onClick={() => void buy(pack)} disabled={busy !== null} className="rounded-xl bg-brand-blue px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{busy === pack.id ? <Loader2 size={15} className="animate-spin"/> : (ar ? 'شراء' : 'Buy')}</button></article>)}</div></div>

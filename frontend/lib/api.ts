@@ -429,7 +429,7 @@ export interface AdminUserDetail extends AuthUser {
   subscriptions_count?: number;
   transactions_count?: number;
   stories_count?: number;
-  ai_credit_wallet?: { subscription_credits: number; purchased_credits: number; available_credits: number; cycle_started_at?: string | null } | null;
+  ai_credit_wallet?: { subscription_credits: number; purchased_credits: number; available_credits: number; is_unlimited?: boolean; cycle_started_at?: string | null } | null;
   subscriptions?: Array<{ id: number; status: string; gateway: string; current_period_end?: string | null; plan?: { name: string } | null }>;
   transactions?: Array<{ id: number; gateway: string; gateway_transaction_id?: string; amount: string; currency: string; status: string; type: string; created_at: string }>;
   ai_credit_transactions?: Array<{ id: number; type: string; amount: number; description?: string | null; status: string; created_at: string }>;
@@ -970,6 +970,7 @@ export async function apiGetMyfatoorahCheckoutStatus(checkoutId: string): Promis
 
 export interface AiCreditSummary {
   available_credits: number;
+  is_unlimited?: boolean;
   subscription_credits: number;
   purchased_credits: number;
   reserved_credits: number;

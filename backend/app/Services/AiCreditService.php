@@ -51,6 +51,7 @@ class AiCreditService
                 'reserved_credits' => (int) $wallet->reserved_credits,
                 'available_credits' => $wallet->available,
                 'remaining_after_generation' => max(0, $wallet->available - $total),
+                'is_unlimited' => (bool) $wallet->is_unlimited,
             ],
             'sufficient' => $wallet->available >= $total,
             'shortfall' => max(0, $total - $wallet->available),
@@ -74,7 +75,7 @@ class AiCreditService
                 throw new RuntimeException('Credits have already been processed for this generation.');
             }
 
-            $subRemaining = min((int)$wallet->subscription_credits, $total);
+            $subRemaining = $wallet->is_unlimited ? $total : min((int)$wallet->subscription_credits, $total);
             $purchasedRemaining = $total - $subRemaining;
             $reservation = AiCreditReservation::create([
                 'user_id' => $user->id, 'story_id' => $story->id, 'amount' => $total,
@@ -100,8 +101,10 @@ class AiCreditService
                     ]);
                 }
             }
-            $wallet->subscription_credits -= $reservation->subscription_amount;
-            $wallet->purchased_credits -= $reservation->purchased_amount;
+            if (!$wallet->is_unlimited) {
+                $wallet->subscription_credits -= $reservation->subscription_amount;
+                $wallet->purchased_credits -= $reservation->purchased_amount;
+            }
             $wallet->reserved_credits += $total;
             $wallet->save();
             return $reservation->load('outputs');
@@ -140,9 +143,11 @@ class AiCreditService
             $wallet->reserved_credits = max(0, $wallet->reserved_credits - $output->amount);
             $sameSubscriptionCycle = $reservation->subscription_cycle_started_at?->equalTo($wallet->cycle_started_at)
                 ?? ($wallet->cycle_started_at === null);
-            if ($sameSubscriptionCycle) $wallet->subscription_credits += $output->subscription_amount;
-            else $wallet->purchased_credits += $output->subscription_amount;
-            $wallet->purchased_credits += $output->purchased_amount;
+            if (!$wallet->is_unlimited) {
+                if ($sameSubscriptionCycle) $wallet->subscription_credits += $output->subscription_amount;
+                else $wallet->purchased_credits += $output->subscription_amount;
+                $wallet->purchased_credits += $output->purchased_amount;
+            }
             $wallet->save();
             $output->update(['status' => 'refunded']);
             AiCreditTransaction::where('reference', "reservation:{$reservation->id}:{$outputType}:reserved")->update(['status' => 'refunded']);
@@ -153,6 +158,7 @@ class AiCreditService
                     'subscription_credits' => $sameSubscriptionCycle ? $output->subscription_amount : 0,
                     'purchased_credits' => $output->purchased_amount + ($sameSubscriptionCycle ? 0 : $output->subscription_amount),
                     'subscription_cycle_changed' => !$sameSubscriptionCycle,
+                    'unlimited_wallet' => (bool) $wallet->is_unlimited,
                 ],
             ]);
             $this->refreshReservationStatus($reservation);
@@ -179,9 +185,9 @@ class AiCreditService
             if (!$created) return false;
             // Monthly allowances roll over in this release. Renewal adds the
             // new allowance and never changes purchased credits.
-            if ($bucket === 'subscription') $wallet->subscription_credits += $credits;
-            else $wallet->purchased_credits += $credits;
-            if ($bucket === 'subscription') {
+            if (!$wallet->is_unlimited && $bucket === 'subscription') $wallet->subscription_credits += $credits;
+            elseif (!$wallet->is_unlimited) $wallet->purchased_credits += $credits;
+            if (!$wallet->is_unlimited && $bucket === 'subscription') {
                 $wallet->cycle_started_at = now();
                 $wallet->consumed_this_cycle = 0;
             }
@@ -201,6 +207,7 @@ class AiCreditService
         DB::transaction(function () use ($user, $amount, $reason, $actor) {
             $wallet = AiCreditWallet::firstOrCreate(['user_id' => $user->id]);
             $wallet = AiCreditWallet::whereKey($wallet->id)->lockForUpdate()->firstOrFail();
+            if ($wallet->is_unlimited) throw new RuntimeException('Unlimited wallets do not need credit adjustments.');
             if ($amount < 0 && $wallet->available < abs($amount)) throw new RuntimeException('Adjustment would make available credits negative.');
             if ($amount > 0) $wallet->purchased_credits += $amount;
             else {
@@ -223,6 +230,7 @@ class AiCreditService
         $wallet = $this->wallet($user);
         return [
             'available_credits' => $wallet->available,
+            'is_unlimited' => (bool) $wallet->is_unlimited,
             'subscription_credits' => (int)$wallet->subscription_credits,
             'purchased_credits' => (int)$wallet->purchased_credits,
             'reserved_credits' => (int)$wallet->reserved_credits,

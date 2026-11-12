@@ -62,6 +62,33 @@ class AiCreditServiceTest extends TestCase
         $this->assertSame(250, (int) AiCreditWallet::where('user_id', $user->id)->value('purchased_credits'));
     }
 
+    public function test_unlimited_wallet_can_generate_without_spending_credit_balance(): void
+    {
+        $user = User::factory()->create();
+        $wallet = AiCreditWallet::where('user_id', $user->id)->firstOrFail();
+        $wallet->update(['subscription_credits' => 0, 'purchased_credits' => 0, 'is_unlimited' => true]);
+        $story = Story::create(['user_id' => $user->id, 'title' => 'Unlimited', 'theme' => 'adventure', 'status' => 'draft', 'selected_outputs' => ['story_text']]);
+        $service = app(AiCreditService::class);
+
+        $estimate = $service->estimate($user, ['story_text']);
+        $this->assertTrue($estimate['sufficient']);
+        $this->assertTrue($estimate['wallet']['is_unlimited']);
+        $reservation = $service->reserve($user, $story, ['story_text']);
+        $service->finalizeOutput($story, 'story_text');
+
+        $this->assertSame('completed', $reservation->fresh()->status);
+        $this->assertSame(999_999_999, $service->summarize($user)['available_credits']);
+        $this->assertTrue($service->summarize($user)['is_unlimited']);
+        $this->assertSame(0, (int) $wallet->fresh()->subscription_credits);
+        $this->assertSame(0, (int) $wallet->fresh()->purchased_credits);
+
+        $retryStory = Story::create(['user_id' => $user->id, 'title' => 'Unlimited retry', 'theme' => 'adventure', 'status' => 'draft', 'selected_outputs' => ['story_text']]);
+        $service->reserve($user, $retryStory, ['story_text']);
+        $this->assertTrue($service->refundOutput($retryStory, 'story_text', 'retry requested'));
+        $this->assertSame(0, (int) $wallet->fresh()->subscription_credits);
+        $this->assertSame(0, (int) $wallet->fresh()->purchased_credits);
+    }
+
     public function test_page_count_changes_server_estimate_and_client_cannot_set_price(): void
     {
         $user = User::factory()->create();
