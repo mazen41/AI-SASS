@@ -47,6 +47,9 @@ Route::get('/settings/landing', [LandingPageSettingsController::class, 'index'])
 Route::get('/packages', [PublicPackageController::class, 'index']);
 Route::get('/packages/{id}', [PublicPackageController::class, 'show'])->whereNumber('id');
 
+// Public subscription plans route for public pricing page
+Route::get('/pricing/plans', [BillingController::class, 'plans']);
+
 // Public blog routes
 Route::get('/blog', [BlogPostController::class, 'index']);
 Route::get('/blog/{slug}', [BlogPostController::class, 'show']);
@@ -111,6 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Billing
     Route::get('/billing/plans', [BillingController::class, 'plans']);
     Route::get('/billing/subscription', [BillingController::class, 'activeSubscription']);
+    Route::post('/billing/subscribe/free', [BillingController::class, 'subscribeFree']);
     Route::post('/billing/subscribe/stripe', [BillingController::class, 'subscribeStripe']);
     Route::post('/billing/subscribe/paypal', [BillingController::class, 'subscribePaypal']);
     Route::post('/billing/subscribe/moyasar', [BillingController::class, 'subscribeMoyasar']);
@@ -150,8 +154,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Plans Management
         Route::get('/plans', [PlanController::class, 'index']);
         Route::post('/plans', [PlanController::class, 'store']);
+        Route::put('/plans/order', [PlanController::class, 'updateOrder']);
         Route::get('/plans/{plan}', [PlanController::class, 'show']);
         Route::put('/plans/{plan}', [PlanController::class, 'update']);
+        Route::post('/plans/{plan}/duplicate', [PlanController::class, 'duplicate']);
+        Route::post('/plans/{plan}/archive', [PlanController::class, 'archive']);
         Route::delete('/plans/{plan}', [PlanController::class, 'destroy']);
 
         Route::get('/ai-credits', [\App\Http\Controllers\Admin\AiCreditsController::class, 'index']);

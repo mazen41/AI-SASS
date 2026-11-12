@@ -258,20 +258,51 @@ export interface DashboardStats {
   recent_activity: Array<ActivityLog>;
 }
 
+export interface PlanCapabilities {
+  story_enabled?: boolean;
+  storybook_enabled?: boolean;
+  coloring_enabled?: boolean;
+  narration_enabled?: boolean;
+  video_enabled?: boolean;
+  max_storybook_pages?: number;
+  max_coloring_pages?: number;
+  max_video_duration_seconds?: number;
+  allowed_ai_models?: string[];
+  character_consistency?: boolean;
+  priority_generation?: boolean;
+  commercial_usage?: boolean;
+  custom_branding?: boolean;
+  support_level?: 'community' | 'email' | 'priority' | 'dedicated' | string;
+  [key: string]: any;
+}
+
 export interface Plan {
   id: number;
   name: string;
   slug: string;
   description: string | null;
   price: string;
+  yearly_price?: string | null;
   monthly_credits: number;
+  story_limit?: number;
+  video_limit?: number;
+  daily_story_limit?: number;
+  daily_video_limit?: number;
   billing_period: 'monthly' | 'yearly';
   features: string[] | null;
+  capabilities?: PlanCapabilities | null;
+  effective_capabilities?: PlanCapabilities;
+  icon?: string | null;
+  badge?: string | null;
+  trial_days?: number;
   is_active: boolean;
+  is_public?: boolean;
   is_featured: boolean;
   sort_order: number;
   stripe_price_id: string | null;
   paypal_plan_id: string | null;
+  moyasar_product_id?: string | null;
+  myfatoorah_product_id?: string | null;
   subscriptions_count?: number;
   active_subscriptions_count?: number;
 }
@@ -408,6 +439,25 @@ export async function apiUpdatePlan(id: number, data: Partial<Plan>): Promise<{ 
 
 export async function apiDeletePlan(id: number): Promise<void> {
   await apiFetch(`/admin/plans/${id}`, { method: 'DELETE' });
+}
+
+export async function apiDuplicatePlan(id: number): Promise<{ plan: Plan; message: string }> {
+  return apiFetch<{ plan: Plan; message: string }>(`/admin/plans/${id}/duplicate`, {
+    method: 'POST',
+  });
+}
+
+export async function apiArchivePlan(id: number): Promise<{ plan: Plan; message: string }> {
+  return apiFetch<{ plan: Plan; message: string }>(`/admin/plans/${id}/archive`, {
+    method: 'POST',
+  });
+}
+
+export async function apiUpdatePlanOrder(orders: { id: number; sort_order: number }[]): Promise<{ plans: Plan[]; message: string }> {
+  return apiFetch<{ plans: Plan[]; message: string }>('/admin/plans/order', {
+    method: 'PUT',
+    body: JSON.stringify({ orders }),
+  });
 }
 
 // Payment Settings
@@ -788,6 +838,17 @@ export async function apiSubscribeMyfatoorah(planId: number): Promise<{ url: str
     method: 'POST',
     body: JSON.stringify({ plan_id: planId }),
   });
+}
+
+export async function apiSubscribeFree(planId: number): Promise<{ subscription: Subscription; message: string }> {
+  return apiFetch<{ subscription: Subscription; message: string }>('/billing/subscribe/free', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId }),
+  });
+}
+
+export async function apiGetPublicPricingPlans(): Promise<{ plans: Plan[]; gateways: string[] }> {
+  return apiFetch<{ plans: Plan[]; gateways: string[] }>('/pricing/plans');
 }
 
 export async function apiGetMyfatoorahCheckoutStatus(checkoutId: string): Promise<{ status: string; purpose?: string }> {

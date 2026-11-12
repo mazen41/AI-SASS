@@ -1275,6 +1275,31 @@ export default function LandingPage() {
             })
           )}
         </div>
+
+        {/* Monthly Subscription Tiers Banner */}
+        <div className="mt-12 p-6 sm:p-8 rounded-3xl studio-card-glass border border-[var(--k-blue)]/30 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-start">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[var(--k-blue)] uppercase">
+              <Sparkles size={14} />
+              <span>{locale === 'ar' ? 'الاشتراكات الشهرية والسنوية' : 'Monthly & Yearly Memberships'}</span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black font-display text-[var(--text)]">
+              {locale === 'ar' ? 'هل تفضل اشتراكاً شهرياً مع رصيد ذكاء اصطناعي متجدد؟' : 'Prefer a monthly membership with auto-renewing AI credits?'}
+            </h3>
+            <p className="text-xs sm:text-sm text-[var(--text-3)] max-w-xl">
+              {locale === 'ar'
+                ? 'استكشف خططنا الشهرية (تبدأ من 30 رصيداً مجاناً وحتى 4,000 رصيد) مع أولوية المعالجة ودعم متواصل.'
+                : 'Explore our 5 tiers (from Free 30 credits up to Ultimate 4,000 credits) with priority generation and commercial usage.'}
+            </p>
+          </div>
+          <Link
+            href="/pricing"
+            className="py-3 px-6 rounded-full font-bold text-xs bg-gradient-to-r from-[var(--k-blue)] to-[var(--k-purple)] text-white hover:opacity-95 transition-all shadow-md shrink-0 flex items-center gap-2"
+          >
+            <span>{locale === 'ar' ? 'عرض خطط الاشتراك' : 'Explore Studio Tiers'}</span>
+            <ArrowRight size={14} className="rtl:rotate-180" />
+          </Link>
+        </div>
       </SectionReveal>
 
       {/* ══════════════════════════════════════════════════════════

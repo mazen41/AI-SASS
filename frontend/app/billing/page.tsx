@@ -14,6 +14,7 @@ import {
   apiSubscribePaypal,
   apiSubscribeMoyasar,
   apiSubscribeMyfatoorah,
+  apiSubscribeFree,
   apiUserCancelSubscription,
   Plan,
   Subscription,
@@ -119,6 +120,21 @@ export default function BillingPage() {
           ? 'يرجى الموافقة على الشروط والأحكام وسياسة المنتجات الرقمية للمتابعة.'
           : 'Please accept the Terms and Conditions and Digital Product policy to proceed.'
       );
+      return;
+    }
+
+    const selectedPlan = plans.find((p) => p.id === planId);
+    if (selectedPlan && (Number(selectedPlan.price) === 0 || selectedPlan.slug === 'free')) {
+      setActionLoading(true);
+      try {
+        const response = await apiSubscribeFree(planId);
+        alert(response.message);
+        setActiveSub(response.subscription);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Free plan enrollment failed');
+      } finally {
+        setActionLoading(false);
+      }
       return;
     }
 

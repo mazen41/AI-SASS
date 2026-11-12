@@ -59,6 +59,11 @@ export default function Navbar() {
           label: locale === 'ar' ? 'لوحة التحكم' : 'Studio Dashboard',
           icon: LayoutDashboard,
         },
+        {
+          href: '/pricing',
+          label: locale === 'ar' ? 'الخطط والاشتراك' : 'Studio Tiers',
+          icon: Sparkles,
+        },
         ...(user?.role === 'super_admin'
           ? [
               {
@@ -71,22 +76,22 @@ export default function Navbar() {
       ]
     : [
         {
-          href: '#outputs',
+          href: '/#outputs',
           label: locale === 'ar' ? 'مخرجات الاستوديو' : 'Studio Outputs',
           icon: Film,
         },
         {
-          href: '#workflow',
+          href: '/#workflow',
           label: locale === 'ar' ? 'كيف يعمل' : 'Workflow',
           icon: Zap,
         },
         {
-          href: '#character-dna',
+          href: '/#character-dna',
           label: locale === 'ar' ? 'اتساق الشخصية' : 'Character DNA',
           icon: Layers,
         },
         {
-          href: '#pricing',
+          href: '/pricing',
           label: locale === 'ar' ? 'الأسعار' : 'Pricing',
           icon: Sparkles,
         },

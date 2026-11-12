@@ -92,13 +92,37 @@ class StoryController extends Controller
 
         // Only enforce limits when the user has an active subscription;
         // users without a subscription can create stories freely.
-        if ($user->activeSubscription()) {
+        $activeSub = $user->activeSubscription();
+        if ($activeSub) {
             if (!$limitDetails['is_unlimited'] && $limitDetails['usage'] >= $limitDetails['total_limit']) {
                 return response()->json(['message' => 'Monthly story limit reached.', 'limit_details' => $limitDetails], 403);
             }
 
             if (!$limitDetails['is_daily_unlimited'] && $limitDetails['daily_usage'] >= $limitDetails['daily_total_limit']) {
                 return response()->json(['message' => 'Daily story limit reached.', 'limit_details' => $limitDetails], 403);
+            }
+
+            // Enforce plan capabilities and limits
+            $plan = $activeSub->plan;
+            if ($plan) {
+                if (in_array('video', $selectedOutputs, true) && !$plan->hasCapability('video_enabled')) {
+                    return response()->json(['message' => 'Video generation is not included in your current subscription plan.'], 403);
+                }
+                if (in_array('story_book_pdf', $selectedOutputs, true) && !$plan->hasCapability('storybook_enabled')) {
+                    return response()->json(['message' => 'Storybook generation is not included in your current subscription plan.'], 403);
+                }
+                if (in_array('coloring_book_pdf', $selectedOutputs, true) && !$plan->hasCapability('coloring_enabled')) {
+                    return response()->json(['message' => 'Coloring book generation is not included in your current subscription plan.'], 403);
+                }
+                if (in_array('narration_audio', $selectedOutputs, true) && !$plan->hasCapability('narration_enabled')) {
+                    return response()->json(['message' => 'Audio narration is not included in your current subscription plan.'], 403);
+                }
+
+                $pageCount = (int)($validated['page_count'] ?? 8);
+                $maxPages = (int)$plan->getCapability('max_storybook_pages', 24);
+                if ($maxPages > 0 && $pageCount > $maxPages) {
+                    return response()->json(['message' => "Your plan allows a maximum of {$maxPages} storybook pages."], 403);
+                }
             }
         }
 

@@ -23,7 +23,10 @@ class BillingController extends Controller
     public function plans(): JsonResponse
     {
         $plans = Cache::rememberForever('active_plans', function () {
-            return Plan::where('is_active', true)->orderBy('sort_order')->get();
+            return Plan::where('is_active', true)
+                ->where('is_public', true)
+                ->orderBy('sort_order')
+                ->get();
         });
 
         $stripe  = PaymentSetting::getStripe();
@@ -39,6 +42,61 @@ class BillingController extends Controller
         return response()->json([
             'plans'    => $plans,
             'gateways' => $gateways,
+        ]);
+    }
+
+    public function subscribeFree(Request $request): JsonResponse
+    {
+        $request->validate([
+            'plan_id' => 'required|integer|exists:plans,id',
+        ]);
+
+        $plan = Plan::findOrFail($request->plan_id);
+
+        if (!$plan->is_active) {
+            return response()->json(['message' => 'This plan is currently not available.'], 422);
+        }
+
+        if ((float) $plan->price > 0) {
+            return response()->json(['message' => 'Paid plans require a payment gateway checkout.'], 422);
+        }
+
+        $user = $request->user();
+
+        $activeSub = $user->activeSubscription();
+        if ($activeSub && $activeSub->plan_id === $plan->id && $activeSub->status === 'active') {
+            return response()->json([
+                'message' => 'You are already enrolled in this plan.',
+                'subscription' => $activeSub->load('plan'),
+            ]);
+        }
+
+        $subscription = Subscription::updateOrCreate(
+            ['user_id' => $user->id, 'status' => 'active'],
+            [
+                'plan_id' => $plan->id,
+                'gateway' => 'free',
+                'gateway_subscription_id' => 'free_' . $user->id . '_' . time(),
+                'gateway_customer_id' => 'free_' . $user->id,
+                'status' => 'active',
+                'current_period_start' => now(),
+                'current_period_end' => now()->addMonth(),
+            ]
+        );
+
+        if ($plan->monthly_credits > 0) {
+            $reference = 'free_plan_grant:' . $user->id . ':' . now()->format('Y-m');
+            app(\App\Services\AiCreditService::class)->grantPlanCredits($user, $plan, $reference);
+        }
+
+        ActivityLog::log('free_plan_enrolled', $user->id, 'Subscription', $subscription->id, null, [
+            'plan_id' => $plan->id,
+            'plan_slug' => $plan->slug,
+        ]);
+
+        return response()->json([
+            'message' => 'Free plan activated successfully! Welcome to the studio.',
+            'subscription' => $subscription->fresh()->load('plan'),
         ]);
     }
 
